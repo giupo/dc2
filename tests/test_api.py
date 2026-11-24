@@ -99,15 +99,20 @@ def client(demo):
 def test_every_endpoint_matches_its_schema(client):
     c, engine = client
     index = c.get("/api").json()
-    paths = [p for p in index["endpoints"] if p != "/api/stream"]
+    paths = [p for p in index["endpoints"] if not p.endswith("/stream") and "{" not in p]
     assert {"/api/campaign", "/api/map", "/api/fronts", "/api/forces", "/api/logistics", "/api/ato",
             "/api/airdefense", "/api/events", "/api/snapshot"} <= set(paths)
     ad = c.get("/api/airdefense").json()
     assert ad["sites"] and ad["links"]  # the demo has an IADS
     assert {s["role"] for s in ad["sites"]} >= {"long", "medium", "short", "ewr"}
     for path in paths:
-        r = c.get(path)  # FastAPI validates against response_model: a mismatch is a 500
-        assert r.status_code == 200, (path, r.text[:300])
+        for q in ("", "?faction=blue", "?faction=red"):
+            if path == "/api/intel" and not q:
+                assert c.get(path).status_code == 422  # a faction is required
+                continue
+            r = c.get(path + q)  # FastAPI validates against response_model: a mismatch is a 500
+            assert r.status_code == 200, (path + q, r.text[:300])
+    assert c.get("/api/forces?faction=nobody").status_code == 404
     camp = c.get("/api/campaign").json()
     assert camp["live"] is True and camp["players"][0]["name"] == "Pilot"
     assert c.get("/api/nope").status_code == 404
@@ -213,3 +218,76 @@ def test_serves_built_front_end(demo, tmp_path):
         assert "dynacamp ui" in c.get("/").text
         assert c.get("/api/campaign").status_code == 200  # the API still wins over static files
         assert c.get("/docs").status_code == 200
+
+
+def test_fog_of_war_views_hide_what_a_faction_has_not_seen(client):
+    c, engine = client
+    from dynacamp.systems import intel
+
+    state = engine.state
+    truth = c.get("/api/forces").json()["divisions"]
+    for fid in state.factions:
+        view = c.get(f"/api/forces?faction={fid}").json()["divisions"]
+        known = intel.picture(state, fid)
+        for d in view:
+            if state.at_war(fid, d["faction"]):
+                # an enemy brigade: only if known, at its last known position, internals hidden
+                assert d["id"] in known and d["intel"] is not None
+                assert d["order"]["kind"] == "unknown" and d["route"] is None and d["supply"] is None
+                assert d["pos"] == [round(known[d["id"]].position.x), round(known[d["id"]].position.y)]
+            else:
+                assert d["intel"] is None
+        hidden = {d["id"] for d in truth} - {d["id"] for d in view}
+        assert all(state.at_war(fid, state.divisions[i].faction) and i not in known for i in hidden)
+        ato = c.get(f"/api/ato?faction={fid}").json()
+        assert all(not state.at_war(fid, p["faction"]) for p in ato["packages"])
+        assert all(state.at_war(fid, t["faction"]) and t["intel"] for t in ato["tracks"])
+        pic = c.get(f"/api/intel?faction={fid}").json()
+        assert len(pic["contacts"]) == len(known)
+
+
+def test_positions_sample_follows_the_fog_of_war(client):
+    c, engine = client
+    state = engine.state
+    truth = c.get("/api/positions").json()
+    assert truth["d"] and set(truth["d"]) == set(state.divisions)
+    from dynacamp.systems import intel
+
+    for fid in state.factions:
+        view = c.get(f"/api/positions?faction={fid}").json()
+        known = intel.picture(state, fid)
+        for i in view["d"]:
+            d = state.divisions[i]
+            assert not state.at_war(fid, d.faction) or i in known
+        own = {i for i, d in state.divisions.items() if d.faction == fid}
+        assert own <= set(view["d"])
+
+
+def test_pause_and_fast_forward_refused_while_live(client):
+    c, engine = client
+    assert engine.live  # a player is connected: time runs 1:1
+    assert c.post("/api/control", json={"paused": True}).status_code == 409
+    assert c.post("/api/control", json={"compression": 600}).status_code == 409
+    assert c.get("/api/control").json()["rate"] == 1
+
+
+def test_pause_and_fast_forward(demo):
+    import time
+
+    from fastapi.testclient import TestClient
+
+    from dynacamp.api import create_app
+    from dynacamp.runtime import run_realtime
+
+    engine = Engine(demo)
+    with TestClient(create_app(engine)) as c:
+        r = c.post("/api/control", json={"paused": True})
+        assert r.status_code == 200 and r.json()["paused"] and r.json()["rate"] == 0
+        assert c.post("/api/control", json={"compression": 1e9}).status_code == 422
+        t0, start = demo.time, time.monotonic()
+        run_realtime(engine, compression=60, tick_s=0.02, stop=lambda: time.monotonic() - start > 0.2)
+        assert demo.time == t0  # paused: the clock stands still
+        r = c.post("/api/control", json={"paused": False, "compression": 3600}).json()
+        assert (r["paused"], r["compression"], r["rate"]) == (False, 3600, 3600)
+        assert c.get("/api/campaign").json()["control"]["compression"] == 3600
+        assert any(e.kind == "time_control" for e in demo.events)

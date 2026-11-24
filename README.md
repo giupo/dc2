@@ -43,7 +43,12 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 | **IA** | Per fazione: sicurezza di retrovie e fianchi, schieramento sul fronte, offensive con superiorità locale, riserve. |
 | **Logistica** | Depositi, rifornimento diretto, **convogli fisici** sulle strade, ricomplementi, ricostituzione delle brigate distrutte. |
 | **Artiglieria** | Missioni di fuoco continue sul fronte, a gittate realistiche. |
-| **Aviazione / ATO** | Pacchetti CAS, BAI, STRIKE, CAP e SEAD/DEAD con scorte, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10. |
+| **Aviazione / ATO** | 64 tipi di aereo degli anni '80, '90 e 2000. Pacchetti CAS, BAI, STRIKE, CAP e SEAD/DEAD con scorte, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10. |
+| **Supporto aereo** | **AWACS** in orbita dietro il fronte (sensore principale, controllo dei caccia), **tanker** che allungano raggio d'azione e permanenza delle CAP, **trasporti** con ponte aereo verso i depositi avanzati e rifornimento in elicottero delle brigate isolate. |
+| **Nebbia di guerra** | Ogni fazione vede solo quello che i suoi sensori hanno trovato: radar e occhi degli aerei, AWACS, radar a terra, ricognizione, ELINT, lanci SAM. Contatti con età, fonte e identificazione. **Anche IA, ATO, artiglieria e briefing decidono sul quadro informativo**, non sulla verità. |
+| **ATO stile BMS** | Ogni package ha un **numero a 4 cifre**, come in Falcon/BMS. La UI mostra l'ATO come lista di voli ordinata per decollo: package, volo, missione, aereo, T/O, TOT, stato. |
+| **Unità di misura** | Briefing e marcatori in DCS in **nodi, piedi e miglia nautiche** (di default) o nel sistema internazionale; nella UI si sceglie con un clic. |
+| **Missioni** | Ogni volo ha un **mission package**: briefing (missione, situazione, bersaglio con coordinate, minacce lungo la rotta), waypoint con nome, orario, quota e velocità, **armamento** da usare, pacchetto e frequenze. Gli aerei IA volano con lo stesso armamento descritto nel briefing. |
 | **Difesa aerea / IADS** | Patriot, S-300, Hawk, NASAMS, Buk, Kub, Tor, Osa, Avenger e radar di scoperta in rete. I sistemi mobili **si spostano sulle strade**; c'è la guerra SEAD. |
 | **Player bubble** | Ciò che è vicino ai giocatori passa a DCS e torna al motore con le perdite subite. I SAM compaiono quando un giocatore entra nella loro portata. |
 | **DCS** | Bridge Lua live su TCP. Spawn in colonna sulle strade, voli con carichi armi dai template, SAM in allerta rossa, missioni `.miz` pronte. |
@@ -85,7 +90,7 @@ Il design completo è in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). In sintes
 
 **Il core** (`CampaignState`, `Engine`) è indipendente da qualsiasi gioco e
 deterministico a parità di seed. A ogni step, in substep da 60 s, girano i
-sistemi `ai → ato → supply → movement → combat → artillery → air_defense → air`.
+sistemi `intel → ai → ato → supply → movement → combat → artillery → air_defense → air`.
 Ogni cambiamento finisce in un **event log**, che alimenta lo stream della UI.
 Il tempo scorre compresso; diventa 1:1 appena un gioco simula qualcosa.
 
@@ -116,6 +121,35 @@ strada da un deposito si riforniscono direttamente; le altre dipendono da
 **convogli** veri, attaccabili da aria e terra. Le brigate rifornite ricevono
 ricomplementi, e quelle distrutte vengono ricostituite dopo 48 h.
 
+**Aerei.** Il catalogo ha 64 tipi, tutti verificati contro DCS:
+- **Blu:** F-16C/A, F/A-18C, F-15C/E, F-14A/B, F-4E, A-10A/C, AV-8B,
+  Mirage 2000C/-5, Mirage F1, F-5E, JF-17, Viggen, Tornado GR4/IDS,
+  F-117A, B-1B, B-52H;
+- **Rosso:** MiG-29A/S/G, MiG-31, MiG-25PD, MiG-23MLD, MiG-27K, MiG-21bis,
+  Su-27, Su-33, Su-30, J-11A, Su-34, Su-24M, Su-25/T/TM, Su-17M4, Tu-22M3,
+  Tu-95MS;
+- **Elicotteri:** AH-64D, AH-1W, OH-58D, Gazelle, Ka-50, Mi-28N, Mi-24P/V;
+- **Supporto:** E-3A, E-2C, A-50 (AWACS); KC-135, KC-130, IL-78M (tanker);
+  C-130, C-17A, IL-76MD, An-26B, UH-60A, CH-47D, Mi-8MT, Mi-26 (trasporto).
+
+L'armamento di ogni aereo per ogni compito sta in
+`src/dynacamp/data/loadouts.json`, generato dalle tabelle dei piloni di DCS
+(`dynacamp loadouts`). È la fonte unica per briefing e missioni.
+
+**Mission package** (`systems/briefing.py`). Per ogni volo:
+- **missione e situazione;**
+- **bersaglio:** composizione, coordinate (gradi e minuti decimali),
+  rilevamento e distanza dalla base;
+- **minacce:** i SAM nemici che coprono la rotta (controllata ogni 5 km), la
+  difesa a corto raggio al bersaglio, i caccia nemici in raggio;
+- **waypoint con nome:** decollo, IP, bersaglio, uscita fuori dall'asse
+  d'attacco, atterraggio (o stazione CAP), con orari calcolati a ritroso dal
+  TOT, quote secondo il profilo della missione e velocità;
+- **armamento, pacchetto e frequenze.**
+
+In DCS il giocatore lo riceve come messaggio, con i waypoint marcati sulla
+mappa F10. Nella UI c'è una scheda stampabile in stile kneeboard.
+
 **Aviazione e ATO.** Ogni ora l'ATO converte la situazione in richieste: CAS
 sulle battaglie, CAP fuori dalla copertura SAM nemica, BAI su colonne e
 convogli, STRIKE sui depositi, SEAD/DEAD sui siti SAM. Le richieste diventano
@@ -123,6 +157,55 @@ pacchetti con scorta e SEAD quando servono. Il decollo è almeno 30 minuti dopo
 la pianificazione, per dare tempo ai giocatori. Fuori dalle bolle i voli sono
 simulati in modo astratto: navigazione, attacchi, duelli aria-aria, perdite
 contro la difesa aerea.
+
+**Supporto aereo.** L'ATO tiene in volo, quando ha gli squadroni:
+- **un AWACS** in un'orbita da 4 ore 120 km dietro il fronte, spostata indietro
+  finché è fuori dalla copertura dei SAM nemici noti. Radar da 300–400 km.
+  I caccia sotto il suo controllo combattono meglio (+15%);
+- **un tanker** 80 km dietro il fronte. Finché è in stazione, il raggio
+  d'azione di caccia e attacco cresce del 40% e le CAP restano un'ora in più.
+  Il briefing indica posizione, frequenza e orario di tanker e AWACS;
+- **trasporti:**
+  - *ponte aereo* verso le basi avanzate con deposito sotto l'85% della
+    capacità, con priorità crescente quando il deposito si svuota. Il carico
+    viene da una base di retrovia fuori mappa (per esempio Incirlik in Siria)
+    o dal deposito di partenza;
+  - *rifornimento in elicottero* delle brigate sotto il 30% di rifornimenti che
+    nessun deposito né convoglio raggiunge.
+
+  I supporti hanno un budget di pacchetti tutto loro, così la logistica non
+  viene schiacciata dalle richieste di combattimento. Sono bersagli preziosi:
+  le CAP nemiche li intercettano.
+
+**Nebbia di guerra** (`systems/intel.py`). Ogni fazione ha un quadro
+informativo: un **contatto** per ogni entità nemica rilevata, con ultima
+posizione nota, ora, sensore e identificazione. Ogni 60 s:
+- **quadro aereo:**
+  - *chi lo vede:* AWACS in stazione, EWR, radar dei SAM accesi e radar di
+    bordo di ogni aereo, giocatori compresi;
+  - *bassa quota:* sotto i 300 m un bersaglio è molto più difficile da vedere
+    per i radar a terra (30%), meno per AWACS (60%) e caccia (70%);
+  - *identificazione:* una traccia radar è "sconosciuta" finché un aereo amico
+    non arriva entro 40 km.
+- **quadro terrestre:** ricognizione delle brigate (12 km), dei convogli e dei
+  siti; pod e occhi degli aerei; contatto in battaglia;
+- **ELINT:** AWACS, aerei SEAD ed EWR localizzano i radar nemici **accesi**;
+- **eventi:** un SAM che lancia si rivela al bersaglio.
+
+All'inizio ogni fazione conosce lo schieramento prebellico di brigate e SAM
+nemici, che poi invecchia. Un contatto è "vecchio" dopo un tempo che dipende
+dal tipo: 90 s per un aereo, 1 h per una brigata, 6 h per un SAM. Viene
+dimenticato dopo 5 min per un aereo, 12 h per una brigata, 48 h per un SAM.
+
+**Il quadro guida le decisioni:**
+- l'ATO attacca solo brigate e convogli localizzati di recente;
+- pianifica il SEAD e tiene le CAP lontano solo dai SAM che conosce, quindi
+  un sito mai rilevato può sorprendere un pacchetto;
+- l'IA terrestre stima il nemico da ciò che sa;
+- l'artiglieria spara solo su bersagli individuati negli ultimi 30 minuti;
+- il briefing elenca solo le minacce note, con l'età dell'informazione.
+
+La fisica (chi combatte davvero con chi) resta vera.
 
 **Difesa aerea e IADS.** Ogni sito ha le sue componenti reali (radar,
 lanciatori, posto comando) e un ciclo di vita: in movimento con radar spento,
@@ -191,7 +274,27 @@ React, Vite, TypeScript e MapLibre GL, su mappa OpenFreeMap scura. Dettagli in
 
   Ogni livello si attiva e disattiva, e il punto di vista "View as" sceglie
   quale parte è amica.
-- **Pannelli:** Front, Forces, Logistics, ATO, AD (difesa aerea) e Events
+- **Nebbia di guerra:** con "Fog of war" attivo (è il default) la UI mostra la
+  campagna come la vede la parte scelta in "View as":
+  - i nemici solo se rilevati, all'ultima posizione nota;
+  - i contatti vecchi con la cornice tratteggiata APP-6 ("presunto");
+  - le tracce radar non identificate col simbolo giallo "sconosciuto";
+  - la copertura dell'AWACS come cerchio tratteggiato.
+
+  Il tab **Intel** elenca i contatti con fonte ed età. Disattivandolo si torna
+  alla vista arbitro.
+- **ATO:** il tab ATO mostra di default la lista in stile Falcon/BMS, una riga
+  per volo ordinata per decollo, con numero di package, nome del volo,
+  missione, aereo, decollo, TOT e stato. Sono evidenziati i decolli entro 30
+  minuti e i voli con giocatori; i voli completati si mostrano a richiesta. La
+  vista "Packages" raggruppa i voli per package.
+- **Unità:** "Units" passa da SI a kts/ft/NM (la scelta resta memorizzata nel
+  browser). Valgono per briefing, portate dei SAM, quote dei waypoint e scala
+  della mappa. Il default è quello della campagna.
+- **Briefing:** dalla scheda di un volo, "Mission briefing" apre il mission
+  package completo, stampabile come kneeboard. Sulla mappa il volo
+  selezionato mostra i waypoint con nome, orario e quota.
+- **Pannelli:** Front, Forces, Logistics, ATO, AD (difesa aerea), Intel e Events
   (feed in tempo reale filtrabile). Ogni elemento selezionato ha la sua scheda
   dettagli.
 - **Sviluppo:** `npm run dev` (porta 5173, inoltra `/api` al motore). In
@@ -211,6 +314,7 @@ interattivo su `/docs`. Lo schema OpenAPI è su `/openapi.json`;
 | `/api/forces` | brigate con stato e percorso |
 | `/api/logistics` | depositi, convogli, rete di rifornimento |
 | `/api/ato` | pacchetti, voli, squadroni, budget, board per i giocatori |
+| `/api/ato/flights/{id}/briefing` | mission package di un volo: briefing, waypoint, minacce, armamento, testo per il gioco |
 | `/api/airdefense` | siti SAM ed EWR, stato, collegamenti IADS |
 | `/api/events` | log a pagine |
 | `/api/stream` | eventi e orologio in tempo reale (SSE) |
@@ -248,9 +352,10 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 | Comando | Cosa fa |
 |---|---|
 | `dynacamp simulate <scenario>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--quiet`/`--verbose`) |
-| `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`) |
+| `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
+| `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |
 | `dynacamp openapi [-o file]` | schema OpenAPI dell'API |
 | `dynacamp lua-path` | percorso del bridge Lua |
 | `tools/dcs_ll.py` | lat/lon → coordinate DCS e scenario |
@@ -365,9 +470,32 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     - *Calibrazione:* la prima versione annientava le aviazioni in 5 giorni;
       ora le CAP stanno fuori portata, non si attacca senza SEAD, ci sono
       contromisure e rimpiazzi di aerei e batterie.
-12. **Documentazione.** Questo README, il riferimento Sphinx con 520
+12. **Mission package e aerei moderni.**
+    - *Mission package:* briefing completo con minacce lungo la rotta,
+      waypoint con nome e orario, armamento.
+    - *Fonte unica dell'armamento:* un file di carichi generato da DCS, usato
+      sia dal briefing sia dalle missioni.
+    - *Aerei:* 40 tipi degli anni '80, '90 e 2000 aggiunti al catalogo e agli
+      scenari. Il Tu-160 è stato escluso perché DCS non definisce armi per le
+      sue stive interne.
+13. **Documentazione.** Questo README, il riferimento Sphinx con 520
     elementi documentati, e il test che impedisce di distribuire missioni con
     un bridge vecchio.
+14. **Supporto aereo e nebbia di guerra.**
+    - *Supporto:* AWACS, tanker e trasporti (14 tipi nuovi, 10 squadroni per
+      scenario, Incirlik come base di retrovia in Siria).
+    - *Quadro informativo:* un quadro per fazione, alimentato da tutti i
+      sensori.
+    - *Decisioni:* IA, ATO, artiglieria e briefing lavorano sui contatti
+      invece che sulla verità.
+    - *API e UI:* parametro `?faction=` su ogni endpoint, `/api/intel`, vista
+      per fazione con contatti vecchi e tracce sconosciute.
+    - *Correzioni emerse:* le missioni in orbita più lunghe di 3 ore venivano
+      chiuse d'ufficio; la geometria delle strade ora è in cache (la
+      simulazione è tornata veloce come prima dei sensori).
+15. **ATO stile BMS e unità di misura.** Numeri di package a 4 cifre, lista
+    dei voli per orario di decollo, briefing in nodi, piedi e miglia nautiche o
+    in SI (scenario, `--units`, `?units=`, interruttore nella UI).
 
 ## Limiti noti e prossimi passi
 
@@ -382,5 +510,11 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
 - **IADS in DCS:** dentro DCS ogni sito combatte da solo. Il coordinamento
   (EMCON) richiederebbe integrare uno script come Skynet IADS.
 - **Rotte aeree:** i voli non pianificano rotte attorno ai SAM.
+- **Nebbia di guerra in DCS:** la nebbia vale per motore, UI e briefing; in DCS
+  i giocatori vedono quello che vede il loro aereo (e la mappa F10 secondo le
+  opzioni del server). I contatti scoperti in gioco non tornano ancora al
+  motore.
+- **Ricognizione dedicata:** non ci sono ancora missioni di ricognizione (pod
+  e droni) pianificate dall'ATO per rinfrescare il quadro.
 - **Comandi dal web:** la UI è in sola lettura; ordini e posti ATO dal
   browser sono da fare.

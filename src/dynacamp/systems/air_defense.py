@@ -188,6 +188,10 @@ def _engage(state: CampaignState) -> None:
         u.engage_ready = state.time + ENGAGE_COOLDOWN_S
         state.emit("sam_engagement", sam=u.id, system=u.system.name, faction=u.faction, flight=f.id,
                    callsign=f.callsign, fired=fired, kills=kills, networked=networked)
+        # The launch gives the site away to the target's side (fog of war).
+        from . import intel
+
+        intel.reveal(state, f.faction, u, f"launch on {f.callsign}")
         air.lose_aircraft(state, f, kills, f"{u.system.name} ({u.id})")
         if kills and not f.task.air_to_air and f.task is not Task.SEAD and not f.attacked and f.status is FlightStatus.AIRBORNE:
             f.status = FlightStatus.RTB

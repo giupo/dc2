@@ -11,6 +11,7 @@
 name = "Syria - M5 Corridor"
 theater = "syria"
 seed = 11
+units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
 [[factions]]
 id = "blue"
@@ -844,3 +845,285 @@ name = "EWR Tartus"
 faction = "red"
 system = "ewr_1l13"
 province = "tartus"
+
+# ------------------------------------------------------------------ more squadrons (1980s-2000s aircraft)
+
+[[squadrons]]
+id = "b_tomcat"
+name = "VF Tomcat Sqn"
+faction = "blue"
+airbase = "bassel"
+aircraft = "f14b"
+count = 8
+callsign = "Bandit"
+
+[[squadrons]]
+id = "b_mudhen"
+name = "Strike Eagle Sqn"
+faction = "blue"
+airbase = "jirah"
+aircraft = "f15e"
+count = 8
+callsign = "Dude"
+
+[[squadrons]]
+id = "b_harrier"
+name = "Harrier Sqn"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "av8b"
+count = 8
+callsign = "Tiger"
+
+[[squadrons]]
+id = "b_tornado"
+name = "Tornado GR4 Sqn"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "tornado_gr4"
+count = 6
+callsign = "Rapier"
+
+[[squadrons]]
+id = "b_mirage"
+name = "Mirage 2000-5 Sqn"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "m2000_5"
+count = 8
+callsign = "Cigogne"
+
+[[squadrons]]
+id = "b_falcon_a"
+name = "F-16A Sqn"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "f16a"
+count = 8
+callsign = "Falcon"
+
+[[squadrons]]
+id = "b_phantom"
+name = "Phantom Sqn"
+faction = "blue"
+airbase = "tabqa"
+aircraft = "f4e"
+count = 8
+callsign = "Shark"
+
+[[squadrons]]
+id = "b_buff"
+name = "Heavy Bomber Sqn"
+faction = "blue"
+airbase = "jirah"
+aircraft = "b52h"
+count = 4
+callsign = "Buff"
+
+[[squadrons]]
+id = "b_cobra"
+name = "Marine Attack Helo Sqn"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "ah1w"
+count = 6
+callsign = "Cobra"
+
+[[squadrons]]
+id = "r_flanker30"
+name = "Su-30 Regt"
+faction = "red"
+airbase = "damascus"
+aircraft = "su30"
+count = 8
+callsign = "Bars"
+
+[[squadrons]]
+id = "r_fullback"
+name = "Su-34 Regt"
+faction = "red"
+airbase = "tiyas"
+aircraft = "su34"
+count = 8
+callsign = "Shtorm"
+
+[[squadrons]]
+id = "r_foxhound"
+name = "MiG-31 Regt"
+faction = "red"
+airbase = "dumayr"
+aircraft = "mig31"
+count = 6
+callsign = "Berkut"
+
+[[squadrons]]
+id = "r_flogger"
+name = "MiG-23 Regt"
+faction = "red"
+airbase = "shayrat"
+aircraft = "mig23mld"
+count = 8
+callsign = "Strela"
+
+[[squadrons]]
+id = "r_mig27"
+name = "MiG-27 Regt"
+faction = "red"
+airbase = "shayrat"
+aircraft = "mig27k"
+count = 8
+callsign = "Molot"
+
+[[squadrons]]
+id = "r_fitter"
+name = "Su-17 Regt"
+faction = "red"
+airbase = "palmyra"
+aircraft = "su17m4"
+count = 8
+callsign = "Sokol-2"
+
+[[squadrons]]
+id = "r_fulcrum_a"
+name = "MiG-29A Regt"
+faction = "red"
+airbase = "hama"
+aircraft = "mig29a"
+count = 8
+callsign = "Kobra-2"
+
+[[squadrons]]
+id = "r_backfire"
+name = "Long Range Bomber Sqn"
+faction = "red"
+airbase = "damascus"
+aircraft = "tu22m3"
+count = 4
+callsign = "Grom"
+
+[[squadrons]]
+id = "r_hokum"
+name = "Ka-50 Sqn"
+faction = "red"
+airbase = "hama"
+aircraft = "ka50"
+count = 8
+callsign = "Hokum"
+
+[[squadrons]]
+id = "r_havoc"
+name = "Mi-28 Sqn"
+faction = "red"
+airbase = "shayrat"
+aircraft = "mi28n"
+count = 6
+callsign = "Havoc"
+
+[[squadrons]]
+id = "r_hind_v"
+name = "Mi-24V Sqn"
+faction = "red"
+airbase = "palmyra"
+aircraft = "mi24v"
+count = 8
+callsign = "Gyurza"
+
+
+# Rear base outside the province map (Turkey): strategic airlift hub.
+[[airbases]]
+id = "incirlik"
+name = "Incirlik"
+pos = [-35240, 221208]
+faction = "blue"
+
+# ------------------------------------------------------------------ support: AWACS, tankers, transports
+
+[[squadrons]]
+id = "b_awacs"
+name = "AEW Sqn"
+faction = "blue"
+airbase = "incirlik"
+aircraft = "e3a"
+count = 2
+callsign = "Darkstar"
+
+[[squadrons]]
+id = "b_tanker"
+name = "Air Refueling Sqn"
+faction = "blue"
+airbase = "incirlik"
+aircraft = "kc135"
+count = 2
+callsign = "Texaco"
+
+[[squadrons]]
+id = "b_airlift"
+name = "Airlift Sqn"
+faction = "blue"
+airbase = "incirlik"
+aircraft = "c130"
+count = 4
+callsign = "Herky"
+
+[[squadrons]]
+id = "b_chinook"
+name = "Heavy Helo Coy"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "ch47d"
+count = 4
+callsign = "Hauler"
+
+[[squadrons]]
+id = "b_blackhawk"
+name = "Utility Helo Coy"
+faction = "blue"
+airbase = "bassel"
+aircraft = "uh60a"
+count = 6
+callsign = "Dustoff"
+
+[[squadrons]]
+id = "r_awacs"
+name = "AEW Regt"
+faction = "red"
+airbase = "damascus"
+aircraft = "a50"
+count = 2
+callsign = "Overlord"
+
+[[squadrons]]
+id = "r_tanker"
+name = "Tanker Sqn"
+faction = "red"
+airbase = "damascus"
+aircraft = "il78m"
+count = 2
+callsign = "Neft"
+
+[[squadrons]]
+id = "r_airlift"
+name = "Transport Regt"
+faction = "red"
+airbase = "damascus"
+aircraft = "il76"
+count = 4
+callsign = "Gruz"
+
+[[squadrons]]
+id = "r_hip"
+name = "Transport Helo Sqn"
+faction = "red"
+airbase = "shayrat"
+aircraft = "mi8mt"
+count = 6
+callsign = "Pchela"
+
+[[squadrons]]
+id = "r_halo"
+name = "Heavy Helo Sqn"
+faction = "red"
+airbase = "damascus"
+aircraft = "mi26"
+count = 2
+callsign = "Ural"

@@ -76,6 +76,8 @@ class PlayerView(Located):
 
 class CampaignView(Model):
     """Campaign overview: clock, factions, players."""
+    units: Literal["metric", "imperial"] = Field(description="units of the texts for players (default of the UI)")
+    control: ControlView | None = Field(None, description="pause and speed (null without a running engine)")
     api_version: int
     name: str
     theater: str
@@ -181,9 +183,18 @@ class FrontsView(Model):
     fires: list[FireView]
 
 
+class ContactInfo(Model):
+    """How a faction knows about an enemy entity (fog of war views only)."""
+    source: str = Field(description="sensor of the last detection")
+    seen: Time = Field(description="time of the last detection")
+    age_s: int
+    stale: bool = Field(description="old information: shown at its last known position")
+    identified: bool = Field(description="type known (else an unidentified radar track)")
+
+
 class OrderView(Model):
     """A division's order."""
-    kind: Literal["hold", "move", "attack"]
+    kind: Literal["hold", "move", "attack", "unknown"]
     target: str | None
 
 
@@ -201,14 +212,15 @@ class DivisionView(Located):
     template_name: str
     location: str
     strength: float
-    org: float
-    supply: float
+    org: float | None
+    supply: float | None
     elements: dict[str, float]
     order: OrderView
     route: RouteView | None
     battle: str | None
     authority: Authority
     moving: bool
+    intel: ContactInfo | None = Field(None, description="set on enemy brigades in a faction's view")
 
 
 class ForcesView(Model):
@@ -225,10 +237,10 @@ class DepotView(Located):
     province: str
     name: str
     controller: str
-    stock: int
+    stock: int | None = Field(description="null for enemy depots in a faction's view")
     capacity: int
     production_per_hour: float
-    trucks: int
+    trucks: int | None
 
 
 class ConvoyView(Located):
@@ -243,6 +255,7 @@ class ConvoyView(Located):
     heading_to: str
     route: RouteView | None
     authority: Authority
+    intel: ContactInfo | None = None
 
 
 class NetworkEntry(Model):
@@ -274,7 +287,7 @@ class LogisticsView(Model):
 
 # ---------------------------------------------------------------- ATO
 
-Task = Literal["CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE"]
+Task = Literal["CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE", "AWACS", "TANKER", "TRANSPORT"]
 
 
 class SeatView(Model):
@@ -294,6 +307,7 @@ class FlightView(Located):
     """A flight of the ATO."""
     id: str
     package: str
+    package_number: str
     callsign: str
     faction: str
     squadron: str
@@ -316,11 +330,13 @@ class FlightView(Located):
     target: TargetRef
     authority: Authority
     on_station_until: Time | None
+    intel: ContactInfo | None = Field(None, description="set on enemy radar tracks in a faction's view")
 
 
 class PackageView(Located):
     """An ATO package."""
     id: str
+    number: str = Field(description="four-digit package number, as in Falcon's ATO")
     faction: str
     task: Task
     target: str
@@ -365,7 +381,105 @@ class AtoView(Model):
     squadrons: list[SquadronView]
     sortie_budget_left: dict[str, int]
     flights_airborne: int
+    tracks: list[FlightView] = Field(default_factory=list, description="enemy flights detected (faction view)")
     boards: dict[str, list[BoardPackage]] = Field(description="side -> what players see in the in-game menu")
+
+
+# ---------------------------------------------------------------- briefing
+
+
+class BriefingWaypoint(Located):
+    """A named waypoint of a flight plan."""
+
+    index: int
+    name: str = Field(description="TAKEOFF, IP, TARGET, EGRESS, CAP STATION, LAND...")
+    eta: Time
+    alt_m: int
+    speed_kmh: int
+    note: str
+
+
+class BriefingTarget(Located):
+    """The target of a flight."""
+
+    kind: str
+    id: str
+    name: str
+    description: str
+    composition: list[str]
+    coordinates: str = Field(description="degrees and decimal minutes")
+    from_base: str = Field(description="bearing and range from the home base")
+
+
+class BriefingThreat(Located):
+    """A threat to the flight."""
+
+    kind: Literal["sam", "shorad", "fighters"]
+    name: str
+    detail: str
+    range_km: float
+    severity: Literal["high", "medium", "low"]
+
+
+class BriefingStore(Model):
+    """Ordnance item and number of pylons carrying it."""
+
+    store: str
+    count: int
+
+
+class BriefingFlight(Model):
+    """A flight of the package."""
+
+    callsign: str
+    aircraft: str
+    task: Task
+    size: int
+    base: str
+    takeoff: Time
+    you: bool
+
+
+class BriefingSupport(Located):
+    """A friendly AWACS or tanker available during the mission."""
+
+    task: Literal["AWACS", "TANKER"]
+    callsign: str
+    aircraft: str
+    status: str
+    position: str
+    from_target: str
+    frequency: str
+    until: Time
+
+
+class BriefingView(Model):
+    """The mission package of a flight. Numbers are SI (``alt_m``, ``speed_kmh``,
+    ``range_km``); texts are written in ``units``."""
+    units: Literal["metric", "imperial"]
+    package_number: str
+
+    flight_id: str
+    callsign: str
+    title: str
+    task: Task
+    aircraft: str
+    size: int
+    squadron: str
+    base: str
+    takeoff: Time
+    tot: Time
+    mission: str
+    situation: list[str]
+    target: BriefingTarget
+    threats: list[BriefingThreat]
+    loadout: list[BriefingStore]
+    loadout_note: str
+    comms: dict[str, str]
+    support: list[BriefingSupport]
+    waypoints: list[BriefingWaypoint]
+    package: list[BriefingFlight]
+    text: str = Field(description="the briefing as sent to players in the game")
 
 
 # ---------------------------------------------------------------- air defence
@@ -384,13 +498,14 @@ class SamSiteView(Located):
     range_km: float = Field(description="engagement range (0 for early-warning radars)")
     detection_km: float
     ceiling_m: int
-    missiles: float
+    missiles: float | None
     missiles_max: int
     elements: dict[str, float] = Field(description="site components still alive (radar, launcher, cp...)")
     emitting: bool = Field(description="radar on: visible to anti-radiation missiles")
     networked_to: str | None = Field(description="early-warning radar cueing this site (IADS)")
     route: RouteView | None
     authority: Authority
+    intel: ContactInfo | None = None
 
 
 class IadsLinkView(Polyline):
@@ -421,6 +536,59 @@ class EventsPage(Model):
     """A page of events."""
     events: list[EventView]
     next: int = Field(description="pass as `since` to get the following page")
+
+
+class ContactView(Located):
+    """One contact of a faction's intelligence picture."""
+    id: str
+    kind: Literal["division", "convoy", "flight", "sam"]
+    faction: str
+    source: str
+    seen: Time
+    first_seen: Time
+    age_s: int
+    stale: bool
+    identified: bool
+    detail: dict[str, Any]
+
+
+class SensorView(Located):
+    """A friendly sensor and its reach."""
+    kind: Literal["awacs", "aircraft", "ground_radar"]
+    name: str
+    range_km: float
+
+
+class IntelView(Model):
+    """A faction's intelligence picture and its air-search sensors."""
+    faction: str
+    contacts: list[ContactView]
+    sensors: list[SensorView]
+    counts: dict[str, int] = Field(description="contacts per kind")
+
+
+class ControlView(Model):
+    """Pause and speed of the campaign clock."""
+    paused: bool
+    compression: float = Field(description="campaign seconds per real second when not live")
+    rate: float = Field(description="effective rate now: 0 paused, 1 live, else the compression")
+    min_compression: float
+    max_compression: float
+
+
+class ControlRequest(Model):
+    """Change pause and/or speed (fields left out are unchanged)."""
+    paused: bool | None = None
+    compression: float | None = Field(None, description="campaign seconds per real second")
+
+
+class PositionsView(Model):
+    """Compact positions of what moves (``id -> [lat, lon]``), for animation."""
+    t: float = Field(description="campaign time of the sample")
+    d: dict[str, list[float]] = Field(description="brigades")
+    c: dict[str, list[float]] = Field(description="convoys")
+    f: dict[str, list[float]] = Field(description="airborne flights (and enemy tracks in a faction's view)")
+    s: dict[str, list[float]] = Field(description="air defence sites")
 
 
 class SnapshotView(Model):

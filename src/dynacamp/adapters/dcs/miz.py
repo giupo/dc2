@@ -44,34 +44,45 @@ THEATERS = {"caucasus": Caucasus, "syria": Syria}
 # pylon by construction. A recipe is a list of (weapon name patterns in order of
 # preference, number of pylons to fill). Pylons are filled outside-in.
 
-_A2A_LONG = "AIM-120C|AIM-120B|R-77|R-27ER|R-27R|AIM-7M"
-_A2A_SHORT = "AIM-9X|AIM-9M|R-73|R-60"
-_TANK = "Fuel tank|Fuel Tank|PTB"
-_POD = "LITENING|Sniper|AN/AAQ-28|Shkval|Kopyo"
+_A2A_LONG = "AIM-120C|AIM-120B|AIM-54C|AIM-54A|R-77|R-33|R-27ER|R-27R|SD-10|Super 530D|AIM-7M|AIM-7F|R-24R|R-40R|Sky Flash|RB-71"
+_A2A_SHORT = "AIM-9X|AIM-9M|AIM-9L|AIM-9P5|R-73|R-60|PL-5|Magic|R-550|R-13|R-3S|RB-74|RB-24"
+_TANK = "Fuel tank|Fuel Tank|PTB|Drop Tank"
+_POD = "LITENING|Sniper|AN/AAQ-28|Shkval|Kopyo|ATLIS|Damocles|WMD7|TGM-65"
+_ARM = "AGM-88C|AGM-88|Kh-58U|Kh-31P|Kh-25MPU|ALARM|LD-10|AGM-45"
+_PGM_ANTIARMOR = "AGM-65D|AGM-65H|AGM-65K|AGM-65E|AGM-65F|Kh-25ML|Kh-29L|Kh-29T|S-25L|RB-75|BK-90|AGM-114"
+_CLUSTER = "CBU-97|CBU-87|CBU-99|Mk-20|BL755|RBK-500|RBK-250|BetAB|BLG-66"
+_BOMB = "GBU-12|GBU-38|Mk-82|FAB-250|FAB-500|SAMP-250|Mk-81|OFAB-250"
+_HEAVY = "AGM-86|AGM-154|Kh-65|Kh-555|Kh-101|Kh-22|GBU-31|GBU-27|GBU-10|GBU-24|KAB-1500|KAB-500|BLU-109|Mk-84|FAB-1500|FAB-500|Mk-83|Mk-82|FAB-250|SAB"
+_ROCKET = "S-8KOM|S-8OFP2|M151|S-5KO|S-13|S-24|Zuni|Hydra|SNEB|ARF-8|M261|LAU-61|LAU-68|B-8|UB-32"
 
+# Each recipe: (weapon name patterns in order of preference, pylons to fill).
 RECIPES: dict[str, list[tuple[str, int]]] = {
     "A2A": [(_A2A_LONG, 4), (_A2A_SHORT, 2), (_TANK, 1)],
-    "SEAD": [("AGM-88C|Kh-58U|Kh-25MPU", 2), (_A2A_LONG, 2), (_A2A_SHORT, 2), ("ALQ-184|ALQ-131", 1), (_TANK, 1)],
+    "SEAD": [(_ARM, 2), (_A2A_LONG, 2), (_A2A_SHORT, 2), ("ALQ-184|ALQ-131|ALQ-119|SPS-141|Sorbtsiya", 1), (_TANK, 1)],
     "MUD": [
-        ("AGM-65D|AGM-65H|AGM-65K|Kh-25ML|Kh-29L|S-25L", 2),
-        ("CBU-97|CBU-87|Mk-20|RBK-500|RBK-250", 2),
-        ("GBU-12|Mk-82|FAB-250|FAB-500", 2),
+        (_PGM_ANTIARMOR, 2),
+        (_CLUSTER, 2),
+        (_BOMB, 2),
+        (_ROCKET, 2),
         (_A2A_SHORT, 2),
-        ("ALQ-131|ALQ-184", 1),
+        ("ALQ-131|ALQ-184|ALQ-119|SPS-141", 1),
         (_POD, 1),
         (_TANK, 1),
     ],
-    "STRIKE": [("GBU-31|GBU-38|GBU-10|KAB-500|KAB-1500|Mk-84|FAB-1500|FAB-500", 4), (_A2A_SHORT, 2), (_POD, 1), (_TANK, 1)],
-    "HELO": [("AGM-114K|AGM-114L|9M114|9M120|Vikhr", 4), ("S-8KOM|S-8OFP2|M151|S-5KO|Hydra", 4)],
+    "STRIKE": [(_HEAVY, 4), (_A2A_SHORT, 2), (_POD, 1), (_TANK, 1)],
+    "BOMBER": [(_HEAVY, 99)],  # heavy bombers: every station with heavy ordnance
+    "HELO": [("AGM-114K|AGM-114L|9M114|9M120|Vikhr|TOW|BGM-71|HOT", 4), (_ROCKET, 4)],
 }
-# practice/inert stores, marker and illumination rockets, empty racks
-_EXCLUDE = re.compile(r"practice|training|inert|dummy|smoke|empty|TsM|M257|M274|M156|illum", re.IGNORECASE)
+BOMBERS = {"b1b", "b52h", "tu22m3", "tu95ms", "f117"}
+_EXCLUDE = re.compile(r"practice|training|inert|dummy|smoke|empty|TsM|M257|M274|M156|illum|ROCKEYE.*training|BDU|SUU-20", re.IGNORECASE)
 
 
-def _recipe(task: Task, helo: bool) -> str:
-    """Loadout recipe name for a task."""
+def _recipe(task: Task, helo: bool, aircraft: str = "") -> str:
+    """Loadout recipe name for an aircraft and task."""
     if helo:
         return "HELO"
+    if aircraft in BOMBERS:
+        return "BOMBER"
     return {Task.CAP: "A2A", Task.ESCORT: "A2A", Task.SEAD: "SEAD", Task.STRIKE: "STRIKE"}.get(task, "MUD")
 
 
@@ -116,12 +127,58 @@ def compose_loadout(unit_type, recipe: str) -> list[tuple[int, dict]]:
     return picks
 
 
-def apply_loadout(fg, unit_type, task: Task, helo: bool) -> int:
-    """Load a composed loadout on a flight group; returns the number of stores."""
-    picks = compose_loadout(unit_type, _recipe(task, helo))
+def apply_loadout(fg, unit_type, task: Task, helo: bool, aircraft: str = "") -> int:
+    """Load a flight group with the loadout of :mod:`dynacamp.loadouts` (the one
+    players are briefed with), or compose one if the file has none.
+
+    Returns:
+        The number of stores loaded.
+    """
+    from ... import loadouts
+
+    briefed = loadouts.stores(aircraft, task.value) if aircraft else []
+    if briefed:
+        picks = [(s["pylon"], {"clsid": s["clsid"], "name": s["name"], "weight": s.get("weight", 0.0)}) for s in briefed]
+    else:
+        picks = compose_loadout(unit_type, _recipe(task, helo, aircraft))
     for weapon in picks:
         fg.load_pylon(weapon)
     return len(picks)
+
+
+def generate_loadouts(path: Path | None = None) -> Path:
+    """Compose every aircraft/task loadout from DCS' pylon tables and write the
+    loadouts file read by :mod:`dynacamp.loadouts`.
+
+    Args:
+        path: Output file (default: the package's ``data/loadouts.json``).
+
+    Returns:
+        The written path.
+    """
+    import json
+
+    from ... import loadouts
+    from ...air import AIRCRAFT
+
+    out: dict[str, dict[str, list[dict]]] = {}
+    for ac in AIRCRAFT.values():
+        unit_type = _unit_type(catalog.AIRCRAFT_TYPES[ac.id])
+        if unit_type is None:
+            continue
+        for task in sorted(ac.tasks, key=lambda t: t.value):
+            if task.support:
+                continue  # AWACS, tankers and transports carry no ordnance
+            picks = compose_loadout(unit_type, _recipe(task, ac.helo, ac.id))
+            out.setdefault(ac.id, {})[task.value] = [
+                {"pylon": p, "name": w["name"], "clsid": w["clsid"], "weight": round(float(w.get("weight") or 0.0), 1)}
+                for p, w in sorted(picks, key=lambda x: x[0])
+            ]
+    path = path or loadouts.DATA
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"source": "DCS pylon tables via pydcs", "aircraft": out}, indent=1) + "\n", encoding="utf-8")
+    loadouts._data.cache_clear()
+    return path
 
 # campaign task -> pydcs main task (also selects the default loadout)
 MAIN_TASK = {
@@ -131,6 +188,9 @@ MAIN_TASK = {
     Task.CAS: dcs.task.CAS,
     Task.BAI: dcs.task.CAS,
     Task.STRIKE: dcs.task.GroundAttack,
+    Task.AWACS: dcs.task.AWACS,
+    Task.TANKER: dcs.task.Refueling,
+    Task.TRANSPORT: dcs.task.Transport,
 }
 
 COUNTRY_NAME = {"blue": "USA", "red": "Russia"}
@@ -193,7 +253,7 @@ def build_mission(
                 maintask=main, group_size=4,
             )
             fg.late_activation = True
-            if not apply_loadout(fg, unit_type, task or tasks[0], ac.helo):
+            if not (task or tasks[0]).support and not apply_loadout(fg, unit_type, task or tasks[0], ac.helo, ac.id):
                 notes.append(f"{name}: could not compose a loadout, set one in the mission editor")
 
     # -------------------------------------------------- client slots
@@ -225,7 +285,9 @@ def build_mission(
             notes.append(f"{sq.name}: only {size} client slots fit at {base.name}")
         for u in fg.units:
             u.set_client()
-        apply_loadout(fg, unit_type, sorted(sq.tasks, key=lambda t: t.value)[0], sq.aircraft_type.helo)
+        first = sorted(sq.tasks, key=lambda t: t.value)[0]
+        if not first.support:
+            apply_loadout(fg, unit_type, first, sq.aircraft_type.helo, sq.aircraft_type.id)
 
     # -------------------------------------------------- bridge
     trig = triggers.TriggerStart(comment="DynaCamp bridge")

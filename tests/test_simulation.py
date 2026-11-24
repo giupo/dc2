@@ -60,10 +60,15 @@ def test_demo_campaign_runs_and_is_deterministic():
     assert a == b
     kinds = Counter(k for k, _ in a)
     assert kinds["battle_started"] > 0 and kinds["convoy_delivered"] > 0
-    # No runaway event spam (regression: blocked units re-trying every substep).
-    # Artillery fire is meant to be frequent: bound its rate separately.
-    assert max(v for k, v in kinds.items() if k != "artillery_fire") < 500
+    # No runaway event spam (regression: blocked units re-trying every substep,
+    # thousands of "order_cancelled"). Air and artillery events scale with the
+    # size of the orders of battle, so they are bounded by rate instead.
+    assert kinds["order_cancelled"] < 100
+    busy = {"artillery_fire", "flight_takeoff", "flight_complete", "flight_landed", "air_engagement",
+            "package_planned", "package_complete", "flight_aborted", "air_strike", "aircraft_lost", "sam_engagement"}
+    assert max(v for k, v in kinds.items() if k not in busy) < 500
     assert kinds["artillery_fire"] < 30 * 24 * 4
+    assert kinds["flight_takeoff"] < 400 * 4  # sortie budget bounds it
     # Supply is never negative and never above capacity.
     for d in state.divisions.values():
         assert 0 <= d.supply <= d.template.supply_capacity + 1e-6
@@ -228,3 +233,17 @@ def test_replacements_restore_strength(line):
     before = div.strength
     Engine(line).run_for(24 * 3600, dt=600)
     assert div.strength > before + 0.15
+
+
+def test_realtime_loop_ticks_at_a_fixed_rate_and_advances_compressed_time(line):
+    import time
+
+    from dynacamp.runtime import run_realtime
+
+    engine = Engine(line)
+    start, t0 = time.monotonic(), line.time
+    ticks = []
+    run_realtime(engine, compression=600, tick_s=0.05, stop=lambda: time.monotonic() - start > 0.5,
+                 on_tick=lambda e: ticks.append(time.monotonic()))
+    assert 6 <= len(ticks) <= 11  # ~10 ticks of 50 ms in 0.5 s: it sleeps, it does not spin
+    assert 200 <= line.time - t0 <= 400  # ~0.5 s * 600

@@ -9,6 +9,7 @@
 name = "Western Georgia"
 theater = "caucasus"
 seed = 7
+units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
 [[factions]]
 id = "blue"
@@ -674,3 +675,268 @@ name = "EWR Sukhumi"
 faction = "red"
 system = "ewr_1l13"
 province = "sukhumi"
+
+# ------------------------------------------------------------------ more squadrons (1980s-2000s aircraft)
+
+[[squadrons]]
+id = "b_tomcat"
+name = "VF Tomcat Sqn"
+faction = "blue"
+airbase = "batumi"
+aircraft = "f14b"
+count = 8
+callsign = "Bandit"
+
+[[squadrons]]
+id = "b_mudhen"
+name = "Strike Eagle Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "f15e"
+count = 8
+callsign = "Dude"
+
+[[squadrons]]
+id = "b_harrier"
+name = "Harrier Sqn"
+faction = "blue"
+airbase = "kobuleti"
+aircraft = "av8b"
+count = 8
+callsign = "Tiger"
+
+[[squadrons]]
+id = "b_tornado"
+name = "Tornado GR4 Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "tornado_gr4"
+count = 6
+callsign = "Rapier"
+
+[[squadrons]]
+id = "b_mirage"
+name = "Mirage 2000 Sqn"
+faction = "blue"
+airbase = "kutaisi"
+aircraft = "m2000c"
+count = 8
+callsign = "Cigogne"
+
+[[squadrons]]
+id = "b_phantom"
+name = "Phantom Sqn"
+faction = "blue"
+airbase = "kutaisi"
+aircraft = "f4e"
+count = 8
+callsign = "Shark"
+
+[[squadrons]]
+id = "b_bone"
+name = "Bomber Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "b1b"
+count = 4
+callsign = "Bone"
+
+[[squadrons]]
+id = "b_nighthawk"
+name = "Stealth Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "f117"
+count = 4
+callsign = "Ghost"
+
+[[squadrons]]
+id = "b_cobra"
+name = "Marine Attack Helo Sqn"
+faction = "blue"
+airbase = "senaki"
+aircraft = "ah1w"
+count = 6
+callsign = "Cobra"
+
+[[squadrons]]
+id = "b_kiowa"
+name = "Scout Helo Troop"
+faction = "blue"
+airbase = "kobuleti"
+aircraft = "oh58d"
+count = 6
+callsign = "Saber"
+
+[[squadrons]]
+id = "r_flanker30"
+name = "Su-30 Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "su30"
+count = 8
+callsign = "Bars"
+
+[[squadrons]]
+id = "r_fullback"
+name = "Su-34 Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "su34"
+count = 8
+callsign = "Shtorm"
+
+[[squadrons]]
+id = "r_foxhound"
+name = "MiG-31 Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "mig31"
+count = 6
+callsign = "Berkut"
+
+[[squadrons]]
+id = "r_flogger"
+name = "MiG-23 Regt"
+faction = "red"
+airbase = "sukhumi"
+aircraft = "mig23mld"
+count = 8
+callsign = "Strela"
+
+[[squadrons]]
+id = "r_mig27"
+name = "MiG-27 Regt"
+faction = "red"
+airbase = "gudauta"
+aircraft = "mig27k"
+count = 8
+callsign = "Molot"
+
+[[squadrons]]
+id = "r_frogfoot"
+name = "Su-25 Regt"
+faction = "red"
+airbase = "gudauta"
+aircraft = "su25"
+count = 10
+callsign = "Shturm"
+
+[[squadrons]]
+id = "r_backfire"
+name = "Long Range Bomber Sqn"
+faction = "red"
+airbase = "sochi"
+aircraft = "tu22m3"
+count = 4
+callsign = "Grom"
+
+[[squadrons]]
+id = "r_hokum"
+name = "Ka-50 Sqn"
+faction = "red"
+airbase = "sukhumi"
+aircraft = "ka50"
+count = 8
+callsign = "Hokum"
+
+[[squadrons]]
+id = "r_havoc"
+name = "Mi-28 Sqn"
+faction = "red"
+airbase = "gudauta"
+aircraft = "mi28n"
+count = 6
+callsign = "Havoc"
+
+# ------------------------------------------------------------------ support: AWACS, tankers, transports
+
+[[squadrons]]
+id = "b_awacs"
+name = "AEW Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "e3a"
+count = 2
+callsign = "Darkstar"
+
+[[squadrons]]
+id = "b_tanker"
+name = "Air Refueling Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "kc135"
+count = 2
+callsign = "Texaco"
+
+[[squadrons]]
+id = "b_airlift"
+name = "Airlift Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "c130"
+count = 4
+callsign = "Herky"
+
+[[squadrons]]
+id = "b_chinook"
+name = "Heavy Helo Coy"
+faction = "blue"
+airbase = "kutaisi"
+aircraft = "ch47d"
+count = 4
+callsign = "Hauler"
+
+[[squadrons]]
+id = "b_blackhawk"
+name = "Utility Helo Coy"
+faction = "blue"
+airbase = "batumi"
+aircraft = "uh60a"
+count = 6
+callsign = "Dustoff"
+
+[[squadrons]]
+id = "r_awacs"
+name = "AEW Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "a50"
+count = 2
+callsign = "Overlord"
+
+[[squadrons]]
+id = "r_tanker"
+name = "Tanker Sqn"
+faction = "red"
+airbase = "sochi"
+aircraft = "il78m"
+count = 2
+callsign = "Neft"
+
+[[squadrons]]
+id = "r_airlift"
+name = "Transport Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "il76"
+count = 4
+callsign = "Gruz"
+
+[[squadrons]]
+id = "r_hip"
+name = "Transport Helo Sqn"
+faction = "red"
+airbase = "gudauta"
+aircraft = "mi8mt"
+count = 6
+callsign = "Pchela"
+
+[[squadrons]]
+id = "r_halo"
+name = "Heavy Helo Sqn"
+faction = "red"
+airbase = "sukhumi"
+aircraft = "mi26"
+count = 2
+callsign = "Ural"

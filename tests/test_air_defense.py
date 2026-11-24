@@ -138,6 +138,11 @@ def test_ato_escorts_packages_into_sam_coverage_with_sead():
     state = world(sam="s300ps", at="e")
     point = state.theater.provinces["d"].center
     assert ada.covering(state, "blue", point)
+    # planners only fear the SAMs they know about
+    assert not ato.needs_sead(state, "blue", point)
+    from dynacamp.systems import intel
+
+    intel.seed_prewar(state)
     assert ato.needs_sead(state, "blue", point)
     # and keeps CAP stations out of the SAM umbrella
     station = ato.cap_station(state, "blue", point)

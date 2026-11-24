@@ -98,7 +98,8 @@ def test_player_joins_gets_briefing_and_replaces_an_ai_aircraft():
     assert f.ai_count == before - 1
     note = game.messages_for("Pilot")[-1]
     assert f.callsign in note.text and "TOT" in note.text
-    assert note.marks and any("TGT" in label for label, _ in note.marks)
+    assert note.marks and any(("TARGET" in label or "CAP STATION" in label) for label, _ in note.marks)
+    assert "ORDNANCE" in note.text and "WAYPOINTS" in note.text
 
 
 def test_join_respects_aircraft_capability_and_side():

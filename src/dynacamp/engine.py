@@ -37,6 +37,42 @@ from .state import CampaignState
 from .systems import PIPELINE, air, ato, combat, movement
 
 
+
+MIN_COMPRESSION = 1.0
+MAX_COMPRESSION = 7200.0
+
+
+@dataclass
+class TimeControl:
+    """Pause and speed of the real-time loop (see :mod:`dynacamp.runtime`).
+
+    While a game simulates part of the campaign (:attr:`Engine.live`) time runs
+    1:1 whatever is set here: the game can be neither paused nor accelerated
+    from the campaign.
+
+    Attributes:
+        compression: Campaign seconds per real second when not live.
+        paused: Campaign time stands still (the engine still talks to the game).
+    """
+
+    compression: float = 60.0
+    paused: bool = False
+
+    def set(self, paused: bool | None = None, compression: float | None = None) -> None:
+        """Change pause and/or compression.
+
+        Raises:
+            ValueError: If the compression is outside
+                [``MIN_COMPRESSION``, ``MAX_COMPRESSION``].
+        """
+        if compression is not None:
+            if not MIN_COMPRESSION <= compression <= MAX_COMPRESSION:
+                raise ValueError(f"compression must be between {MIN_COMPRESSION:g} and {MAX_COMPRESSION:g}")
+            self.compression = float(compression)
+        if paused is not None:
+            self.paused = bool(paused)
+
+
 @dataclass(frozen=True)
 class EngineConfig:
     """Engine tuning.
@@ -94,6 +130,8 @@ class Engine:
         # Held for the whole of a step; readers (the HTTP API) take it to see a
         # consistent state between steps.
         self.lock = threading.RLock()
+        # Pause / fast-forward of the real-time loop (the API changes it).
+        self.control = TimeControl()
 
     # ------------------------------------------------------------ main loop
 
@@ -101,6 +139,13 @@ class Engine:
     def live(self) -> bool:
         """True while a game is simulating part of the campaign: time must run 1:1."""
         return self.bubbles.active or bool(self._in_game)
+
+    @property
+    def time_rate(self) -> float:
+        """Campaign seconds per real second right now: 0 paused, 1 live, else the compression."""
+        if self.live:
+            return 1.0
+        return 0.0 if self.control.paused else self.control.compression
 
     def step(self, dt: float) -> None:
         """Advance the campaign by ``dt`` campaign seconds (holds the lock).
@@ -122,6 +167,11 @@ class Engine:
 
             self._handoffs()
 
+        # Players are sensors too (see systems.intel).
+        self.state.player_positions = {
+            p.id: (p.side, p.position, "air" if p.kind.value in ("air", "helo") else "ground")
+            for p in self.bubbles.players.values()
+        }
         remaining = dt
         while remaining > 0:
             sub = min(remaining, self.config.max_substep_s)
@@ -297,7 +347,7 @@ class Engine:
             found = ato.seat_of(self.state, player_id)
 
             if found is not None:
-                marks = tuple(ato.waypoint_marks(found[0]))
+                marks = tuple(ato.waypoint_marks(self.state, found[0]))
 
         self._outbox.append(NotifyPlayer(player_id, text, marks))
 
@@ -321,7 +371,7 @@ class Engine:
             if reached == f.target_index:
                 f.attacked = True  # the game flew the attack
                 
-                if f.task is Task.CAP:
+                if f.task.orbits:
                     f.status = FlightStatus.ON_STATION
                     return
                 
@@ -486,7 +536,7 @@ class Engine:
                 "home": self.state.airbases[self.state.squadrons[f.squadron].airbase].name,
                 "target": f.target_point,
                 "target_index": f.target_index - f.wp_index,  # index within the waypoints sent
-                "on_station_s": max(0.0, f.station_until - self.state.time) if f.task is Task.CAP else 0.0,
+                "on_station_s": max(0.0, f.station_until - self.state.time) if f.task.orbits else 0.0,
             },
         )
 

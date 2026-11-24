@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { factionColor, factionName, pct, sideOf } from "../lib/format";
+import { factionColor, factionName, fmtAlt, fmtDist, pct, sideOf, intelLabel } from "../lib/format";
 import { affiliation, designation, symbol, unitSidc } from "../lib/symbols";
 import type { PanelProps } from "./Panels";
 import { Bar, DivisionRow } from "./Panels";
@@ -14,13 +14,13 @@ function KV({ k, children }: { k: string; children: ReactNode }) {
 }
 
 /** Floating card describing whatever is selected on the map or in a list. */
-export function Details(props: PanelProps & { close: () => void }) {
-  const { data, selected, select, close, viewpoint } = props;
+export function Details(props: PanelProps & { close: () => void; openBriefing?: (flightId: string) => void }) {
+  const { data, selected, select, close, viewpoint, openBriefing, units } = props;
   const { campaign, map, forces, logistics, ato, fronts } = data;
   if (!selected) return null;
   const prov = (id: string | null | undefined) => map?.provinces.find((p) => p.id === id);
   const provName = (id: string | null | undefined) => prov(id)?.name ?? id ?? "—";
-  const flights = ato?.packages.flatMap((p) => p.flights) ?? [];
+  const flights = [...(ato?.packages.flatMap((p) => p.flights) ?? []), ...(ato?.tracks ?? [])];
 
   let title = "";
   let color = "#9ca3af";
@@ -46,10 +46,11 @@ export function Details(props: PanelProps & { close: () => void }) {
             </div>
           </div>
           <KV k="Location">{provName(d.location)}</KV>
-          <KV k="Order">{d.order.kind === "hold" ? "hold" : `${d.order.kind} → ${provName(d.order.target)}`}</KV>
-          <KV k="Strength"><Bar value={d.strength} /> {pct(d.strength)}</KV>
-          <KV k="Organisation"><Bar value={d.org} color="#60a5fa" /> {pct(d.org)}</KV>
-          <KV k="Supply"><Bar value={d.supply} color="#facc15" /> {pct(d.supply)}</KV>
+          {d.intel && <KV k="Intel">{intelLabel(d.intel)}</KV>}
+          {d.order.kind !== "unknown" && <KV k="Order">{d.order.kind === "hold" ? "hold" : `${d.order.kind} → ${provName(d.order.target)}`}</KV>}
+          <KV k={d.intel ? "Strength (est.)" : "Strength"}><Bar value={d.strength} /> {pct(d.strength)}</KV>
+          {d.org != null && <KV k="Organisation"><Bar value={d.org} color="#60a5fa" /> {pct(d.org)}</KV>}
+          {d.supply != null && <KV k="Supply"><Bar value={d.supply} color="#facc15" /> {pct(d.supply)}</KV>}
           {d.battle && <KV k="Battle">{d.battle}</KV>}
           <KV k="Simulated by">{d.authority === "campaign" ? "campaign" : `game (${d.authority})`}</KV>
           <div className="elements">
@@ -69,13 +70,33 @@ export function Details(props: PanelProps & { close: () => void }) {
     case "package": {
       const pkg = selected.kind === "package" ? ato?.packages.find((p) => p.id === selected.id) : ato?.packages.find((p) => p.flights.some((f) => f.id === selected.id));
       const f = selected.kind === "flight" ? flights.find((x) => x.id === selected.id) : undefined;
+      if (f?.intel) {
+        // an enemy radar track: only what the sensors tell
+        color = f.intel.identified ? factionColor(campaign, f.faction) : "#facc15";
+        title = f.intel.identified ? `${f.callsign} — ${f.aircraft_name}` : f.callsign;
+        body = (
+          <>
+            <KV k="Intel">{intelLabel(f.intel)}</KV>
+            <KV k="Type">{f.aircraft_name}</KV>
+            {f.intel.identified && <KV k="Task">{f.task}</KV>}
+            <KV k="Size">{f.intel.identified ? f.size : f.size <= 1 ? "single" : f.size === 2 ? "pair" : "group"}</KV>
+            <KV k="First seen">{f.takeoff.label}</KV>
+          </>
+        );
+        break;
+      }
       if (!pkg) break;
       color = factionColor(campaign, pkg.faction);
-      title = f ? `${f.callsign} — ${f.aircraft_name}` : `${pkg.task} package`;
+      title = f ? `${f.callsign} — ${f.aircraft_name}` : `Package ${pkg.number} · ${pkg.task}`;
       body = (
         <>
-          <KV k="Package">{pkg.task} · {pkg.target}</KV>
+          <KV k="Package">#{pkg.number} · {pkg.task} · {pkg.target}</KV>
           <KV k="TOT">{pkg.tot.label}</KV>
+          {f && openBriefing && (
+            <button className="primary" onClick={() => openBriefing(f.id)}>
+              📋 Mission briefing
+            </button>
+          )}
           {f && (
             <>
               <KV k="Task">{f.task}</KV>
@@ -112,8 +133,9 @@ export function Details(props: PanelProps & { close: () => void }) {
         <>
           <KV k="Route">{provName(c.home)} → {provName(c.destination)}</KV>
           <KV k="Heading to">{provName(c.heading_to)} {c.returning && "(returning)"}</KV>
+          {c.intel && <KV k="Intel">{intelLabel(c.intel)}</KV>}
           <KV k="Trucks">{Math.round(c.trucks)}</KV>
-          <KV k="Cargo">{Math.round(c.cargo)} supply</KV>
+          {!c.intel && <KV k="Cargo">{Math.round(c.cargo)} supply</KV>}
           <KV k="Simulated by">{c.authority === "campaign" ? "campaign" : `game (${c.authority})`}</KV>
         </>
       );
@@ -133,7 +155,7 @@ export function Details(props: PanelProps & { close: () => void }) {
           <KV k="Terrain">{p.terrain}</KV>
           <KV k="Infrastructure">{p.infrastructure} / 5</KV>
           <KV k="Victory points">{p.victory_points}</KV>
-          {depot && <KV k="Depot">{depot.stock.toLocaleString()} / {depot.capacity.toLocaleString()} · {depot.trucks} trucks</KV>}
+          {depot && <KV k="Depot">{depot.stock != null ? `${depot.stock.toLocaleString()} / ${depot.capacity.toLocaleString()} · ${depot.trucks} trucks` : "enemy depot"}</KV>}
           <KV k="Neighbours">{p.neighbors.map(provName).join(", ")}</KV>
           {here.length > 0 && <div className="sub-list">{here.map((d) => <DivisionRow key={d.id} d={d} {...props} />)}</div>}
         </>
@@ -168,9 +190,10 @@ export function Details(props: PanelProps & { close: () => void }) {
         <>
           <KV k="Status">{u.status.replace("_", " ")}{u.emitting ? " · radar on" : " · radar off"}</KV>
           <KV k="Location">{provName(u.location)}</KV>
-          {u.range_km > 0 && <KV k="Engagement range">{u.range_km} km · up to {u.ceiling_m.toLocaleString()} m</KV>}
-          <KV k="Detection">{u.detection_km} km</KV>
-          {u.missiles_max > 0 && (
+          {u.range_km > 0 && <KV k="Engagement range">{fmtDist(u.range_km, units)} · up to {fmtAlt(u.ceiling_m, units)}</KV>}
+          <KV k="Detection">{fmtDist(u.detection_km, units)}</KV>
+          {u.intel && <KV k="Intel">{intelLabel(u.intel)}</KV>}
+          {u.missiles_max > 0 && u.missiles != null && (
             <KV k="Missiles">
               <Bar value={u.missiles / u.missiles_max} color="#e879f9" /> {Math.round(u.missiles)}/{u.missiles_max}
             </KV>

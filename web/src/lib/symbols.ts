@@ -1,11 +1,15 @@
 // NATO APP-6 / MIL-STD-2525C symbology via milsymbol.
 //
 // SIDC (letter based, 2525C): S + affiliation (F friend, H hostile) + battle
-// dimension (G ground, A air) + status (P present) + function id (6) + modifier
-// + echelon. Affiliation depends on the viewer: the "viewpoint" side is friendly.
+// dimension (G ground, A air) + status (P present, A anticipated = dashed frame)
+// + function id (6) + modifier + echelon. Affiliation depends on the viewer:
+// the "viewpoint" side is friendly. In a fog-of-war view, stale contacts are
+// drawn with the dashed frame and unidentified radar tracks as "unknown" (U).
 import ms from "milsymbol";
 
 export type Affiliation = "F" | "H" | "N" | "U";
+/** P = present; A = anticipated/suspected (dashed frame): a stale contact. */
+export type Status = "P" | "A";
 
 export function affiliation(side: string, viewpoint: string): Affiliation {
   if (!side) return "U";
@@ -28,23 +32,33 @@ const AIR_FN: Record<string, string> = {
   CAS: "MFA---",
   BAI: "MFA---",
   STRIKE: "MFB---", // bomber
+  AWACS: "MFRW--", // airborne early warning
+  TANKER: "MFK---", // tanker
+  TRANSPORT: "MFC---", // cargo airlift
 };
 
-export function unitSidc(template: string, aff: Affiliation): string {
+export function unitSidc(template: string, aff: Affiliation, status: Status = "P"): string {
   const [fn, echelon] = UNIT_FN[template] ?? ["UCI---", "H"];
-  return `S${aff}GP${fn}-${echelon}`;
+  return `S${aff}G${status}${fn}-${echelon}`;
 }
 
-export function airSidc(task: string, helo: boolean, aff: Affiliation): string {
-  return `S${aff}AP${helo ? "MHA---" : (AIR_FN[task] ?? "MF----")}--`;
+/** Air symbol; ``task`` null = an unidentified track (generic aircraft). */
+export function airSidc(task: string | null, helo: boolean, aff: Affiliation, status: Status = "P"): string {
+  const fn = helo ? (task === "TRANSPORT" ? "MHC---" : task ? "MHA---" : "MH----") : task ? (AIR_FN[task] ?? "MF----") : "M-----";
+  return `S${aff}A${status}${fn}--`;
 }
 
-export const convoySidc = (aff: Affiliation) => `S${aff}GPUSST----`; // transportation
+export const convoySidc = (aff: Affiliation, status: Status = "P") => `S${aff}G${status}USST----`; // transportation
 
 // air defence role -> function id (2525C): missile AD long / medium, short range AD, radar
 const SAM_FN: Record<string, string> = { long: "UCDML-", medium: "UCDMM-", short: "UCDS--", ewr: "ESR---" };
-export function samSidc(role: string, aff: Affiliation): string {
-  return `S${aff}GP${SAM_FN[role] ?? "UCD---"}--`;
+export function samSidc(role: string, aff: Affiliation, status: Status = "P"): string {
+  return `S${aff}G${status}${SAM_FN[role] ?? "UCD---"}--`;
+}
+
+/** Symbol status of an entity as its viewer knows it. */
+export function knownStatus(intel: { stale: boolean } | null | undefined): Status {
+  return intel?.stale ? "A" : "P";
 }
 export const airbaseSidc = (aff: Affiliation) => `S${aff}GPIBA---H-`; // installation: airport / air base
 

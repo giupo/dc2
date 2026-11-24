@@ -38,6 +38,37 @@ con il dettaglio dell'errore.
 
 ## Endpoint
 
+### Vista per fazione: `?faction=<id>` (nebbia di guerra)
+
+Tutti gli endpoint dinamici (`fronts`, `forces`, `logistics`, `ato`,
+`airdefense`, `events`, `stream`, `snapshot`) accettano `?faction=<id>`.
+Senza il parametro la risposta è la **vista arbitro**, cioè la verità. Con il
+parametro è quello che quella fazione sa:
+
+| | Vista per fazione |
+|---|---|
+| Proprie e alleate | Tutto, come nella vista arbitro. |
+| Brigate, convogli, SAM nemici | Solo se nel quadro informativo, **all'ultima posizione nota**, con un blocco `intel` (`source`, `seen`, `age_s`, `stale`, `identified`). Ordini, rotte, rifornimenti, organizzazione, missili e componenti sono nascosti (`order.kind = "unknown"`, `null`). |
+| Aerei nemici | Non nei `packages` ma in `ato.tracks`. Una traccia non identificata ha callsign `TRACK xxxx`, tipo "Unknown aircraft" e dimensione approssimata. |
+| Depositi nemici | Visibili, con `stock` e `trucks` a `null`. |
+| Settori del fronte | Solo i propri, con la potenza nemica stimata dal quadro. |
+| Eventi | I propri e quelli pubblici (battaglie, conquiste, ingaggi, perdite). |
+
+Una fazione inesistente dà 404.
+
+### `GET /api/intel?faction=<id>`
+
+Il quadro informativo di una fazione:
+- `contacts[]`: `id`, `kind` (`division`, `convoy`, `flight`, `sam`),
+  `faction`, `pos`/`ll` all'ultima posizione nota, `source`, `seen`,
+  `first_seen`, `age_s`, `stale`, `identified`, `detail` (quello che si sa:
+  nome, tipo, forza stimata, rotta per gli aerei...);
+- `sensors[]`: i sensori di ricerca aerea della fazione (`awacs`, `aircraft`,
+  `ground_radar`) con posizione e portata;
+- `counts`: numero di contatti per tipo.
+
+Il parametro `faction` è obbligatorio.
+
 ### `GET /api/campaign`
 Nome, teatro, orologio, `live` (true quando DCS sta simulando qualcosa: tempo
 1:1), giocatori connessi (posizione, lato, volo assegnato) e per fazione:
@@ -81,8 +112,10 @@ org, supply` (0..1), `elements` (mezzi per tipo), `order {kind, target}`,
   `convoy_incoming`.
 
 ### `GET /api/ato`
-- `packages[]`: `id, faction, task, target, pos, ll, tot, created, flights[]`.
-- ogni volo: `callsign, squadron, airbase, aircraft, task, status`
+- `packages[]`: `id, number, faction, task, target, pos, ll, tot, created, flights[]`.
+  `number` è il numero di package a 4 cifre (1000–9999), come nell'ATO di
+  Falcon/BMS: lo condividono tutti i voli del package (attacco, SEAD, scorta).
+- ogni volo: `package_number, callsign, squadron, airbase, aircraft, task, status`
   (`scheduled | airborne | on_station | rtb | done | cancelled`),
   `size, ai, seats_free, players[]` (con stato del posto), `takeoff, tot`,
   `pos, ll`, `waypoints` (polilinea), `target_index, next_waypoint, target`,
@@ -90,6 +123,20 @@ org, supply` (0..1), `elements` (mezzi per tipo), `order {kind, target}`,
 - `squadrons[]`: forza, disponibili, impegnati, in turnaround, compiti.
 - `sortie_budget_left` per fazione, `flights_airborne`.
 - `boards[side]`: esattamente ciò che vedono i giocatori nel menu F10.
+
+### `GET /api/ato/flights/{flight_id}/briefing`
+Mission package di un volo: `units`, `package_number`, `title`, `mission`, `situation[]`, `target`
+(descrizione, composizione, coordinate, rilevamento dalla base), `threats[]`
+(SAM lungo la rotta, SHORAD, caccia nemici, ciascuno con `severity`),
+`waypoints[]` (`index, name, eta, alt_m, speed_kmh, note, pos, ll`),
+`loadout[]` (`store, count`), `comms`, `package[]` e `text` (il briefing come
+arriva al giocatore in DCS). Risponde 404 se il volo non esiste più.
+
+`?units=imperial|metric` sceglie le unità dei **testi** (descrizioni, minacce,
+`text`): `imperial` = nodi, piedi, miglia nautiche; `metric` = km/h, m, km.
+Senza parametro valgono le unità della campagna (`units` in `/api/campaign`,
+di default `imperial`). I campi numerici restano sempre in SI (`alt_m`,
+`speed_kmh`, `range_km`).
 
 ### `GET /api/airdefense`
 - `sites[]`: `id, name, faction, system, system_name, role` (`long | medium |

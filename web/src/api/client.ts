@@ -18,6 +18,7 @@ export type Package = S["PackageView"];
 export type Flight = S["FlightView"];
 export type Squadron = S["SquadronView"];
 export type AirDefense = S["AirDefenseView"];
+export type Briefing = S["BriefingView"];
 export type SamSite = S["SamSiteView"];
 export type CampaignEvent = S["EventView"];
 export type EventsPage = S["EventsPage"];
@@ -26,12 +27,28 @@ export type Time = S["Time"];
 export interface Tick {
   time: Time;
   live: boolean;
+  paused: boolean;
+  compression: number;
+  rate: number;
 }
+export type Control = S["ControlView"];
 export type Player = S["PlayerView"];
+export type Intel = S["IntelView"];
+export type Contact = S["ContactView"];
+export type ContactInfo = S["ContactInfo"];
 export type Polyline = S["Polyline"];
 
 // Empty = same origin (Vite proxies /api in development, FastAPI serves the build).
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) {
+    const detail = await r.json().then((j) => j.detail).catch(() => r.statusText);
+    throw new Error(typeof detail === "string" ? detail : `HTTP ${r.status}`);
+  }
+  return (await r.json()) as T;
+}
 
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(BASE + path);
@@ -39,17 +56,32 @@ async function get<T>(path: string): Promise<T> {
   return (await r.json()) as T;
 }
 
+/** Query string of a faction's fog-of-war view ("" = the umpire's view). */
+const fq = (faction: string | null | undefined, sep = "?") => (faction ? `${sep}faction=${encodeURIComponent(faction)}` : "");
+
 export const api = {
   campaign: () => get<Campaign>("/api/campaign"),
   map: () => get<MapData>("/api/map"),
-  fronts: () => get<Fronts>("/api/fronts"),
-  forces: () => get<Forces>("/api/forces"),
-  logistics: () => get<Logistics>("/api/logistics"),
-  ato: () => get<Ato>("/api/ato"),
-  airDefense: () => get<AirDefense>("/api/airdefense"),
-  events: (since: number, limit = 500) => get<EventsPage>(`/api/events?since=${since}&limit=${limit}`),
+  /** Pause / resume, fast-forward (refused with an error while a game is live). */
+  control: (change: { paused?: boolean; compression?: number }) => post<Control>("/api/control", change),
+  fronts: (faction?: string | null) => get<Fronts>("/api/fronts" + fq(faction)),
+  forces: (faction?: string | null) => get<Forces>("/api/forces" + fq(faction)),
+  logistics: (faction?: string | null) => get<Logistics>("/api/logistics" + fq(faction)),
+  ato: (faction?: string | null) => get<Ato>("/api/ato" + fq(faction)),
+  airDefense: (faction?: string | null) => get<AirDefense>("/api/airdefense" + fq(faction)),
+  intel: (faction: string) => get<Intel>("/api/intel" + fq(faction)),
+  briefing: (flightId: string, units?: "metric" | "imperial") =>
+    get<Briefing>(`/api/ato/flights/${encodeURIComponent(flightId)}/briefing${units ? `?units=${units}` : ""}`),
+  events: (since: number, limit = 500, faction?: string | null) =>
+    get<EventsPage>(`/api/events?since=${since}&limit=${limit}${fq(faction, "&")}`),
 };
 
-export function streamUrl(since?: number): string {
-  return `${BASE}/api/stream${since != null ? `?since=${since}` : ""}`;
+/** Server-Sent Events of compact positions (`positions` events) at `hz`. */
+export function positionsStreamUrl(hz: number, faction?: string | null): string {
+  return `${BASE}/api/positions/stream?hz=${hz}${faction ? `&faction=${encodeURIComponent(faction)}` : ""}`;
+}
+
+export function streamUrl(since?: number, faction?: string | null): string {
+  const q = [since != null ? `since=${since}` : "", faction ? `faction=${encodeURIComponent(faction)}` : ""].filter(Boolean).join("&");
+  return `${BASE}/api/stream${q ? `?${q}` : ""}`;
 }

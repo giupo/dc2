@@ -23,6 +23,7 @@ from collections import deque
 from ..forces import Authority, Division, Order, OrderKind
 from ..state import CampaignState, Faction
 from ..world import TERRAIN
+from . import intel
 
 AI_INTERVAL_S = 3600.0
 ATTACK_RATIO = 1.1
@@ -245,7 +246,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
     scored = sorted(targets, key=lambda pid: (-_objective_value(state, faction, pid), pid))
     committed: set[str] = set()
     for target in scored:
-        enemy = _power(state.hostile_divisions_in(fid, target))
+        enemy = _power(intel.known_divisions_in(state, fid, target))
         candidates = [
             d
             for d in divs
@@ -272,7 +273,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
 
     # ---- 3. reserves to the front
     threat = {
-        f: _power([e for n in t.neighbors(f) for e in state.hostile_divisions_in(fid, n)]) for f in fronts
+        f: _power([e for n in t.neighbors(f) for e in intel.known_divisions_in(state, fid, n)]) for f in fronts
     }
     assigned = {f: _power([d for d in divs if d.location == f and not d.movement]) for f in fronts}
     for d in divs:
@@ -320,7 +321,7 @@ def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts:
         hostile = [n for n in t.neighbors(d.location) if state.hostile_province(fid, n)]
         if not hostile:
             continue
-        threat = max(hostile, key=lambda n: (_power(state.hostile_divisions_in(fid, n)), -t.link(d.location, n).length, n))
+        threat = max(hostile, key=lambda n: (_power(intel.known_divisions_in(state, fid, n)), -t.link(d.location, n).length, n))
         if d.deployed_toward != threat:
             d.deployed_toward = threat
             d.deploy_m = contact.deploy_progress(state, d.location, threat)
@@ -331,7 +332,7 @@ def _may_leave(state: CampaignState, d: Division, target: str, committed: set[st
     """Keep one division in a front province that other enemies also threaten."""
     t = state.theater
     other_threats = any(
-        state.hostile_divisions_in(d.faction, n)
+        intel.known_divisions_in(state, d.faction, n)
         for n in t.neighbors(d.location)
         if n != target and state.hostile_province(d.faction, n)
     )

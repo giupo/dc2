@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from ..forces import Authority, Division
 from ..state import CampaignState
+from . import intel
 
 ORGANIC_RANGE_M = 24_000.0  # brigade artillery battalion (M109, 2S19: 24-29 km)
 GROUP_RANGE_M = 40_000.0  # dedicated artillery groups with MLRS (BM-21, M270: 20-70 km)
@@ -23,6 +24,7 @@ FIRE_INTERVAL_S = 45 * 60.0  # average time between missions of one division
 MIN_GUNS = 4.0
 STRENGTH_PER_GUN = 0.00005
 ORG_PER_GUN = 0.001
+TARGET_FRESH_S = 1800.0  # a located target is engaged for this long
 FIRE_MEMORY_S = 30 * 60.0  # missions kept for presentation
 
 
@@ -71,10 +73,13 @@ def run(state: CampaignState, dt: float) -> None:
             continue
         here = shooter.position(t)
         reach = fire_range(shooter)
+        # Guns only fire at targets someone has located recently (fog of war).
+        located = intel.picture(state, shooter.faction)
+        fresh = {i for i, c in located.items() if c.age(state.time) <= TARGET_FRESH_S}
         targets = [
             d
             for d in state.divisions.values()
-            if state.at_war(shooter.faction, d.faction)
+            if d.id in fresh and state.at_war(shooter.faction, d.faction)
             and d.authority is Authority.CAMPAIGN
             and not (shooter.battle and d.battle == shooter.battle)
             and d.position(t).distance_to(here) <= reach
@@ -82,7 +87,7 @@ def run(state: CampaignState, dt: float) -> None:
         # Air defence sites are soft, high-value targets for the guns too.
         targets += [
             u for u in state.air_defense.values()
-            if state.at_war(shooter.faction, u.faction) and u.authority is Authority.CAMPAIGN
+            if u.id in fresh and state.at_war(shooter.faction, u.faction) and u.authority is Authority.CAMPAIGN
             and u.position(t).distance_to(here) <= reach
         ]
         if not targets:

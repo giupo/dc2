@@ -27,11 +27,24 @@ class Task(StrEnum):
     CAS = "CAS"  # close air support over a battle
     BAI = "BAI"  # battlefield interdiction: divisions / convoys behind the front
     STRIKE = "STRIKE"  # fixed targets (depots)
+    AWACS = "AWACS"  # airborne early warning: the main sensor of the air picture
+    TANKER = "TANKER"  # air-to-air refuelling track
+    TRANSPORT = "TRANSPORT"  # airlift of supply
 
     @property
     def air_to_air(self) -> bool:
         """True for fighter tasks (CAP, escort)."""
         return self in (Task.CAP, Task.ESCORT)
+
+    @property
+    def support(self) -> bool:
+        """True for unarmed support missions (AWACS, tanker, transport)."""
+        return self in (Task.AWACS, Task.TANKER, Task.TRANSPORT)
+
+    @property
+    def orbits(self) -> bool:
+        """True for missions that hold a station (CAP, AWACS, tanker)."""
+        return self in (Task.CAP, Task.AWACS, Task.TANKER)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +60,11 @@ class AircraftType:
         a2g: Air-to-ground effectiveness per aircraft.
         tasks: Tasks it can fly.
         helo: Rotary wing.
+        cargo: Supply points one aircraft can airlift (transports).
+        alt_m: Cruise altitude (0 = default for the kind of aircraft).
+        radar_km: Air-search radar range (-1 = derived from the role).
+        ground_km: Range at which its sensors (pod, eyes) find ground units
+            (-1 = derived from the role).
     """
     id: str
     name: str
@@ -56,11 +74,35 @@ class AircraftType:
     a2g: float  # air-to-ground effectiveness per aircraft
     tasks: frozenset[Task]
     helo: bool = False
+    cargo: float = 0.0
+    alt_m: float = 0.0
+    radar_km: float = -1.0
+    ground_km: float = -1.0
 
     @property
     def cruise_alt_m(self) -> float:
-        """Typical cruise altitude: 150 m for helicopters, 6000 m for jets."""
+        """Cruise altitude: the type's own, else 150 m for helicopters and 6000 m for jets."""
+        if self.alt_m:
+            return self.alt_m
         return 150.0 if self.helo else 6000.0
+
+    @property
+    def air_radar_m(self) -> float:
+        """Air-search radar range in metres (fighters see far, strikers little)."""
+        if self.radar_km >= 0:
+            return self.radar_km * 1000
+        if self.helo:
+            return 0.0
+        return 100_000.0 if self.a2a >= 0.9 else (60_000.0 if self.a2a > 0 else 30_000.0)
+
+    @property
+    def ground_sensor_m(self) -> float:
+        """Range at which it finds ground units (targeting pod, eyes)."""
+        if self.ground_km >= 0:
+            return self.ground_km * 1000
+        if self.helo:
+            return 8_000.0
+        return 20_000.0 if self.a2g >= 1.0 else 10_000.0
 
 
 def _t(*names: str) -> frozenset[Task]:
@@ -81,6 +123,64 @@ AIRCRAFT: dict[str, AircraftType] = {
         AircraftType("su25t", "Su-25T", 650, 400, 0.2, 1.2, _t("CAS", "BAI", "SEAD")),
         AircraftType("su24m", "Su-24M", 800, 600, 0.1, 1.1, _t("STRIKE", "BAI")),
         AircraftType("mi24p", "Mi-24P", 250, 160, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
+        # ---- 1980s-2000s, western / blue
+        AircraftType("f14a", "F-14A", 850, 700, 1.1, 0.3, _t("CAP", "ESCORT")),
+        AircraftType("f14b", "F-14B", 850, 750, 1.2, 0.6, _t("CAP", "ESCORT", "STRIKE", "BAI")),
+        AircraftType("f15e", "F-15E", 850, 900, 1.1, 1.3, _t("CAP", "ESCORT", "STRIKE", "BAI", "CAS")),
+        AircraftType("f16a", "F-16A", 800, 500, 0.9, 0.8, _t("CAP", "ESCORT", "BAI", "CAS")),
+        AircraftType("f4e", "F-4E", 800, 500, 0.7, 0.8, _t("CAP", "ESCORT", "STRIKE", "BAI", "CAS")),
+        AircraftType("a10a", "A-10A", 550, 400, 0.2, 1.2, _t("CAS", "BAI")),
+        AircraftType("av8b", "AV-8B", 650, 350, 0.4, 1.1, _t("CAS", "BAI", "STRIKE")),
+        AircraftType("f117", "F-117A", 800, 1000, 0.0, 1.3, _t("STRIKE")),
+        AircraftType("b1b", "B-1B", 900, 3000, 0.0, 3.0, _t("STRIKE", "BAI")),
+        AircraftType("b52h", "B-52H", 800, 3500, 0.0, 3.0, _t("STRIKE")),
+        AircraftType("tornado_gr4", "Tornado GR4", 800, 700, 0.2, 1.2, _t("STRIKE", "BAI", "SEAD")),
+        AircraftType("tornado_ids", "Tornado IDS", 800, 700, 0.2, 1.1, _t("STRIKE", "BAI", "SEAD")),
+        AircraftType("m2000c", "Mirage 2000C", 850, 450, 1.1, 0.5, _t("CAP", "ESCORT", "BAI")),
+        AircraftType("m2000_5", "Mirage 2000-5", 850, 500, 1.2, 0.2, _t("CAP", "ESCORT")),
+        AircraftType("f5e", "F-5E", 750, 300, 0.6, 0.5, _t("CAP", "ESCORT", "CAS")),
+        AircraftType("jf17", "JF-17", 800, 500, 0.9, 1.0, _t("CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE")),
+        AircraftType("mirage_f1", "Mirage F1EE", 800, 400, 0.7, 0.6, _t("CAP", "ESCORT", "CAS", "BAI")),
+        AircraftType("ajs37", "AJS-37 Viggen", 800, 400, 0.4, 1.0, _t("BAI", "STRIKE", "CAS")),
+        AircraftType("ah1w", "AH-1W", 230, 150, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
+        AircraftType("oh58d", "OH-58D", 200, 120, 0.0, 0.6, _t("CAS", "BAI"), helo=True),
+        AircraftType("sa342", "SA342 Gazelle", 250, 140, 0.0, 0.6, _t("CAS", "BAI"), helo=True),
+        # ---- 1980s-2000s, eastern / red
+        AircraftType("mig29a", "MiG-29A", 850, 400, 0.9, 0.2, _t("CAP", "ESCORT")),
+        AircraftType("mig29g", "MiG-29G", 850, 400, 0.9, 0.2, _t("CAP", "ESCORT")),
+        AircraftType("mig31", "MiG-31", 1000, 700, 1.1, 0.0, _t("CAP", "ESCORT")),
+        AircraftType("mig25pd", "MiG-25PD", 1000, 600, 0.8, 0.0, _t("CAP")),
+        AircraftType("mig23mld", "MiG-23MLD", 850, 450, 0.7, 0.5, _t("CAP", "ESCORT", "CAS", "BAI")),
+        AircraftType("mig27k", "MiG-27K", 800, 450, 0.2, 1.0, _t("CAS", "BAI", "STRIKE", "SEAD")),
+        AircraftType("su33", "Su-33", 850, 700, 1.2, 0.4, _t("CAP", "ESCORT")),
+        AircraftType("su30", "Su-30", 850, 800, 1.3, 1.0, _t("CAP", "ESCORT", "SEAD", "STRIKE", "BAI")),
+        AircraftType("su34", "Su-34", 850, 900, 0.6, 1.4, _t("STRIKE", "BAI", "CAS", "SEAD")),
+        AircraftType("su25", "Su-25", 650, 400, 0.2, 1.1, _t("CAS", "BAI")),
+        AircraftType("su25tm", "Su-25TM", 650, 400, 0.2, 1.3, _t("CAS", "BAI", "SEAD")),
+        AircraftType("su17m4", "Su-17M4", 800, 400, 0.2, 0.9, _t("CAS", "BAI", "STRIKE")),
+        AircraftType("tu22m3", "Tu-22M3", 900, 2000, 0.0, 2.5, _t("STRIKE")),
+        AircraftType("tu95ms", "Tu-95MS", 750, 4000, 0.0, 2.5, _t("STRIKE")),
+        # (Tu-160 left out: DCS' data has no weapons for its internal bays.)
+        # ---- support: AWACS, tankers, transports
+        AircraftType("e3a", "E-3A Sentry", 750, 1500, 0.0, 0.0, _t("AWACS"), alt_m=9000, radar_km=400, ground_km=0),
+        AircraftType("e2c", "E-2C Hawkeye", 550, 1200, 0.0, 0.0, _t("AWACS"), alt_m=8000, radar_km=350, ground_km=0),
+        AircraftType("a50", "A-50 Mainstay", 750, 1500, 0.0, 0.0, _t("AWACS"), alt_m=9000, radar_km=300, ground_km=0),
+        AircraftType("kc135", "KC-135", 800, 2500, 0.0, 0.0, _t("TANKER"), alt_m=7000, radar_km=0, ground_km=0),
+        AircraftType("kc130", "KC-130", 550, 2000, 0.0, 0.0, _t("TANKER"), alt_m=5500, radar_km=0, ground_km=0),
+        AircraftType("il78m", "IL-78M", 750, 2500, 0.0, 0.0, _t("TANKER"), alt_m=7000, radar_km=0, ground_km=0),
+        AircraftType("c130", "C-130", 550, 2000, 0.0, 0.0, _t("TRANSPORT"), cargo=150, alt_m=6000, radar_km=0, ground_km=0),
+        AircraftType("c17", "C-17A", 750, 3000, 0.0, 0.0, _t("TRANSPORT"), cargo=400, alt_m=8000, radar_km=0, ground_km=0),
+        AircraftType("il76", "IL-76MD", 750, 2500, 0.0, 0.0, _t("TRANSPORT"), cargo=300, alt_m=8000, radar_km=0, ground_km=0),
+        AircraftType("an26", "An-26B", 430, 1000, 0.0, 0.0, _t("TRANSPORT"), cargo=60, alt_m=5000, radar_km=0, ground_km=0),
+        AircraftType("uh60a", "UH-60A", 250, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=25, radar_km=0),
+        AircraftType("ch47d", "CH-47D", 250, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=60, radar_km=0),
+        AircraftType("mi8mt", "Mi-8MT", 230, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=30, radar_km=0),
+        AircraftType("mi26", "Mi-26", 250, 500, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=100, radar_km=0),
+        AircraftType("j11a", "J-11A", 850, 700, 1.2, 0.3, _t("CAP", "ESCORT")),
+        AircraftType("mig21bis", "MiG-21bis", 800, 300, 0.6, 0.4, _t("CAP", "ESCORT", "CAS")),
+        AircraftType("ka50", "Ka-50", 270, 160, 0.05, 1.2, _t("CAS", "BAI"), helo=True),
+        AircraftType("mi28n", "Mi-28N", 260, 160, 0.05, 1.2, _t("CAS", "BAI"), helo=True),
+        AircraftType("mi24v", "Mi-24V", 250, 160, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
     )
 }
 
@@ -257,6 +357,7 @@ class Flight(MobileEntity):
     ai_done: bool = False  # the AI part has landed or been shot down
     players: dict[str, Seat] = field(default_factory=dict)
     joinable: bool = True  # players may still take seats (until shortly after takeoff)
+    cargo: float = 0.0  # supply carried (transports), for the whole flight
     orbit_angle: float = 0.0  # position on the CAP orbit, radians
     kind: str = "flight"
 
@@ -317,6 +418,16 @@ class Flight(MobileEntity):
         return 0.0
 
 
+
+def package_number(package_id: str) -> str:
+    """Four-digit package number (1000-9999) from a package id.
+
+    Looks random but is deterministic and unique for the first 9000 packages:
+    the id's counter is multiplied by a prime coprime with 9000.
+    """
+    n = int("".join(c for c in package_id if c.isdigit()) or 0)
+    return str((n * 7919) % 9000 + 1000)
+
 @dataclass
 class Package:
     """A set of flights against one target with a common time on target.
@@ -331,6 +442,8 @@ class Package:
         flights: Flight ids.
         created: Planning time.
         done: All flights complete.
+        number: Four-digit package number, as in Falcon's ATO (see
+            :func:`package_number`).
     """
     id: str
     faction: str
@@ -341,3 +454,9 @@ class Package:
     flights: list[str] = field(default_factory=list)
     created: float = 0.0
     done: bool = False
+    number: str = ""
+
+    def __post_init__(self) -> None:
+        """Derive the package number from the id when not given."""
+        if not self.number:
+            self.number = package_number(self.id)

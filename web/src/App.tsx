@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { BriefingCard, useBriefing } from "./components/BriefingCard";
 import { Details } from "./components/Details";
 import { Header } from "./components/Header";
 import { MapView } from "./components/MapView";
-import { AirDefensePanel, AtoPanel, EventsPanel, ForcesPanel, FrontPanel, LogisticsPanel, type PanelProps } from "./components/Panels";
-import { factionColor } from "./lib/format";
+import { AirDefensePanel, AtoPanel, EventsPanel, ForcesPanel, FrontPanel, IntelPanel, LogisticsPanel, type PanelProps } from "./components/Panels";
+import { factionColor, type Units } from "./lib/format";
 import { DEFAULT_LAYERS, type Layers, type Selection } from "./lib/selection";
 import { useCampaign } from "./lib/useCampaign";
 
@@ -13,6 +14,7 @@ const TABS = [
   { id: "logistics", label: "Logistics", Panel: LogisticsPanel },
   { id: "ato", label: "ATO", Panel: AtoPanel },
   { id: "ad", label: "AD", Panel: AirDefensePanel },
+  { id: "intel", label: "Intel", Panel: IntelPanel },
   { id: "events", label: "Events", Panel: EventsPanel },
 ] as const;
 
@@ -29,12 +31,30 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
 };
 
 export default function App() {
-  const data = useCampaign();
+  const [viewpoint, setViewpoint] = useState("blue");
+  // Fog of war: see the campaign as the viewpoint faction's sensors do (off = umpire view).
+  const [fog, setFog] = useState(true);
+  const [factions, setFactions] = useState<{ id: string; side: string }[]>([]);
+  const fogFaction = fog ? (factions.find((f) => f.side === viewpoint)?.id ?? null) : null;
+  const data = useCampaign(fogFaction);
+  // Display units: the user's choice (remembered), else the campaign's default.
+  const [unitsChoice, setUnitsChoice] = useState<Units | null>(() => (localStorage.getItem("dynacamp.units") as Units | null) ?? null);
+  const units: Units = unitsChoice ?? data.campaign?.units ?? "imperial";
+  const chooseUnits = (u: Units) => {
+    localStorage.setItem("dynacamp.units", u);
+    setUnitsChoice(u);
+  };
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("front");
   const [layers, setLayers] = useState<Layers>(DEFAULT_LAYERS);
   const [selected, setSelected] = useState<Selection>(null);
   const [focus, setFocus] = useState<{ lngLat: [number, number]; seq: number }>();
-  const [viewpoint, setViewpoint] = useState("blue");
+  const known = data.campaign?.factions;
+  useEffect(() => {
+    if (known && known.length !== factions.length) setFactions(known.map((f) => ({ id: f.id, side: f.side })));
+  }, [known, factions.length]);
+  const [briefingOpen, setBriefingOpen] = useState(false);
+  const selectedFlight = selected?.kind === "flight" ? selected.id : null;
+  const briefing = useBriefing(selectedFlight, units);
 
   // Selecting from a list also moves the map; selecting on the map does not.
   const select = useCallback((s: Selection, at?: number[] | null) => {
@@ -42,7 +62,7 @@ export default function App() {
     if (at) setFocus((f) => ({ lngLat: [at[1], at[0]], seq: (f?.seq ?? 0) + 1 }));
   }, []);
 
-  const panelProps: PanelProps = { data, selected, select, viewpoint };
+  const panelProps: PanelProps = { data, selected, select, viewpoint, units };
   const Active = TABS.find((t) => t.id === tab)!.Panel;
 
   return (
@@ -50,7 +70,7 @@ export default function App() {
       <Header data={data} />
       <main className="main">
         <section className="map-wrap">
-          <MapView data={data} layers={layers} selected={selected} onSelect={(s) => setSelected(s)} focus={focus} viewpoint={viewpoint} />
+          <MapView data={data} layers={layers} selected={selected} onSelect={(s) => setSelected(s)} focus={focus} viewpoint={viewpoint} briefing={briefing} units={units} />
           <div className="layers">
             {(Object.keys(LAYER_LABELS) as (keyof Layers)[]).map((k) => (
               <label key={k}>
@@ -66,8 +86,18 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <label className="fog" title="Fog of war: show only what the viewpoint side's sensors (aircraft, AWACS, radars, recon) have found. Off: umpire view, everything.">
+              <input type="checkbox" checked={fog} onChange={(e) => setFog(e.target.checked)} />
+              Fog of war
+            </label>
+            <div className="viewpoint" title="Units of distances, altitudes and speeds (also in the briefings)">
+              <span>Units</span>
+              <button className={units === "metric" ? "on" : ""} onClick={() => chooseUnits("metric")}>SI</button>
+              <button className={units === "imperial" ? "on" : ""} onClick={() => chooseUnits("imperial")}>kts/ft/NM</button>
+            </div>
           </div>
-          <Details {...panelProps} close={() => setSelected(null)} />
+          <Details {...panelProps} close={() => setSelected(null)} openBriefing={() => setBriefingOpen(true)} />
+          {briefingOpen && briefing && <BriefingCard b={briefing} close={() => setBriefingOpen(false)} />}
           {!data.connected && !data.campaign && (
             <div className="overlay">
               Connecting to the campaign engine…
@@ -82,6 +112,7 @@ export default function App() {
                 {t.label}
                 {t.id === "front" && !!data.fronts?.battles.length && <span className="count">{data.fronts.battles.length}</span>}
                 {t.id === "ato" && !!data.ato?.packages.length && <span className="count">{data.ato.packages.length}</span>}
+                {t.id === "intel" && !!data.intel?.contacts.length && <span className="count">{data.intel.contacts.length}</span>}
               </button>
             ))}
           </nav>

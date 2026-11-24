@@ -8,8 +8,10 @@ import {
   type CampaignEvent,
   type Forces,
   type Fronts,
+  type Intel,
   type Logistics,
   type MapData,
+  type Control,
   type Tick,
   type Time,
 } from "../api/client";
@@ -22,9 +24,14 @@ export interface CampaignData {
   logistics?: Logistics;
   ato?: Ato;
   airDefense?: AirDefense;
+  intel?: Intel;
+  /** Faction whose fog-of-war view this is (null = umpire, ground truth). */
+  faction: string | null;
   events: CampaignEvent[];
   clock?: Time;
   live: boolean;
+  /** Pause and speed of the campaign clock. */
+  control?: Control;
   connected: boolean;
   error?: string;
 }
@@ -39,15 +46,20 @@ const EVENT_BACKLOG = 200; // replayed when the page opens
  * - geometry (`/api/map`) once, and again when a province changes hands;
  * - the dynamic views every few seconds, and soon after relevant events;
  * - clock and event feed from the Server-Sent Events stream.
+ *
+ * With a ``faction`` every view is that faction's fog-of-war view: enemies only
+ * as its sensors saw them. Changing it reloads everything.
  */
-export function useCampaign(): CampaignData {
-  const [data, setData] = useState<CampaignData>({ events: [], live: false, connected: false });
+export function useCampaign(faction: string | null = null): CampaignData {
+  const [data, setData] = useState<CampaignData>({ events: [], live: false, connected: false, faction });
   const inFlight = useRef(false);
   const soon = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
     const set = (patch: Partial<CampaignData>) => !cancelled && setData((d) => ({ ...d, ...patch }));
+    // New viewpoint: drop what the previous one knew (keep the geometry).
+    setData((d) => ({ map: d.map, events: [], live: d.live, connected: d.connected, faction }));
 
     const loadMap = () => api.map().then((map) => set({ map })).catch(() => undefined);
 
@@ -55,15 +67,16 @@ export function useCampaign(): CampaignData {
       if (inFlight.current) return;
       inFlight.current = true;
       try {
-        const [campaign, fronts, forces, logistics, ato, airDefense] = await Promise.all([
+        const [campaign, fronts, forces, logistics, ato, airDefense, intel] = await Promise.all([
           api.campaign(),
-          api.fronts(),
-          api.forces(),
-          api.logistics(),
-          api.ato(),
-          api.airDefense(),
+          api.fronts(faction),
+          api.forces(faction),
+          api.logistics(faction),
+          api.ato(faction),
+          api.airDefense(faction),
+          faction ? api.intel(faction) : Promise.resolve(undefined),
         ]);
-        set({ campaign, fronts, forces, logistics, ato, airDefense, clock: campaign.time, live: campaign.live, connected: true, error: undefined });
+        set({ campaign, fronts, forces, logistics, ato, airDefense, intel, clock: campaign.time, live: campaign.live, control: campaign.control ?? undefined, connected: true, error: undefined });
       } catch (e) {
         set({ connected: false, error: e instanceof Error ? e.message : String(e) });
       } finally {
@@ -95,11 +108,16 @@ export function useCampaign(): CampaignData {
       .campaign()
       .then((c) => {
         if (cancelled) return;
-        es = new EventSource(streamUrl(Math.max(0, c.events - EVENT_BACKLOG)));
+        es = new EventSource(streamUrl(Math.max(0, c.events - EVENT_BACKLOG), faction));
         es.addEventListener("event", (m) => buffer.push(JSON.parse((m as MessageEvent).data)));
         es.addEventListener("tick", (m) => {
           const t = JSON.parse((m as MessageEvent).data) as Tick;
-          set({ clock: t.time, live: t.live, connected: true });
+          set({
+            clock: t.time,
+            live: t.live,
+            connected: true,
+            control: { paused: t.paused, compression: t.compression, rate: t.rate, min_compression: 1, max_compression: 7200 },
+          });
         });
         es.onerror = () => set({ connected: false });
       })
@@ -112,7 +130,7 @@ export function useCampaign(): CampaignData {
       window.clearTimeout(soon.current);
       es?.close();
     };
-  }, []);
+  }, [faction]);
 
   return data;
 }
@@ -134,4 +152,5 @@ const RELEVANT = new Set([
   "sam_destroyed",
   "sam_relocating",
   "harm_strike",
+  "airlift_delivered",
 ]);

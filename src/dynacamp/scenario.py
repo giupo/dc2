@@ -12,6 +12,7 @@ from .forces import DEFAULT_TEMPLATES, Division, DivisionTemplate
 from .geo import Vec2
 from .state import CampaignState, Faction, Objective
 from .world import Depot, LinkKind, Province, Terrain, Theater
+from . import units
 
 
 class ScenarioError(ValueError):
@@ -112,6 +113,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         factions=factions,
         seed=meta.get("seed", 0),
         time=float(meta.get("start_hour", 6)) * 3600.0,
+        units=units.check(meta.get("units", units.DEFAULT_UNITS)),
     )
     for d in data.get("divisions", []):
         if d["template"] not in templates:

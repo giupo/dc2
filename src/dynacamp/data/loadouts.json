@@ -1,0 +1,5257 @@
+{
+ "source": "DCS pylon tables via pydcs",
+ "aircraft": {
+  "f16c": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 5,
+     "name": "ALQ-131 - ECM Pod",
+     "clsid": "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 6,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 11,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 370 gal",
+     "clsid": "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+     "weight": 1338.1
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 5,
+     "name": "ALQ-131 - ECM Pod",
+     "clsid": "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 6,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 11,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 370 gal",
+     "clsid": "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+     "weight": 1338.1
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    },
+    {
+     "pylon": 4,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    },
+    {
+     "pylon": 5,
+     "name": "ALQ-184 - ECM Pod",
+     "clsid": "ALQ_184",
+     "weight": 215.0
+    },
+    {
+     "pylon": 6,
+     "name": "Fuel tank 370 gal",
+     "clsid": "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+     "weight": 1338.1
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{8A0BE8AE-58D4-4572-9263-3144C0D06364}",
+     "weight": 1083.5
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    },
+    {
+     "pylon": 7,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 11,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    }
+   ]
+  },
+  "fa18c": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 4,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{AAQ-28_LEFT}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 5,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 7,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 8,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 7,
+     "name": "FPU-8A Fuel Tank 330 gallons",
+     "clsid": "{FPU_8A_FUEL_TANK}",
+     "weight": 1150.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 4,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{AAQ-28_LEFT}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 5,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 7,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 8,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 7,
+     "name": "FPU-8A Fuel Tank 330 gallons",
+     "clsid": "{FPU_8A_FUEL_TANK}",
+     "weight": 1150.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 7,
+     "name": "FPU-8A Fuel Tank 330 gallons",
+     "clsid": "{FPU_8A_FUEL_TANK}",
+     "weight": 1150.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    },
+    {
+     "pylon": 2,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 4,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{AAQ-28_LEFT}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 5,
+     "name": "FPU-8A Fuel Tank 330 gallons",
+     "clsid": "{FPU_8A_FUEL_TANK}",
+     "weight": 1150.0
+    },
+    {
+     "pylon": 7,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 8,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5
+    }
+   ]
+  },
+  "f15c": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{E1F29B21-F291-4589-9FD8-3272EEC69506}",
+     "weight": 2010.9
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 11,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{E1F29B21-F291-4589-9FD8-3272EEC69506}",
+     "weight": 2010.9
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 11,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ]
+  },
+  "a10c": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 2,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-88 - 1 x AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "LAU_88_AGM_65D_ONE",
+     "weight": 429.0
+    },
+    {
+     "pylon": 4,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 6,
+     "name": "Fuel tank FT600",
+     "clsid": "Fuel_Tank_FT600",
+     "weight": 1925.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 9,
+     "name": "LAU-88 - 1 x AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "LAU_88_AGM_65D_ONE",
+     "weight": 429.0
+    },
+    {
+     "pylon": 10,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 11,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 2,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-88 - 1 x AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "LAU_88_AGM_65D_ONE",
+     "weight": 429.0
+    },
+    {
+     "pylon": 4,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 6,
+     "name": "Fuel tank FT600",
+     "clsid": "Fuel_Tank_FT600",
+     "weight": 1925.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 9,
+     "name": "LAU-88 - 1 x AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "LAU_88_AGM_65D_ONE",
+     "weight": 429.0
+    },
+    {
+     "pylon": 10,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 11,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    }
+   ]
+  },
+  "ah64d": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 2,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 3,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 4,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 2,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 3,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 4,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    }
+   ]
+  },
+  "su27": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "mig29s": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 6,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 6,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    }
+   ]
+  },
+  "su25t": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 9,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 10,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 11,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 9,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 10,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 11,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 2,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 800L Wing",
+     "clsid": "{E8D4652F-FD48-45B7-BA5B-2AE05BB5A9CF}",
+     "weight": 760.0
+    },
+    {
+     "pylon": 5,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 7,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "su24m": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 2000L",
+     "clsid": "{16602053-4A12-40A2-B214-AB60D481B20E}",
+     "weight": 1700.0
+    },
+    {
+     "pylon": 6,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 7,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "APU-60-2M with 2 x R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60 2L}",
+     "weight": 157.0
+    },
+    {
+     "pylon": 2,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 3,
+     "name": "KAB-500LG - 500kg Laser Guided Bomb",
+     "clsid": "{BA565F89-2373-4A84-9502-A0E017D3A44A}",
+     "weight": 534.0
+    },
+    {
+     "pylon": 4,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 2000L",
+     "clsid": "{16602053-4A12-40A2-B214-AB60D481B20E}",
+     "weight": 1700.0
+    },
+    {
+     "pylon": 7,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 8,
+     "name": "APU-60-2M with 2 x R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60 2R}",
+     "weight": 157.0
+    }
+   ]
+  },
+  "mi24p": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ]
+  },
+  "f14a": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 L}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 R}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 L}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 R}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "f14b": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "CBU-99",
+     "clsid": "{BRU-32 CBU-99}",
+     "weight": 279.4
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12",
+     "clsid": "{BRU-32 GBU-12}",
+     "weight": 332.4
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-12",
+     "clsid": "{BRU-32 GBU-12}",
+     "weight": 332.4
+    },
+    {
+     "pylon": 7,
+     "name": "CBU-99",
+     "clsid": "{BRU-32 CBU-99}",
+     "weight": 279.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 L}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 R}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 L}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 7,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{AIM_54C_Mk47}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-54C-Mk47",
+     "clsid": "{SHOULDER AIM_54C_Mk47 R}",
+     "weight": 499.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 300 gal",
+     "clsid": "{F14-300gal}",
+     "weight": 958.4
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-10",
+     "clsid": "{BRU-32 GBU-10}",
+     "weight": 997.4
+    },
+    {
+     "pylon": 5,
+     "name": "Mk-84",
+     "clsid": "{BRU-32 MK-84}",
+     "weight": 951.4
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-24",
+     "clsid": "{BRU-32 GBU-24}",
+     "weight": 1107.4
+    },
+    {
+     "pylon": 7,
+     "name": "GBU-10",
+     "clsid": "{BRU-32 GBU-10}",
+     "weight": 997.4
+    },
+    {
+     "pylon": 10,
+     "name": "LAU-7 AIM-9M",
+     "clsid": "{LAU-7 wtip - AIM-9M}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "f15e": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 8,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{F15E_EXTTANK}",
+     "weight": 1943.5
+    },
+    {
+     "pylon": 12,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 14,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 15,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{F15E_EXTTANK}",
+     "weight": 1943.5
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 13,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 15,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 8,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{F15E_EXTTANK}",
+     "weight": 1943.5
+    },
+    {
+     "pylon": 12,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 14,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 15,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 2,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{F15E_EXTTANK}",
+     "weight": 1943.5
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 13,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    },
+    {
+     "pylon": 15,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 4,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 8,
+     "name": "Fuel tank 610 gal",
+     "clsid": "{F15E_EXTTANK}",
+     "weight": 1943.5
+    },
+    {
+     "pylon": 12,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 14,
+     "name": "AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{AGM-154A}",
+     "weight": 485.0
+    },
+    {
+     "pylon": 15,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "f16a": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets",
+     "clsid": "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 6,
+     "name": "ALQ-131 - ECM Pod",
+     "clsid": "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 7,
+     "name": "Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets",
+     "clsid": "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 370 gal",
+     "clsid": "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+     "weight": 1338.1
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets",
+     "clsid": "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 6,
+     "name": "ALQ-131 - ECM Pod",
+     "clsid": "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 7,
+     "name": "Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets",
+     "clsid": "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 370 gal",
+     "clsid": "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+     "weight": 1338.1
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8
+    }
+   ]
+  },
+  "f4e": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "CBU-87 - 202 x CEM Cluster Bomb",
+     "clsid": "{CBU-87}",
+     "weight": 430.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-65D - Maverick D (IIR ASM) (LAU-117)",
+     "clsid": "{HB_F4E_AGM-65D_LAU117}",
+     "weight": 269.5
+    },
+    {
+     "pylon": 6,
+     "name": "ALQ-131 - ECM Pod Rack",
+     "clsid": "{HB_ALQ-131_ON_ADAPTER_IN_AERO7}",
+     "weight": 330.9
+    },
+    {
+     "pylon": 7,
+     "name": "Sargent Fletcher Fuel Tank 600 gallons",
+     "clsid": "{F4_SARGENT_TANK_600_GAL}",
+     "weight": 1885.9
+    },
+    {
+     "pylon": 11,
+     "name": "AGM-65D - Maverick D (IIR ASM) (LAU-117)",
+     "clsid": "{HB_F4E_AGM-65D_LAU117}",
+     "weight": 269.5
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 13,
+     "name": "CBU-87 - 202 x CEM Cluster Bomb",
+     "clsid": "{CBU-87}",
+     "weight": 430.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "Sargent Fletcher Fuel Tank 370 gallons",
+     "clsid": "{F4_SARGENT_TANK_370_GAL}",
+     "weight": 1233.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 5,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 6,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "CBU-87 - 202 x CEM Cluster Bomb",
+     "clsid": "{CBU-87}",
+     "weight": 430.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 3,
+     "name": "AGM-65D - Maverick D (IIR ASM) (LAU-117)",
+     "clsid": "{HB_F4E_AGM-65D_LAU117}",
+     "weight": 269.5
+    },
+    {
+     "pylon": 6,
+     "name": "ALQ-131 - ECM Pod Rack",
+     "clsid": "{HB_ALQ-131_ON_ADAPTER_IN_AERO7}",
+     "weight": 330.9
+    },
+    {
+     "pylon": 7,
+     "name": "Sargent Fletcher Fuel Tank 600 gallons",
+     "clsid": "{F4_SARGENT_TANK_600_GAL}",
+     "weight": 1885.9
+    },
+    {
+     "pylon": 11,
+     "name": "AGM-65D - Maverick D (IIR ASM) (LAU-117)",
+     "clsid": "{HB_F4E_AGM-65D_LAU117}",
+     "weight": 269.5
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 13,
+     "name": "CBU-87 - 202 x CEM Cluster Bomb",
+     "clsid": "{CBU-87}",
+     "weight": 430.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "Sargent Fletcher Fuel Tank 370 gallons",
+     "clsid": "{F4_SARGENT_TANK_370_GAL}",
+     "weight": 1233.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 5,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 6,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 9,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    },
+    {
+     "pylon": 7,
+     "name": "Sargent Fletcher Fuel Tank 600 gallons",
+     "clsid": "{F4_SARGENT_TANK_600_GAL}",
+     "weight": 1885.9
+    },
+    {
+     "pylon": 11,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6
+    },
+    {
+     "pylon": 13,
+     "name": "GBU-10 - 2000lb Laser Guided Bomb",
+     "clsid": "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+     "weight": 959.0
+    }
+   ]
+  },
+  "a10a": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 6,
+     "name": "Fuel tank FT600",
+     "clsid": "Fuel_Tank_FT600",
+     "weight": 1925.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 9,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 10,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 11,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 6,
+     "name": "Fuel tank FT600",
+     "clsid": "Fuel_Tank_FT600",
+     "weight": 1925.0
+    },
+    {
+     "pylon": 8,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 9,
+     "name": "LAU-117 - AGM-65D - Maverick D (IIR ASM)",
+     "clsid": "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 10,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 11,
+     "name": "CBU-97 - 10 x SFW Cluster Bomb",
+     "clsid": "{5335D97A-35A5-4643-9D9B-026C75961E52}",
+     "weight": 417.0
+    }
+   ]
+  },
+  "av8b": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 5,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 8,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 5,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-117 - AGM-65E - Maverick E (Laser ASM - Lg Whd)",
+     "clsid": "{F16A4DE0-116C-4A71-97F0-2CF85B0313EC}",
+     "weight": 345.0
+    },
+    {
+     "pylon": 8,
+     "name": "CBU-99 - 490lbs, 247 x HEAT Bomblets",
+     "clsid": "{CBU_99}",
+     "weight": 222.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-83 - 1000lb GP Bomb LD",
+     "clsid": "{7A44FF09-527C-4B7E-B42B-3F111CFE50FB}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 3,
+     "name": "Mk-83 - 1000lb GP Bomb LD",
+     "clsid": "{7A44FF09-527C-4B7E-B42B-3F111CFE50FB}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 5,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 6,
+     "name": "Mk-83 - 1000lb GP Bomb LD",
+     "clsid": "{7A44FF09-527C-4B7E-B42B-3F111CFE50FB}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 7,
+     "name": "Mk-83 - 1000lb GP Bomb LD",
+     "clsid": "{7A44FF09-527C-4B7E-B42B-3F111CFE50FB}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 8,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "f117": {
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "GBU-27 - 2000lb Laser Guided Penetrator Bomb",
+     "clsid": "{EF0A9419-01D6-473B-99A3-BEBDB923B14D}",
+     "weight": 1200.0
+    },
+    {
+     "pylon": 2,
+     "name": "GBU-27 - 2000lb Laser Guided Penetrator Bomb",
+     "clsid": "{EF0A9419-01D6-473B-99A3-BEBDB923B14D}",
+     "weight": 1200.0
+    }
+   ]
+  },
+  "b1b": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    },
+    {
+     "pylon": 2,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    },
+    {
+     "pylon": 3,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    },
+    {
+     "pylon": 2,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    },
+    {
+     "pylon": 3,
+     "name": "MPRL - 4 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{MPRL_4x_AGM154A}",
+     "weight": 2700.9
+    }
+   ]
+  },
+  "b52h": {
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "HSAB - 6 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{HSAB_6x_AGM154A_L}",
+     "weight": 3998.6
+    },
+    {
+     "pylon": 2,
+     "name": "CSRL - 8 x GBU-31(V)1/B - JDAM, 2000lb GPS Guided Bomb",
+     "clsid": "{CSRL_GBU31V1}",
+     "weight": 8840.6
+    },
+    {
+     "pylon": 3,
+     "name": "HSAB - 6 x AGM-154A - JSOW CEB (CBU-type)",
+     "clsid": "{HSAB_6x_AGM154A_R}",
+     "weight": 3998.6
+    }
+   ]
+  },
+  "tornado_gr4": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "TORNADO Fuel tank",
+     "clsid": "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+     "weight": 1275.0
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 8,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 2,
+     "name": "TORNADO Fuel tank",
+     "clsid": "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+     "weight": 1275.0
+    },
+    {
+     "pylon": 3,
+     "name": "ALARM",
+     "clsid": "{E6747967-B1F0-4C77-977B-AB2E6EB0C102}",
+     "weight": 268.0
+    },
+    {
+     "pylon": 10,
+     "name": "ALARM",
+     "clsid": "{E6747967-B1F0-4C77-977B-AB2E6EB0C102}",
+     "weight": 268.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 2,
+     "name": "TORNADO Fuel tank",
+     "clsid": "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+     "weight": 1275.0
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-27 - 2000lb Laser Guided Penetrator Bomb",
+     "clsid": "{EF0A9419-01D6-473B-99A3-BEBDB923B14D}",
+     "weight": 1200.0
+    },
+    {
+     "pylon": 5,
+     "name": "AN/AAQ-28 LITENING - Targeting Pod",
+     "clsid": "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+     "weight": 208.0
+    },
+    {
+     "pylon": 9,
+     "name": "GBU-27 - 2000lb Laser Guided Penetrator Bomb",
+     "clsid": "{EF0A9419-01D6-473B-99A3-BEBDB923B14D}",
+     "weight": 1200.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "tornado_ids": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "TORNADO Fuel tank",
+     "clsid": "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+     "weight": 1275.0
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 5,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 8,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 2,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 11,
+     "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
+     "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+     "weight": 406.4
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 2,
+     "name": "TORNADO Fuel tank",
+     "clsid": "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+     "weight": 1275.0
+    },
+    {
+     "pylon": 3,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    },
+    {
+     "pylon": 5,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 6,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 7,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 8,
+     "name": "Mk-82 - 500lb GP Bomb LD",
+     "clsid": "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+     "weight": 228.0
+    },
+    {
+     "pylon": 10,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7
+    }
+   ]
+  },
+  "m2000c": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    },
+    {
+     "pylon": 2,
+     "name": "BLG-66-AC Belouga",
+     "clsid": "{BLG66_BELOUGA_AC}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 3,
+     "name": "BLG-66-AC Belouga",
+     "clsid": "{BLG66_BELOUGA_AC}",
+     "weight": 305.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 7,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 8,
+     "name": "RPL 541 2000 liters Fuel Tank ",
+     "clsid": "{M2KC_08_RPL541}",
+     "weight": 1837.0
+    },
+    {
+     "pylon": 9,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    },
+    {
+     "pylon": 2,
+     "name": "Matra Super 530D",
+     "clsid": "{Matra_S530D}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 5,
+     "name": "RPL 522 1300 liters Fuel Tank",
+     "clsid": "{M2KC_RPL_522}",
+     "weight": 1170.0
+    },
+    {
+     "pylon": 8,
+     "name": "Matra Super 530D",
+     "clsid": "{Matra_S530D}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 9,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    },
+    {
+     "pylon": 2,
+     "name": "Matra Super 530D",
+     "clsid": "{Matra_S530D}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 5,
+     "name": "RPL 522 1300 liters Fuel Tank",
+     "clsid": "{M2KC_RPL_522}",
+     "weight": 1170.0
+    },
+    {
+     "pylon": 8,
+     "name": "Matra Super 530D",
+     "clsid": "{Matra_S530D}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 9,
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0
+    }
+   ]
+  },
+  "m2000_5": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 2 IR AAM",
+     "clsid": "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 2,
+     "name": "M2000 Fuel tank",
+     "clsid": "{414DA830-B61A-4F9E-B71B-C2F6832E1D7A}",
+     "weight": 1050.0
+    },
+    {
+     "pylon": 9,
+     "name": "R550 Magic 2 IR AAM",
+     "clsid": "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+     "weight": 89.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 2 IR AAM",
+     "clsid": "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 2,
+     "name": "M2000 Fuel tank",
+     "clsid": "{414DA830-B61A-4F9E-B71B-C2F6832E1D7A}",
+     "weight": 1050.0
+    },
+    {
+     "pylon": 9,
+     "name": "R550 Magic 2 IR AAM",
+     "clsid": "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+     "weight": 89.0
+    }
+   ]
+  },
+  "f5e": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "F-5 275Gal Fuel tank",
+     "clsid": "{0395076D-2F77-4420-9D33-087A4398130B}",
+     "weight": 909.0
+    },
+    {
+     "pylon": 7,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    },
+    {
+     "pylon": 2,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 4,
+     "name": "F-5 275Gal Fuel tank",
+     "clsid": "{0395076D-2F77-4420-9D33-087A4398130B}",
+     "weight": 909.0
+    },
+    {
+     "pylon": 5,
+     "name": "LAU-68 - 7 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{A021F29D-18AB-4d3e-985C-FC9C60E35E9E}",
+     "weight": 114.5
+    },
+    {
+     "pylon": 6,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 7,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    },
+    {
+     "pylon": 3,
+     "name": "F-5 275Gal Fuel tank",
+     "clsid": "{0395076D-2F77-4420-9D33-087A4398130B}",
+     "weight": 909.0
+    },
+    {
+     "pylon": 7,
+     "name": "Captive AIM-9M for ACM",
+     "clsid": "CATM-9M",
+     "weight": 85.7
+    }
+   ]
+  },
+  "jf17": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-20",
+     "clsid": "DIS_MK_20",
+     "weight": 222.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12",
+     "clsid": "DIS_GBU_12",
+     "weight": 275.0
+    },
+    {
+     "pylon": 4,
+     "name": "AVIC WMD7 FLIR/LDT POD",
+     "clsid": "DIS_WMD7",
+     "weight": 295.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12",
+     "clsid": "DIS_GBU_12",
+     "weight": 275.0
+    },
+    {
+     "pylon": 6,
+     "name": "Mk-20",
+     "clsid": "DIS_MK_20",
+     "weight": 222.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "SD-10A AAM",
+     "clsid": "DIS_SD-10",
+     "weight": 259.0
+    },
+    {
+     "pylon": 6,
+     "name": "SD-10A AAM",
+     "clsid": "DIS_SD-10",
+     "weight": 259.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-20",
+     "clsid": "DIS_MK_20",
+     "weight": 222.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12",
+     "clsid": "DIS_GBU_12",
+     "weight": 275.0
+    },
+    {
+     "pylon": 4,
+     "name": "AVIC WMD7 FLIR/LDT POD",
+     "clsid": "DIS_WMD7",
+     "weight": 295.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12",
+     "clsid": "DIS_GBU_12",
+     "weight": 275.0
+    },
+    {
+     "pylon": 6,
+     "name": "Mk-20",
+     "clsid": "DIS_MK_20",
+     "weight": 222.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "SD-10A AAM",
+     "clsid": "DIS_SD-10",
+     "weight": 259.0
+    },
+    {
+     "pylon": 6,
+     "name": "SD-10A AAM",
+     "clsid": "DIS_SD-10",
+     "weight": 259.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "LD-10",
+     "clsid": "DIS_LD-10",
+     "weight": 289.0
+    },
+    {
+     "pylon": 6,
+     "name": "LD-10",
+     "clsid": "DIS_LD-10",
+     "weight": 289.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    },
+    {
+     "pylon": 2,
+     "name": "Mk-83 - 1000lb GP Bomb LD",
+     "clsid": "{7A44FF09-527C-4B7E-B42B-3F111CFE50FB}",
+     "weight": 454.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-10",
+     "clsid": "DIS_GBU_10",
+     "weight": 1162.0
+    },
+    {
+     "pylon": 4,
+     "name": "GBU-10",
+     "clsid": "DIS_GBU_10",
+     "weight": 1162.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-10",
+     "clsid": "DIS_GBU_10",
+     "weight": 1162.0
+    },
+    {
+     "pylon": 6,
+     "name": "AVIC WMD7 FLIR/LDT POD",
+     "clsid": "DIS_WMD7",
+     "weight": 295.0
+    },
+    {
+     "pylon": 7,
+     "name": "PL-5EII",
+     "clsid": "DIS_PL-5EII",
+     "weight": 153.0
+    }
+   ]
+  },
+  "mirage_f1": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 2,
+     "name": "BLG-66 Belouga AC - CBU, 151 x HEAT Bomblets",
+     "clsid": "{BLG66_AC}",
+     "weight": 300.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "RP35 Pylon Fuel Tank (1137 l usable)",
+     "clsid": "PTB-1200-F1",
+     "weight": 1058.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 6,
+     "name": "BLG-66 Belouga AC - CBU, 151 x HEAT Bomblets",
+     "clsid": "{BLG66_AC}",
+     "weight": 300.0
+    },
+    {
+     "pylon": 7,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 3,
+     "name": "RP35 Pylon Fuel Tank (1137 l usable)",
+     "clsid": "PTB-1200-F1",
+     "weight": 1058.0
+    },
+    {
+     "pylon": 7,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 2,
+     "name": "BLG-66 Belouga AC - CBU, 151 x HEAT Bomblets",
+     "clsid": "{BLG66_AC}",
+     "weight": 300.0
+    },
+    {
+     "pylon": 3,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 4,
+     "name": "RP35 Pylon Fuel Tank (1137 l usable)",
+     "clsid": "PTB-1200-F1",
+     "weight": 1058.0
+    },
+    {
+     "pylon": 5,
+     "name": "GBU-12 - 500lb Laser Guided Bomb",
+     "clsid": "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}",
+     "weight": 277.0
+    },
+    {
+     "pylon": 6,
+     "name": "BLG-66 Belouga AC - CBU, 151 x HEAT Bomblets",
+     "clsid": "{BLG66_AC}",
+     "weight": 300.0
+    },
+    {
+     "pylon": 7,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    },
+    {
+     "pylon": 3,
+     "name": "RP35 Pylon Fuel Tank (1137 l usable)",
+     "clsid": "PTB-1200-F1",
+     "weight": 1058.0
+    },
+    {
+     "pylon": 7,
+     "name": "R550 Magic 1 IR AAM",
+     "clsid": "{R550_Magic_1}",
+     "weight": 89.0
+    }
+   ]
+  },
+  "ajs37": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "Rb-75A (AGM-65A Maverick) (TV ASM)",
+     "clsid": "{RB75}",
+     "weight": 248.1
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    },
+    {
+     "pylon": 5,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    },
+    {
+     "pylon": 6,
+     "name": "Rb-75A (AGM-65A Maverick) (TV ASM)",
+     "clsid": "{RB75}",
+     "weight": 248.1
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 2,
+     "name": "Rb-75A (AGM-65A Maverick) (TV ASM)",
+     "clsid": "{RB75}",
+     "weight": 248.1
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    },
+    {
+     "pylon": 5,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    },
+    {
+     "pylon": 6,
+     "name": "Rb-75A (AGM-65A Maverick) (TV ASM)",
+     "clsid": "{RB75}",
+     "weight": 248.1
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 2,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    },
+    {
+     "pylon": 6,
+     "name": "LAU-7 - RB-74 (AIM-9L) Sidewinder IR AAM",
+     "clsid": "{Robot74}",
+     "weight": 126.7
+    }
+   ]
+  },
+  "ah1w": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-61 - 19 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{FD90A1DC-9147-49FA-BF56-CB83EF0BD32B}",
+     "weight": 290.6
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-61 - 19 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{FD90A1DC-9147-49FA-BF56-CB83EF0BD32B}",
+     "weight": 290.6
+    },
+    {
+     "pylon": 4,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    },
+    {
+     "pylon": 2,
+     "name": "LAU-61 - 19 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{FD90A1DC-9147-49FA-BF56-CB83EF0BD32B}",
+     "weight": 290.6
+    },
+    {
+     "pylon": 3,
+     "name": "LAU-61 - 19 x UnGd Rkts, 70 mm Hydra 70 M151 HE",
+     "clsid": "{FD90A1DC-9147-49FA-BF56-CB83EF0BD32B}",
+     "weight": 290.6
+    },
+    {
+     "pylon": 4,
+     "name": "M299 - 4 x AGM-114K Hellfire",
+     "clsid": "{88D18A5E-99C8-4B04-B40B-1C02F2018B6E}",
+     "weight": 244.5
+    }
+   ]
+  },
+  "oh58d": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "1xAGM-114K",
+     "clsid": "OH58D_AGM_114_L1",
+     "weight": 93.0
+    },
+    {
+     "pylon": 5,
+     "name": "1xAGM-114K",
+     "clsid": "OH58D_AGM_114_R1",
+     "weight": 93.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "1xAGM-114K",
+     "clsid": "OH58D_AGM_114_L1",
+     "weight": 93.0
+    },
+    {
+     "pylon": 5,
+     "name": "1xAGM-114K",
+     "clsid": "OH58D_AGM_114_R1",
+     "weight": 93.0
+    }
+   ]
+  },
+  "sa342": {
+   "BAI": [],
+   "CAS": []
+  },
+  "mig29a": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "mig29g": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1400L",
+     "clsid": "{2BEC576B-CDF5-4B7F-961F-B0FA4312B841}",
+     "weight": 1262.5
+    },
+    {
+     "pylon": 5,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "mig31": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{B0DBC591-0F52-4F7D-AD7B-51E67725FB81}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 5,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 6,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{275A2855-4A79-4B2D-B082-91EA2ADF4691}",
+     "weight": 158.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{B0DBC591-0F52-4F7D-AD7B-51E67725FB81}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 5,
+     "name": "R-33 (AA-9 Amos) - Semi-Act Rdr",
+     "clsid": "{F1243568-8EF0-49D4-9CB5-4DA90D92BC1D}",
+     "weight": 490.0
+    },
+    {
+     "pylon": 6,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{275A2855-4A79-4B2D-B082-91EA2ADF4691}",
+     "weight": 158.0
+    }
+   ]
+  },
+  "mig25pd": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
+     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
+     "weight": 465.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
+     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
+     "weight": 465.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
+     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
+     "weight": 465.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
+     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
+     "weight": 465.0
+    }
+   ]
+  },
+  "mig23mld": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 5,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 2,
+     "name": "R-24R (AA-7 Apex SA) - Semi-Act Rdr",
+     "clsid": "{CCF898C9-5BC7-49A4-9D1E-C3ED3D5166A1}",
+     "weight": 215.0
+    },
+    {
+     "pylon": 3,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{B0DBC591-0F52-4F7D-AD7B-51E67725FB81}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 5,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{275A2855-4A79-4B2D-B082-91EA2ADF4691}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 6,
+     "name": "R-24R (AA-7 Apex SA) - Semi-Act Rdr",
+     "clsid": "{CCF898C9-5BC7-49A4-9D1E-C3ED3D5166A1}",
+     "weight": 215.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 5,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 2,
+     "name": "R-24R (AA-7 Apex SA) - Semi-Act Rdr",
+     "clsid": "{CCF898C9-5BC7-49A4-9D1E-C3ED3D5166A1}",
+     "weight": 215.0
+    },
+    {
+     "pylon": 3,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{B0DBC591-0F52-4F7D-AD7B-51E67725FB81}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 5,
+     "name": "APU-60-2M with 2 x R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{275A2855-4A79-4B2D-B082-91EA2ADF4691}",
+     "weight": 158.0
+    },
+    {
+     "pylon": 6,
+     "name": "R-24R (AA-7 Apex SA) - Semi-Act Rdr",
+     "clsid": "{CCF898C9-5BC7-49A4-9D1E-C3ED3D5166A1}",
+     "weight": 215.0
+    }
+   ]
+  },
+  "mig27k": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-250 - 42 x PTAB-2.5M, 250kg CBU Medium HEAT/AP",
+     "clsid": "{4203753F-8198-4E85-9924-6F8FF679F9FF}",
+     "weight": 244.6
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-250 - 42 x PTAB-2.5M, 250kg CBU Medium HEAT/AP",
+     "clsid": "{4203753F-8198-4E85-9924-6F8FF679F9FF}",
+     "weight": 244.6
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 2,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-250 - 42 x PTAB-2.5M, 250kg CBU Medium HEAT/AP",
+     "clsid": "{4203753F-8198-4E85-9924-6F8FF679F9FF}",
+     "weight": 244.6
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-250 - 42 x PTAB-2.5M, 250kg CBU Medium HEAT/AP",
+     "clsid": "{4203753F-8198-4E85-9924-6F8FF679F9FF}",
+     "weight": 244.6
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 2,
+     "name": "Kh-25MPU (Updated AS-12 Kegler) - 320kg, ARM, IN & Pas Rdr",
+     "clsid": "{752AF1D2-EBCC-4bd7-A1E7-2357F5601C70}",
+     "weight": 370.0
+    },
+    {
+     "pylon": 3,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 7,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25MPU (Updated AS-12 Kegler) - 320kg, ARM, IN & Pas Rdr",
+     "clsid": "{752AF1D2-EBCC-4bd7-A1E7-2357F5601C70}",
+     "weight": 370.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 2,
+     "name": "KAB-500LG - 500kg Laser Guided Bomb",
+     "clsid": "{BA565F89-2373-4A84-9502-A0E017D3A44A}",
+     "weight": 534.0
+    },
+    {
+     "pylon": 3,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "Fuel tank 800L",
+     "clsid": "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+     "weight": 680.0
+    },
+    {
+     "pylon": 6,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 7,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 8,
+     "name": "KAB-500LG - 500kg Laser Guided Bomb",
+     "clsid": "{BA565F89-2373-4A84-9502-A0E017D3A44A}",
+     "weight": 534.0
+    }
+   ]
+  },
+  "su33": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 9,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 9,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-27ER (AA-10 Alamo C) - Semi-Act Extended Range",
+     "clsid": "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+     "weight": 350.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "su30": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{3468C652-E830-4E73-AFA9-B5F260AB7C3D}",
+     "weight": 846.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 5,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 6,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 7,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{3468C652-E830-4E73-AFA9-B5F260AB7C3D}",
+     "weight": 846.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 9,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 9,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-31P (AS-17 Krypton) - 600kg, ARM, IN & Pas Rdr",
+     "clsid": "{D8F2C90B-887B-4B9E-9FE2-996BC9E9AF03}",
+     "weight": 786.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-31P (AS-17 Krypton) - 600kg, ARM, IN & Pas Rdr",
+     "clsid": "{D8F2C90B-887B-4B9E-9FE2-996BC9E9AF03}",
+     "weight": 786.0
+    },
+    {
+     "pylon": 9,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 4,
+     "name": "KAB-500LG - 500kg Laser Guided Bomb",
+     "clsid": "{BA565F89-2373-4A84-9502-A0E017D3A44A}",
+     "weight": 534.0
+    },
+    {
+     "pylon": 5,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 8,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "su34": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{X-29L}",
+     "weight": 660.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 5,
+     "name": "MBD3-U6-68 - 5 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{MBD3_U6_5*FAB-250}",
+     "weight": 1478.0
+    },
+    {
+     "pylon": 8,
+     "name": "MBD3-U6-68 - 5 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{MBD3_U6_5*FAB-250}",
+     "weight": 1478.0
+    },
+    {
+     "pylon": 9,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 10,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{X-29L}",
+     "weight": 660.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{X-29L}",
+     "weight": 660.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 5,
+     "name": "MBD3-U6-68 - 5 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{MBD3_U6_5*FAB-250}",
+     "weight": 1478.0
+    },
+    {
+     "pylon": 8,
+     "name": "MBD3-U6-68 - 5 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{MBD3_U6_5*FAB-250}",
+     "weight": 1478.0
+    },
+    {
+     "pylon": 9,
+     "name": "RBK-500U - 126 x OAB-2.5RT, 500kg CBU HE/Frag",
+     "clsid": "{RBK_500U_OAB_2_5RT}",
+     "weight": 427.0
+    },
+    {
+     "pylon": 10,
+     "name": "Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser",
+     "clsid": "{X-29L}",
+     "weight": 660.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 2,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 10,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 11,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "KAB-500LG - 500kg Laser Guided Bomb",
+     "clsid": "{BA565F89-2373-4A84-9502-A0E017D3A44A}",
+     "weight": 534.0
+    },
+    {
+     "pylon": 4,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 7,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 9,
+     "name": "KAB-1500L - 1500kg Laser Guided Bomb",
+     "clsid": "{39821727-F6E2-45B3-B1F0-490CC8921D1E}",
+     "weight": 1560.0
+    },
+    {
+     "pylon": 12,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "su25": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 6,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 7,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 9,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 6,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 7,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 9,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ]
+  },
+  "su25tm": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 6,
+     "name": "Kopyo radar pod",
+     "clsid": "{F4920E62-A99A-11d8-9897-000476191836}",
+     "weight": 115.0
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 9,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 10,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 11,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 4,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 6,
+     "name": "Kopyo radar pod",
+     "clsid": "{F4920E62-A99A-11d8-9897-000476191836}",
+     "weight": 115.0
+    },
+    {
+     "pylon": 7,
+     "name": "B-8M1 - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{F72F47E5-C83A-4B85-96ED-D3E46671EE9A}",
+     "weight": 375.0
+    },
+    {
+     "pylon": 8,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 9,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{79D73885-0801-45a9-917F-C90FE1CE3DFC}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 10,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 11,
+     "name": "R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{682A481F-0CB5-4693-A382-D00DD4A156D7}",
+     "weight": 43.5
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 2,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel tank 800L Wing",
+     "clsid": "{E8D4652F-FD48-45B7-BA5B-2AE05BB5A9CF}",
+     "weight": 760.0
+    },
+    {
+     "pylon": 5,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 7,
+     "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
+     "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
+     "weight": 836.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "su17m4": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 2,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 3,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 4,
+     "name": "MBD3-U4T - 4 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{6A367BB4-327F-4A04-8D9E-6D86BDC98E7E}",
+     "weight": 1060.0
+    },
+    {
+     "pylon": 5,
+     "name": "MBD3-U4T - 4 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{6A367BB4-327F-4A04-8D9E-6D86BDC98E7E}",
+     "weight": 1060.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 7,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    },
+    {
+     "pylon": 2,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 3,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 4,
+     "name": "MBD3-U4T - 4 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{6A367BB4-327F-4A04-8D9E-6D86BDC98E7E}",
+     "weight": 1060.0
+    },
+    {
+     "pylon": 5,
+     "name": "MBD3-U4T - 4 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{6A367BB4-327F-4A04-8D9E-6D86BDC98E7E}",
+     "weight": 1060.0
+    },
+    {
+     "pylon": 6,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 7,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-25ML (AS-10 Karen) - 300kg, ASM, Semi-Act Laser",
+     "clsid": "{6DADF342-D4BA-4D8A-B081-BA928C4AF86D}",
+     "weight": 360.0
+    }
+   ],
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "FAB-500M-62 - 500 kg GP Bomb LD",
+     "clsid": "{37DCC01E-9E02-432F-B61D-10C166CA2798}",
+     "weight": 520.0
+    },
+    {
+     "pylon": 2,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 3,
+     "name": "FAB-500M-62 - 500 kg GP Bomb LD",
+     "clsid": "{37DCC01E-9E02-432F-B61D-10C166CA2798}",
+     "weight": 520.0
+    },
+    {
+     "pylon": 4,
+     "name": "Fuel tank 1150L",
+     "clsid": "{414E383A-59EB-41BC-8566-2B5E0788ED1F}",
+     "weight": 975.2
+    },
+    {
+     "pylon": 6,
+     "name": "FAB-500M-62 - 500 kg GP Bomb LD",
+     "clsid": "{37DCC01E-9E02-432F-B61D-10C166CA2798}",
+     "weight": 520.0
+    },
+    {
+     "pylon": 7,
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5
+    },
+    {
+     "pylon": 8,
+     "name": "FAB-500M-62 - 500 kg GP Bomb LD",
+     "clsid": "{37DCC01E-9E02-432F-B61D-10C166CA2798}",
+     "weight": 520.0
+    }
+   ]
+  },
+  "tu22m3": {
+   "STRIKE": [
+    {
+     "pylon": 1,
+     "name": "Kh-22 (AS-4 Kitchen) - 1000kg, AShM, IN & Act/Pas Rdr",
+     "clsid": "{12429ECF-03F0-4DF6-BCBD-5D38B6343DE1}",
+     "weight": 6800.0
+    },
+    {
+     "pylon": 2,
+     "name": "MBD3-U9M - 9 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{E1AAE713-5FC3-4CAA-9FF5-3FDCFB899E33}",
+     "weight": 2310.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-22 (AS-4 Kitchen) - 1000kg, AShM, IN & Act/Pas Rdr",
+     "clsid": "{12429ECF-03F0-4DF6-BCBD-5D38B6343DE1}",
+     "weight": 6800.0
+    },
+    {
+     "pylon": 4,
+     "name": "MBD3-U9M - 9 x OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{E1AAE713-5FC3-4CAA-9FF5-3FDCFB899E33}",
+     "weight": 2310.0
+    },
+    {
+     "pylon": 5,
+     "name": "Kh-22 (AS-4 Kitchen) - 1000kg, AShM, IN & Act/Pas Rdr",
+     "clsid": "{12429ECF-03F0-4DF6-BCBD-5D38B6343DE1}",
+     "weight": 6800.0
+    }
+   ]
+  },
+  "tu95ms": {
+   "STRIKE": [
+    {
+     "pylon": 2,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 3,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 4,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 5,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 6,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 7,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 8,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    },
+    {
+     "pylon": 9,
+     "name": "Kh-555",
+     "clsid": "{Kh-555}",
+     "weight": 1280.0
+    }
+   ]
+  },
+  "j11a": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    },
+    {
+     "pylon": 3,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 4,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 7,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 8,
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0
+    },
+    {
+     "pylon": 10,
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0
+    }
+   ]
+  },
+  "mig21bis": {
+   "CAP": [
+    {
+     "pylon": 1,
+     "name": "APU-60-1M with R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60}",
+     "weight": 75.0
+    },
+    {
+     "pylon": 2,
+     "name": "APU-60-1M with R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60}",
+     "weight": 75.0
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel Tank 490 L Central (21)",
+     "clsid": "{PTB_490C_MIG21}",
+     "weight": 434.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    },
+    {
+     "pylon": 2,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 3,
+     "name": "SPS-141-100 (21) - jamming and countermeasures pod",
+     "clsid": "{SPS-141-100}",
+     "weight": 150.0
+    },
+    {
+     "pylon": 4,
+     "name": "RBK-500-255 - 30 x PTAB-10-5, 500kg CBU Heavy HEAT/AP",
+     "clsid": "{D5435F26-F120-4FA3-9867-34ACE562EF1B}",
+     "weight": 253.0
+    },
+    {
+     "pylon": 5,
+     "name": "OFAB-250-270 - 250 kg GP Bomb LD",
+     "clsid": "{3C612111-C7AD-476E-8A8E-2485812F4E5C}",
+     "weight": 266.0
+    }
+   ],
+   "ESCORT": [
+    {
+     "pylon": 1,
+     "name": "APU-60-1M with R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60}",
+     "weight": 75.0
+    },
+    {
+     "pylon": 2,
+     "name": "APU-60-1M with R-60 (AA-8 Aphid) - IR AAM",
+     "clsid": "{R-60}",
+     "weight": 75.0
+    },
+    {
+     "pylon": 3,
+     "name": "Fuel Tank 490 L Central (21)",
+     "clsid": "{PTB_490C_MIG21}",
+     "weight": 434.0
+    }
+   ]
+  },
+  "ka50": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "APU-6 - 6 x 9M127 Vikhr - ATGM, LOSBR, Tandem HEAT/Frag",
+     "clsid": "{A6FD14D3-6D30-4C85-88A7-8D17BEE120E2}",
+     "weight": 416.2
+    },
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "APU-6 - 6 x 9M127 Vikhr - ATGM, LOSBR, Tandem HEAT/Frag",
+     "clsid": "{A6FD14D3-6D30-4C85-88A7-8D17BEE120E2}",
+     "weight": 416.2
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "APU-6 - 6 x 9M127 Vikhr - ATGM, LOSBR, Tandem HEAT/Frag",
+     "clsid": "{A6FD14D3-6D30-4C85-88A7-8D17BEE120E2}",
+     "weight": 416.2
+    },
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "APU-6 - 6 x 9M127 Vikhr - ATGM, LOSBR, Tandem HEAT/Frag",
+     "clsid": "{A6FD14D3-6D30-4C85-88A7-8D17BEE120E2}",
+     "weight": 416.2
+    }
+   ]
+  },
+  "mi28n": {
+   "BAI": [
+    {
+     "pylon": 1,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 1,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ]
+  },
+  "mi24v": {
+   "BAI": [
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ],
+   "CAS": [
+    {
+     "pylon": 2,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 3,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 4,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    },
+    {
+     "pylon": 5,
+     "name": "B-8V20A - 20 x UnGd Rkts, 80 mm S-8KOM HEAT/Frag",
+     "clsid": "{6A4B9E69-64FE-439a-9163-3A87FB6A4D81}",
+     "weight": 348.0
+    }
+   ]
+  }
+ }
+}

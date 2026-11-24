@@ -5,9 +5,10 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection } from "geojson";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Flight } from "../api/client";
-import { factionColor, levelColor, sideOf } from "../lib/format";
-import { affiliation, airbaseSidc, airSidc, convoySidc, designation, samSidc, symbol, unitSidc } from "../lib/symbols";
+import type { Briefing, Flight } from "../api/client";
+import { ageLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
+import { useLiveFeed, type LiveFeed } from "../lib/livePositions";
+import { affiliation, airbaseSidc, airSidc, convoySidc, designation, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { CampaignData } from "../lib/useCampaign";
 import type { Layers, Selection } from "../lib/selection";
 
@@ -30,9 +31,13 @@ interface Props {
   focus?: { lngLat: [number, number]; seq: number };
   /** Side seen as friendly (APP-6 affiliation is relative to the viewer). */
   viewpoint: string;
+  /** Mission package of the selected flight: its named waypoints are drawn. */
+  briefing?: Briefing;
+  /** Display units: also the scale bar's. */
+  units: Units;
 }
 
-export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: Props) {
+export function MapView({ data, layers, selected, onSelect, focus, viewpoint, briefing, units }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MLMap | null>(null);
   const fitted = useRef(false);
@@ -40,14 +45,18 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
   selectRef.current = onSelect;
   const { campaign } = data;
 
+  const scaleRef = useRef<ScaleControl | null>(null);
+  useEffect(() => scaleRef.current?.setUnit(units === "imperial" ? "nautical" : "metric"), [units, map]);
   // ---- create the map once
   useEffect(() => {
     if (!container.current) return;
     const m = new MLMap({ container: container.current, style: STYLE, center: [38, 36], zoom: 6, attributionControl: { compact: true } });
     m.addControl(new NavigationControl({ visualizePitch: false }), "top-right");
-    m.addControl(new ScaleControl({ unit: "metric" }), "bottom-right");
+    const scale = new ScaleControl({ unit: "metric" });
+    scaleRef.current = scale;
+    m.addControl(scale, "bottom-right");
     m.on("load", () => {
-      for (const id of ["territory", "links", "fronts", "routes", "flightpaths", "provinces", "fires", "ad-rings", "iads"]) {
+      for (const id of ["territory", "links", "fronts", "routes", "flightpaths", "provinces", "fires", "ad-rings", "iads", "wps"]) {
         m.addSource(id, { type: "geojson", data: fc([]) });
       }
       // Territories go under the base map's water: the sea hides the part of a
@@ -67,9 +76,12 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
       m.addLayer({ id: "ad-ring", type: "line", source: "ad-rings", filter: ["==", ["get", "ring"], "range"], paint: { "line-color": ["get", "color"], "line-width": ["case", ["get", "selected"], 2.2, 1.1], "line-opacity": ["case", ["get", "active"], 0.75, 0.35] } });
       m.addLayer({ id: "ad-ring-inactive", type: "line", source: "ad-rings", filter: ["all", ["==", ["get", "ring"], "range"], ["!", ["get", "active"]]], paint: { "line-color": "#9ca3af", "line-width": 1, "line-opacity": 0.5, "line-dasharray": [2, 2] } });
       m.addLayer({ id: "ad-detect", type: "line", source: "ad-rings", filter: ["==", ["get", "ring"], "detect"], paint: { "line-color": ["get", "color"], "line-width": 1, "line-opacity": 0.45, "line-dasharray": [1, 3] } });
+      m.addLayer({ id: "sensor-ring", type: "line", source: "ad-rings", filter: ["==", ["get", "ring"], "awacs"], paint: { "line-color": "#67e8f9", "line-width": 1.5, "line-opacity": 0.7, "line-dasharray": [4, 3] } });
       m.addLayer({ id: "iads-link", type: "line", source: "iads", paint: { "line-color": ["get", "color"], "line-width": 1, "line-opacity": 0.5, "line-dasharray": [0.5, 2] } });
       m.addLayer({ id: "fire-arc", type: "line", source: "fires", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": "#f97316", "line-width": 2, "line-opacity": ["*", 0.9, ["get", "opacity"]], "line-dasharray": [2, 1.2] } });
       m.addLayer({ id: "fire-impact", type: "circle", source: "fires", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": ["+", 4, ["*", 8, ["-", 1, ["get", "opacity"]]]], "circle-color": "#fb923c", "circle-blur": 0.4, "circle-opacity": ["*", 0.85, ["get", "opacity"]], "circle-stroke-color": "#fed7aa", "circle-stroke-width": 1.5, "circle-stroke-opacity": ["get", "opacity"] } });
+      m.addLayer({ id: "wp-dot", type: "circle", source: "wps", paint: { "circle-radius": 5, "circle-color": "#0b0f17", "circle-stroke-color": "#fcd34d", "circle-stroke-width": 2 } });
+      m.addLayer({ id: "wp-label", type: "symbol", source: "wps", layout: { "text-field": ["get", "label"], "text-font": FONT, "text-size": 11, "text-offset": [0, -1.2], "text-anchor": "bottom", "text-allow-overlap": true }, paint: { "text-color": "#fde68a", "text-halo-color": "#05070b", "text-halo-width": 1.5 } });
       m.addLayer({ id: "province-dot", type: "circle", source: "provinces", paint: { "circle-radius": ["+", 3, ["*", 0.6, ["get", "vp"]]], "circle-color": ["get", "color"], "circle-stroke-color": ["case", ["get", "depot"], "#facc15", "#0b0f17"], "circle-stroke-width": ["case", ["get", "depot"], 2.5, 1] } });
       m.addLayer({ id: "province-label", type: "symbol", source: "provinces", layout: { "text-field": ["get", "name"], "text-font": FONT, "text-size": 12, "text-offset": [0, 1.2], "text-anchor": "top", "text-allow-overlap": false }, paint: { "text-color": "#e5e7eb", "text-halo-color": "#05070b", "text-halo-width": 1.4 } });
 
@@ -165,11 +177,16 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
         rings.push({ type: "Feature", properties: { ring: "detect", color }, geometry: { type: "LineString", coordinates: circle(u.ll, u.detection_km * 1000) } });
       }
     }
+    // Fog of war: the reach of the viewer's AWACS radars.
+    for (const s of data.intel?.sensors ?? []) {
+      if (s.kind !== "awacs" || !s.ll) continue;
+      rings.push({ type: "Feature", properties: { ring: "awacs" }, geometry: { type: "LineString", coordinates: circle(s.ll, s.range_km * 1000) } });
+    }
     src("ad-rings")?.setData(fc(rings));
     src("iads")?.setData(
       fc((data.airDefense?.links ?? []).map((l) => ({ type: "Feature", properties: { color: factionColor(campaign, l.faction) }, geometry: { type: "LineString", coordinates: line(l.ll) } }))),
     );
-  }, [map, data.map, data.fronts, data.forces, data.logistics, data.ato, data.airDefense, campaign, selected]);
+  }, [map, data.map, data.fronts, data.forces, data.logistics, data.ato, data.airDefense, data.intel, campaign, selected]);
 
   // ---- artillery fire missions: remembered client side and faded in *real* time,
   // so they stay visible a few seconds whatever the time compression.
@@ -210,6 +227,15 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
     return () => window.clearInterval(timer);
   }, [map]);
 
+  // ---- named waypoints of the selected flight
+  useEffect(() => {
+    if (!map) return;
+    const feats: Feature[] = (briefing?.waypoints ?? []).flatMap((w) =>
+      w.ll ? [{ type: "Feature", properties: { label: `WP${w.index} ${w.name} ${w.eta.label.slice(3)}${w.alt_m ? ` ${fmtAlt(w.alt_m, units)}` : ""}` }, geometry: { type: "Point", coordinates: [w.ll[1], w.ll[0]] } } as Feature] : [],
+    );
+    (map.getSource("wps") as GeoJSONSource | undefined)?.setData(fc(feats));
+  }, [map, briefing, units]);
+
   // ---- layer visibility
   useEffect(() => {
     if (!map) return;
@@ -222,6 +248,7 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
     vis(["flightpaths"], layers.air);
     vis(["ad-ring-fill", "ad-ring", "ad-ring-inactive", "ad-detect", "iads-link"], layers.airDefense);
     vis(["province-label"], layers.labels);
+    vis(["sensor-ring"], layers.air);
   }, [map, layers]);
 
   // ---- HTML markers: NATO APP-6 symbols (milsymbol)
@@ -239,15 +266,16 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
     return (data.forces?.divisions ?? []).flatMap((d) => {
       const at = lngLat(d.ll);
       if (!at) return [];
-      const sym = symbol(unitSidc(d.template, aff(d.faction)), { size: 26, uniqueDesignation: designation(d.name) });
+      const sym = symbol(unitSidc(d.template, aff(d.faction), knownStatus(d.intel)), { size: 26, uniqueDesignation: designation(d.name) });
+      const org = d.org != null ? `<i style="width:${d.org * 100}%;background:#60a5fa"></i>` : "";
       const html =
         `<div class="unit-symbol">${sym.svg}</div>` +
-        `<div class="unit-bars" style="margin-left:${sym.anchor[0] - 16}px"><i style="width:${d.strength * 100}%;background:${levelColor(d.strength)}"></i><i style="width:${d.org * 100}%;background:#60a5fa"></i></div>` +
-        `<div class="unit-label">${d.name}</div>`;
-      const cls = ["unit", d.battle ? "in-battle" : "", d.authority !== "campaign" ? "in-game" : "", selectedIs(selected, "division", d.id) ? "selected" : ""].join(" ");
+        `<div class="unit-bars" style="margin-left:${sym.anchor[0] - 16}px"><i style="width:${d.strength * 100}%;background:${levelColor(d.strength)}"></i>${org}</div>` +
+        `<div class="unit-label">${d.name}${d.intel?.stale ? ` <small>${ageLabel(d.intel.age_s)}</small>` : ""}</div>`;
+      const cls = ["unit", d.battle ? "in-battle" : "", d.authority !== "campaign" ? "in-game" : "", d.intel?.stale ? "stale" : "", selectedIs(selected, "division", d.id) ? "selected" : ""].join(" ");
       const stack = stacks.get(spot(d.pos)) ?? [d.id];
       const shift: [number, number] = [(stack.indexOf(d.id) - (stack.length - 1) / 2) * SPREAD, 0];
-      return [{ id: d.id, at, html, cls, anchor: sym.anchor, shift, title: `${d.name} — ${d.template_name}`, select: { kind: "division", id: d.id } }];
+      return [{ id: d.id, at, html, cls, anchor: sym.anchor, shift, title: `${d.name} — ${d.template_name}`, select: { kind: "division", id: d.id }, live: `d:${d.id}` }];
     });
   }, [data.forces, campaign, selected, layers.divisions, viewpoint]);
 
@@ -256,9 +284,10 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
     return (data.logistics?.convoys ?? []).flatMap((c) => {
       const at = lngLat(c.ll);
       if (!at) return [];
-      const sym = symbol(convoySidc(aff(c.faction)), { size: 16 });
-      const cls = ["convoy", c.authority !== "campaign" ? "in-game" : "", selectedIs(selected, "convoy", c.id) ? "selected" : ""].join(" ");
-      return [{ id: c.id, at, html: sym.svg, cls, anchor: sym.anchor, title: `Convoy ${c.id}: ${Math.round(c.trucks)} trucks, ${Math.round(c.cargo)} supply`, select: { kind: "convoy", id: c.id } }];
+      const sym = symbol(convoySidc(aff(c.faction), knownStatus(c.intel)), { size: 16 });
+      const cls = ["convoy", c.authority !== "campaign" ? "in-game" : "", c.intel?.stale ? "stale" : "", selectedIs(selected, "convoy", c.id) ? "selected" : ""].join(" ");
+      const title = c.intel ? `Enemy convoy: ${Math.round(c.trucks)} trucks — ${intelLabel(c.intel)}` : `Convoy ${c.id}: ${Math.round(c.trucks)} trucks, ${Math.round(c.cargo)} supply`;
+      return [{ id: c.id, at, html: sym.svg, cls, anchor: sym.anchor, title, select: { kind: "convoy", id: c.id }, live: `c:${c.id}` }];
     });
   }, [data.logistics, campaign, selected, layers.logistics, viewpoint]);
 
@@ -289,8 +318,17 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
           uniqueDesignation: f.callsign,
           direction: f.status === "on_station" ? undefined : Math.round(bearing(f)),
         });
-        out.push({ id: f.id, at, html: sym.svg, cls: `flight ${f.authority !== "campaign" ? "in-game" : ""} ${selectedIs(selected, "flight", f.id) ? "selected" : ""}`, anchor: sym.anchor, title: `${f.callsign} ${f.aircraft_name} ${f.task} (${f.status})`, select: { kind: "flight", id: f.id } });
+        out.push({ id: f.id, at, html: sym.svg, cls: `flight ${f.authority !== "campaign" ? "in-game" : ""} ${selectedIs(selected, "flight", f.id) ? "selected" : ""}`, anchor: sym.anchor, title: `${f.callsign} ${f.aircraft_name} ${f.task} (${f.status})`, select: { kind: "flight", id: f.id }, live: `f:${f.id}` });
       }
+    }
+    // Fog of war: enemy aircraft as radar tracks (yellow "unknown" until identified).
+    for (const f of data.ato?.tracks ?? []) {
+      const at = lngLat(f.ll);
+      if (!at || !f.intel) continue;
+      const ident = f.intel.identified;
+      const sym = symbol(airSidc(ident ? f.task : null, f.helo, ident ? aff(f.faction) : "U", knownStatus(f.intel)), { size: 17, uniqueDesignation: ident ? f.aircraft_name : "" });
+      const cls = `flight track ${f.intel.stale ? "stale" : ""} ${selectedIs(selected, "flight", f.id) ? "selected" : ""}`;
+      out.push({ id: `trk-${f.id}`, at, html: sym.svg, cls, anchor: sym.anchor, title: `${f.callsign}: ${f.aircraft_name} — ${intelLabel(f.intel)}`, select: { kind: "flight", id: f.id }, live: `f:${f.id}` });
     }
     for (const pl of campaign?.players ?? []) {
       const at = lngLat(pl.ll);
@@ -304,17 +342,20 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint }: 
     return (data.airDefense?.sites ?? []).flatMap((u) => {
       const at = lngLat(u.ll);
       if (!at) return [];
-      const sym = symbol(samSidc(u.role, aff(u.faction)), { size: u.role === "short" ? 15 : 18, uniqueDesignation: u.system_name.split(" ")[0] });
-      const cls = ["sam", `st-${u.status}`, u.authority !== "campaign" ? "in-game" : "", selectedIs(selected, "sam", u.id) ? "selected" : ""].join(" ");
-      return [{ id: `sam-${u.id}`, at, html: sym.svg, cls, anchor: sym.anchor, title: `${u.name} — ${u.system_name} (${u.status})`, select: { kind: "sam", id: u.id } as Selection }];
+      const sym = symbol(samSidc(u.role, aff(u.faction), knownStatus(u.intel)), { size: u.role === "short" ? 15 : 18, uniqueDesignation: u.system_name.split(" ")[0] });
+      const cls = ["sam", `st-${u.status}`, u.authority !== "campaign" ? "in-game" : "", u.intel?.stale ? "stale" : "", selectedIs(selected, "sam", u.id) ? "selected" : ""].join(" ");
+      const title = `${u.name} — ${u.system_name} (${u.status})${u.intel ? ` — ${intelLabel(u.intel)}` : ""}`;
+      return [{ id: `sam-${u.id}`, at, html: sym.svg, cls, anchor: sym.anchor, title, select: { kind: "sam", id: u.id } as Selection, live: `s:${u.id}` }];
     });
   }, [data.airDefense, campaign, selected, layers.airDefense, viewpoint]);
 
-  useHtmlMarkers(map, logisticsMarkers, onSelect);
-  useHtmlMarkers(map, samMarkers, onSelect);
-  useHtmlMarkers(map, divisionMarkers, onSelect);
+  // Smooth movement: positions streamed a few times a second, interpolated at 60 fps.
+  const feed = useLiveFeed(data.faction);
+  useHtmlMarkers(map, logisticsMarkers, onSelect, feed);
+  useHtmlMarkers(map, samMarkers, onSelect, feed);
+  useHtmlMarkers(map, divisionMarkers, onSelect, feed);
   useHtmlMarkers(map, battleMarkers, onSelect);
-  useHtmlMarkers(map, airMarkers, onSelect);
+  useHtmlMarkers(map, airMarkers, onSelect, feed);
 
   return <div ref={container} className="map" />;
 }
@@ -357,11 +398,37 @@ interface MarkerSpec {
   title?: string;
   color?: string;
   select?: Selection;
+  /** Key in the live position feed ("d:<id>", "f:<id>"...): animated at 60 fps. */
+  live?: string;
 }
 
 /** Keep a set of HTML markers in sync with ``items`` (by id), touching the DOM only on change. */
-function useHtmlMarkers(map: MLMap | null, items: MarkerSpec[], onSelect: (s: Selection) => void) {
-  const markers = useRef(new Map<string, { marker: Marker; html: string; cls: string; spec: MarkerSpec }>());
+function useHtmlMarkers(map: MLMap | null, items: MarkerSpec[], onSelect: (s: Selection) => void, feed?: React.RefObject<LiveFeed | null>) {
+  const markers = useRef(new Map<string, { marker: Marker; html: string; cls: string; spec: MarkerSpec; at?: [number, number] }>());
+
+  // Animation: every frame, markers with a live key follow the interpolated feed.
+  useEffect(() => {
+    if (!map || !feed) return;
+    let raf = 0;
+    const frame = () => {
+      const f = feed.current;
+      if (f?.ready) {
+        const now = performance.now();
+        for (const entry of markers.current.values()) {
+          if (!entry.spec.live) continue;
+          const p = f.position(entry.spec.live, now);
+          if (!p) continue;
+          // skip sub-pixel changes (~1 m)
+          if (entry.at && Math.abs(entry.at[0] - p[0]) < 1e-5 && Math.abs(entry.at[1] - p[1]) < 1e-5) continue;
+          entry.at = p;
+          entry.marker.setLngLat(p);
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [map, feed]);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
 
@@ -381,12 +448,17 @@ function useHtmlMarkers(map: MLMap | null, items: MarkerSpec[], onSelect: (s: Se
           const spec = markers.current.get(it.id)?.spec;
           if (spec?.select) selectRef.current(spec.select);
         });
-        const marker = new Marker({ element: el, anchor: it.anchor ? "top-left" : "center" }).setLngLat(it.at).addTo(map);
+        const marker = new Marker({ element: el, anchor: it.anchor ? "top-left" : "center", subpixelPositioning: true }).setLngLat(it.at).addTo(map);
         entry = { marker, html: "", cls: "", spec: it };
         markers.current.set(it.id, entry);
       }
       const el = entry.marker.getElement().firstElementChild as HTMLElement;
-      entry.marker.setLngLat(it.at);
+      // Animated markers are placed by the feed; the (slower) views only place
+      // them when the feed does not carry them (yet).
+      if (!(it.live && entry.at && feed?.current?.position(it.live, performance.now()))) {
+        entry.marker.setLngLat(it.at);
+        entry.at = undefined;
+      }
       entry.spec = it;
       if (entry.html !== it.html) {
         el.innerHTML = it.html;
@@ -400,6 +472,7 @@ function useHtmlMarkers(map: MLMap | null, items: MarkerSpec[], onSelect: (s: Se
       const [sx, sy] = it.shift ?? [0, 0];
       entry.marker.setOffset(it.anchor ? [sx - it.anchor[0], sy - it.anchor[1]] : [sx, sy]);
       if (it.title) el.title = it.title;
+      if (it.live) entry.marker.getElement().dataset.live = it.live;
       if (it.color) el.style.color = it.color;
     }
     for (const [id, entry] of markers.current) {

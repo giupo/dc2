@@ -59,6 +59,26 @@
         "summary": "Get Fronts",
         "description": "Front lines, front sectors with local force ratios, battles.",
         "operationId": "get_fronts_api_fronts_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -66,6 +86,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FrontsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -81,6 +111,26 @@
         "summary": "Get Forces",
         "description": "Divisions with state and remaining route, battles.",
         "operationId": "get_forces_api_forces_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -88,6 +138,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForcesView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -103,6 +163,26 @@
         "summary": "Get Logistics",
         "description": "Depots, convoys, supply network reach, division supply.",
         "operationId": "get_logistics_api_logistics_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -110,6 +190,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LogisticsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -123,8 +213,28 @@
           "air"
         ],
         "summary": "Get Ato",
-        "description": "Packages and flights, squadrons, sortie budget, in-game join boards.",
+        "description": "Packages and flights, squadrons, sortie budget, in-game join boards\n(and the enemy radar tracks, in a faction's view).",
         "operationId": "get_ato_api_ato_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -132,6 +242,99 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AtoView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ato/flights/{flight_id}/briefing": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Briefing",
+        "description": "Mission package of a flight: briefing, named waypoints, threats, ordnance, comms.",
+        "operationId": "get_briefing_api_ato_flights__flight_id__briefing_get",
+        "parameters": [
+          {
+            "name": "flight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Flight Id"
+            }
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          },
+          {
+            "name": "units",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "metric",
+                    "imperial"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's)",
+              "title": "Units"
+            },
+            "description": "units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -147,6 +350,26 @@
         "summary": "Get Air Defense",
         "description": "SAM sites and early-warning radars, their state, and the IADS network links.",
         "operationId": "get_air_defense_api_airdefense_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -154,6 +377,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AirDefenseView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/intel": {
+      "get": {
+        "tags": [
+          "intel"
+        ],
+        "summary": "Get Intel",
+        "description": "Fog of war: the contacts a faction holds on the enemy (last known\nposition, age, source, identification) and its air-search sensors.",
+        "operationId": "get_intel_api_intel_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "faction whose intelligence picture to give",
+              "title": "Faction"
+            },
+            "description": "faction whose intelligence picture to give"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -212,6 +490,24 @@
               "default": 500,
               "title": "Limit"
             }
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
           }
         ],
         "responses": {
@@ -246,6 +542,26 @@
         "summary": "Get Snapshot",
         "description": "Everything above in one document.",
         "operationId": "get_snapshot_api_snapshot_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -253,6 +569,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SnapshotView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -287,6 +613,24 @@
               "title": "Since"
             },
             "description": "replay from this seq"
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
           }
         ],
         "responses": {
@@ -294,6 +638,182 @@
             "description": "Server-Sent Events",
             "content": {
               "text/event-stream": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/positions/stream": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Positions Stream",
+        "description": "Server-Sent Events: `positions` events (data = Positions) at `hz` per\nsecond, for smooth animation: the client interpolates between samples.\nOnly what moves, as `id -> [lat, lon]`; fog of war applies with `faction`.",
+        "operationId": "positions_stream_api_positions_stream_get",
+        "parameters": [
+          {
+            "name": "hz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 20.0,
+              "minimum": 0.5,
+              "description": "samples per second",
+              "default": 5.0,
+              "title": "Hz"
+            },
+            "description": "samples per second"
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/positions": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Get Positions",
+        "description": "One sample of the positions stream.",
+        "operationId": "get_positions_api_positions_get",
+        "parameters": [
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/control": {
+      "get": {
+        "tags": [
+          "campaign"
+        ],
+        "summary": "Get Control",
+        "description": "Pause and speed of the campaign clock.",
+        "operationId": "get_control_api_control_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "campaign"
+        ],
+        "summary": "Post Control",
+        "description": "Pause / resume and fast-forward the campaign. Refused (409) while a\ngame simulates part of the campaign: then time must run 1:1.",
+        "operationId": "post_control_api_control_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ControlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlView"
+                }
+              }
             }
           },
           "422": {
@@ -355,7 +875,8 @@
           "sites",
           "links"
         ],
-        "title": "AirDefenseView"
+        "title": "AirDefenseView",
+        "description": "Air defence sites and the IADS network."
       },
       "AirbaseView": {
         "properties": {
@@ -424,7 +945,8 @@
           "province",
           "owner"
         ],
-        "title": "AirbaseView"
+        "title": "AirbaseView",
+        "description": "An airbase and its owner."
       },
       "AtoView": {
         "properties": {
@@ -453,6 +975,14 @@
             "type": "integer",
             "title": "Flights Airborne"
           },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/FlightView"
+            },
+            "type": "array",
+            "title": "Tracks",
+            "description": "enemy flights detected (faction view)"
+          },
           "boards": {
             "additionalProperties": {
               "items": {
@@ -474,7 +1004,8 @@
           "flights_airborne",
           "boards"
         ],
-        "title": "AtoView"
+        "title": "AtoView",
+        "description": "The air tasking order."
       },
       "BattleView": {
         "properties": {
@@ -564,7 +1095,8 @@
           "hours",
           "delegated"
         ],
-        "title": "BattleView"
+        "title": "BattleView",
+        "description": "A battle in progress, located where the forces meet."
       },
       "BoardFlight": {
         "properties": {
@@ -584,7 +1116,10 @@
               "SEAD",
               "CAS",
               "BAI",
-              "STRIKE"
+              "STRIKE",
+              "AWACS",
+              "TANKER",
+              "TRANSPORT"
             ],
             "title": "Task"
           },
@@ -601,7 +1136,8 @@
           "task",
           "seats"
         ],
-        "title": "BoardFlight"
+        "title": "BoardFlight",
+        "description": "A flight players can join (in-game board)."
       },
       "BoardPackage": {
         "properties": {
@@ -628,10 +1164,553 @@
           "label",
           "flights"
         ],
-        "title": "BoardPackage"
+        "title": "BoardPackage",
+        "description": "A package on the in-game board."
+      },
+      "BriefingFlight": {
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "title": "Callsign"
+          },
+          "aircraft": {
+            "type": "string",
+            "title": "Aircraft"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "CAP",
+              "ESCORT",
+              "SEAD",
+              "CAS",
+              "BAI",
+              "STRIKE",
+              "AWACS",
+              "TANKER",
+              "TRANSPORT"
+            ],
+            "title": "Task"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "base": {
+            "type": "string",
+            "title": "Base"
+          },
+          "takeoff": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "you": {
+            "type": "boolean",
+            "title": "You"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "callsign",
+          "aircraft",
+          "task",
+          "size",
+          "base",
+          "takeoff",
+          "you"
+        ],
+        "title": "BriefingFlight",
+        "description": "A flight of the package."
+      },
+      "BriefingStore": {
+        "properties": {
+          "store": {
+            "type": "string",
+            "title": "Store"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "store",
+          "count"
+        ],
+        "title": "BriefingStore",
+        "description": "Ordnance item and number of pylons carrying it."
+      },
+      "BriefingSupport": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "AWACS",
+              "TANKER"
+            ],
+            "title": "Task"
+          },
+          "callsign": {
+            "type": "string",
+            "title": "Callsign"
+          },
+          "aircraft": {
+            "type": "string",
+            "title": "Aircraft"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "from_target": {
+            "type": "string",
+            "title": "From Target"
+          },
+          "frequency": {
+            "type": "string",
+            "title": "Frequency"
+          },
+          "until": {
+            "$ref": "#/components/schemas/Time"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "task",
+          "callsign",
+          "aircraft",
+          "status",
+          "position",
+          "from_target",
+          "frequency",
+          "until"
+        ],
+        "title": "BriefingSupport",
+        "description": "A friendly AWACS or tanker available during the mission."
+      },
+      "BriefingTarget": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "composition": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Composition"
+          },
+          "coordinates": {
+            "type": "string",
+            "title": "Coordinates",
+            "description": "degrees and decimal minutes"
+          },
+          "from_base": {
+            "type": "string",
+            "title": "From Base",
+            "description": "bearing and range from the home base"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "kind",
+          "id",
+          "name",
+          "description",
+          "composition",
+          "coordinates",
+          "from_base"
+        ],
+        "title": "BriefingTarget",
+        "description": "The target of a flight."
+      },
+      "BriefingThreat": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sam",
+              "shorad",
+              "fighters"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "range_km": {
+            "type": "number",
+            "title": "Range Km"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "kind",
+          "name",
+          "detail",
+          "range_km",
+          "severity"
+        ],
+        "title": "BriefingThreat",
+        "description": "A threat to the flight."
+      },
+      "BriefingView": {
+        "properties": {
+          "units": {
+            "type": "string",
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Units"
+          },
+          "package_number": {
+            "type": "string",
+            "title": "Package Number"
+          },
+          "flight_id": {
+            "type": "string",
+            "title": "Flight Id"
+          },
+          "callsign": {
+            "type": "string",
+            "title": "Callsign"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "CAP",
+              "ESCORT",
+              "SEAD",
+              "CAS",
+              "BAI",
+              "STRIKE",
+              "AWACS",
+              "TANKER",
+              "TRANSPORT"
+            ],
+            "title": "Task"
+          },
+          "aircraft": {
+            "type": "string",
+            "title": "Aircraft"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "squadron": {
+            "type": "string",
+            "title": "Squadron"
+          },
+          "base": {
+            "type": "string",
+            "title": "Base"
+          },
+          "takeoff": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "tot": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "mission": {
+            "type": "string",
+            "title": "Mission"
+          },
+          "situation": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Situation"
+          },
+          "target": {
+            "$ref": "#/components/schemas/BriefingTarget"
+          },
+          "threats": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingThreat"
+            },
+            "type": "array",
+            "title": "Threats"
+          },
+          "loadout": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingStore"
+            },
+            "type": "array",
+            "title": "Loadout"
+          },
+          "loadout_note": {
+            "type": "string",
+            "title": "Loadout Note"
+          },
+          "comms": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Comms"
+          },
+          "support": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingSupport"
+            },
+            "type": "array",
+            "title": "Support"
+          },
+          "waypoints": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingWaypoint"
+            },
+            "type": "array",
+            "title": "Waypoints"
+          },
+          "package": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingFlight"
+            },
+            "type": "array",
+            "title": "Package"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "the briefing as sent to players in the game"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "units",
+          "package_number",
+          "flight_id",
+          "callsign",
+          "title",
+          "task",
+          "aircraft",
+          "size",
+          "squadron",
+          "base",
+          "takeoff",
+          "tot",
+          "mission",
+          "situation",
+          "target",
+          "threats",
+          "loadout",
+          "loadout_note",
+          "comms",
+          "support",
+          "waypoints",
+          "package",
+          "text"
+        ],
+        "title": "BriefingView",
+        "description": "The mission package of a flight. Numbers are SI (``alt_m``, ``speed_kmh``,\n``range_km``); texts are written in ``units``."
+      },
+      "BriefingWaypoint": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "TAKEOFF, IP, TARGET, EGRESS, CAP STATION, LAND..."
+          },
+          "eta": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "alt_m": {
+            "type": "integer",
+            "title": "Alt M"
+          },
+          "speed_kmh": {
+            "type": "integer",
+            "title": "Speed Kmh"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "index",
+          "name",
+          "eta",
+          "alt_m",
+          "speed_kmh",
+          "note"
+        ],
+        "title": "BriefingWaypoint",
+        "description": "A named waypoint of a flight plan."
       },
       "CampaignView": {
         "properties": {
+          "units": {
+            "type": "string",
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Units",
+            "description": "units of the texts for players (default of the UI)"
+          },
+          "control": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ControlView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pause and speed (null without a running engine)"
+          },
           "api_version": {
             "type": "integer",
             "title": "Api Version"
@@ -675,6 +1754,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "units",
           "api_version",
           "name",
           "theater",
@@ -684,7 +1764,204 @@
           "factions",
           "events"
         ],
-        "title": "CampaignView"
+        "title": "CampaignView",
+        "description": "Campaign overview: clock, factions, players."
+      },
+      "ContactInfo": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "sensor of the last detection"
+          },
+          "seen": {
+            "$ref": "#/components/schemas/Time",
+            "description": "time of the last detection"
+          },
+          "age_s": {
+            "type": "integer",
+            "title": "Age S"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale",
+            "description": "old information: shown at its last known position"
+          },
+          "identified": {
+            "type": "boolean",
+            "title": "Identified",
+            "description": "type known (else an unidentified radar track)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "seen",
+          "age_s",
+          "stale",
+          "identified"
+        ],
+        "title": "ContactInfo",
+        "description": "How a faction knows about an enemy entity (fog of war views only)."
+      },
+      "ContactView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "division",
+              "convoy",
+              "flight",
+              "sam"
+            ],
+            "title": "Kind"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "seen": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "first_seen": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "age_s": {
+            "type": "integer",
+            "title": "Age S"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          },
+          "identified": {
+            "type": "boolean",
+            "title": "Identified"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "kind",
+          "faction",
+          "source",
+          "seen",
+          "first_seen",
+          "age_s",
+          "stale",
+          "identified",
+          "detail"
+        ],
+        "title": "ContactView",
+        "description": "One contact of a faction's intelligence picture."
+      },
+      "ControlRequest": {
+        "properties": {
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "compression": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compression",
+            "description": "campaign seconds per real second"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ControlRequest",
+        "description": "Change pause and/or speed (fields left out are unchanged)."
+      },
+      "ControlView": {
+        "properties": {
+          "paused": {
+            "type": "boolean",
+            "title": "Paused"
+          },
+          "compression": {
+            "type": "number",
+            "title": "Compression",
+            "description": "campaign seconds per real second when not live"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate",
+            "description": "effective rate now: 0 paused, 1 live, else the compression"
+          },
+          "min_compression": {
+            "type": "number",
+            "title": "Min Compression"
+          },
+          "max_compression": {
+            "type": "number",
+            "title": "Max Compression"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "paused",
+          "compression",
+          "rate",
+          "min_compression",
+          "max_compression"
+        ],
+        "title": "ControlView",
+        "description": "Pause and speed of the campaign clock."
       },
       "ConvoyView": {
         "properties": {
@@ -762,6 +2039,16 @@
               "dematerializing"
             ],
             "title": "Authority"
+          },
+          "intel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -780,7 +2067,8 @@
           "route",
           "authority"
         ],
-        "title": "ConvoyView"
+        "title": "ConvoyView",
+        "description": "A supply convoy."
       },
       "DepotView": {
         "properties": {
@@ -820,8 +2108,16 @@
             "title": "Controller"
           },
           "stock": {
-            "type": "integer",
-            "title": "Stock"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock",
+            "description": "null for enemy depots in a faction's view"
           },
           "capacity": {
             "type": "integer",
@@ -832,7 +2128,14 @@
             "title": "Production Per Hour"
           },
           "trucks": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Trucks"
           }
         },
@@ -849,7 +2152,8 @@
           "production_per_hour",
           "trucks"
         ],
-        "title": "DepotView"
+        "title": "DepotView",
+        "description": "A supply depot."
       },
       "DivisionSupplyView": {
         "properties": {
@@ -893,7 +2197,8 @@
           "direct",
           "convoy_incoming"
         ],
-        "title": "DivisionSupplyView"
+        "title": "DivisionSupplyView",
+        "description": "Supply state of a brigade."
       },
       "DivisionView": {
         "properties": {
@@ -949,11 +2254,25 @@
             "title": "Strength"
           },
           "org": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Org"
           },
           "supply": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Supply"
           },
           "elements": {
@@ -1000,6 +2319,17 @@
           "moving": {
             "type": "boolean",
             "title": "Moving"
+          },
+          "intel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "set on enemy brigades in a faction's view"
           }
         },
         "additionalProperties": false,
@@ -1023,7 +2353,8 @@
           "authority",
           "moving"
         ],
-        "title": "DivisionView"
+        "title": "DivisionView",
+        "description": "A brigade."
       },
       "EventView": {
         "properties": {
@@ -1052,7 +2383,8 @@
           "kind",
           "data"
         ],
-        "title": "EventView"
+        "title": "EventView",
+        "description": "A campaign event."
       },
       "EventsPage": {
         "properties": {
@@ -1075,7 +2407,8 @@
           "events",
           "next"
         ],
-        "title": "EventsPage"
+        "title": "EventsPage",
+        "description": "A page of events."
       },
       "FactionView": {
         "properties": {
@@ -1135,7 +2468,8 @@
           "aircraft",
           "objectives"
         ],
-        "title": "FactionView"
+        "title": "FactionView",
+        "description": "A faction with its score."
       },
       "FireView": {
         "properties": {
@@ -1230,6 +2564,10 @@
             "type": "string",
             "title": "Package"
           },
+          "package_number": {
+            "type": "string",
+            "title": "Package Number"
+          },
           "callsign": {
             "type": "string",
             "title": "Callsign"
@@ -1270,7 +2608,10 @@
               "SEAD",
               "CAS",
               "BAI",
-              "STRIKE"
+              "STRIKE",
+              "AWACS",
+              "TANKER",
+              "TRANSPORT"
             ],
             "title": "Task"
           },
@@ -1344,6 +2685,17 @@
                 "type": "null"
               }
             ]
+          },
+          "intel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "set on enemy radar tracks in a faction's view"
           }
         },
         "additionalProperties": false,
@@ -1353,6 +2705,7 @@
           "ll",
           "id",
           "package",
+          "package_number",
           "callsign",
           "faction",
           "squadron",
@@ -1376,7 +2729,8 @@
           "authority",
           "on_station_until"
         ],
-        "title": "FlightView"
+        "title": "FlightView",
+        "description": "A flight of the ATO."
       },
       "ForcesView": {
         "properties": {
@@ -1401,7 +2755,8 @@
           "divisions",
           "battles"
         ],
-        "title": "ForcesView"
+        "title": "ForcesView",
+        "description": "All brigades and battles."
       },
       "FrontLineView": {
         "properties": {
@@ -1468,7 +2823,8 @@
           "provinces",
           "battles"
         ],
-        "title": "FrontLineView"
+        "title": "FrontLineView",
+        "description": "A front line between two factions."
       },
       "FrontsView": {
         "properties": {
@@ -1509,7 +2865,8 @@
           "battles",
           "fires"
         ],
-        "title": "FrontsView"
+        "title": "FrontsView",
+        "description": "Front lines, sectors, battles and recent fire missions."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1575,7 +2932,48 @@
           "site",
           "faction"
         ],
-        "title": "IadsLinkView"
+        "title": "IadsLinkView",
+        "description": "IADS link between an EWR and a site it cues."
+      },
+      "IntelView": {
+        "properties": {
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactView"
+            },
+            "type": "array",
+            "title": "Contacts"
+          },
+          "sensors": {
+            "items": {
+              "$ref": "#/components/schemas/SensorView"
+            },
+            "type": "array",
+            "title": "Sensors"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts",
+            "description": "contacts per kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "faction",
+          "contacts",
+          "sensors",
+          "counts"
+        ],
+        "title": "IntelView",
+        "description": "A faction's intelligence picture and its air-search sensors."
       },
       "LinkView": {
         "properties": {
@@ -1649,7 +3047,8 @@
           "length_km",
           "road"
         ],
-        "title": "LinkView"
+        "title": "LinkView",
+        "description": "A road/track/rail link with its geometry."
       },
       "LogisticsView": {
         "properties": {
@@ -1699,7 +3098,8 @@
           "divisions",
           "direct_range_km"
         ],
-        "title": "LogisticsView"
+        "title": "LogisticsView",
+        "description": "Depots, convoys, supply network and brigade supply."
       },
       "MapView": {
         "properties": {
@@ -1737,7 +3137,8 @@
           "links",
           "airbases"
         ],
-        "title": "MapView"
+        "title": "MapView",
+        "description": "Static map geometry (changes only with control)."
       },
       "NetworkEntry": {
         "properties": {
@@ -1761,7 +3162,8 @@
           "road_km",
           "direct"
         ],
-        "title": "NetworkEntry"
+        "title": "NetworkEntry",
+        "description": "Supply reach of a province."
       },
       "ObjectiveView": {
         "properties": {
@@ -1790,7 +3192,8 @@
           "priority",
           "achieved"
         ],
-        "title": "ObjectiveView"
+        "title": "ObjectiveView",
+        "description": "A faction objective and whether it is held."
       },
       "OrderView": {
         "properties": {
@@ -1799,7 +3202,8 @@
             "enum": [
               "hold",
               "move",
-              "attack"
+              "attack",
+              "unknown"
             ],
             "title": "Kind"
           },
@@ -1821,7 +3225,8 @@
           "kind",
           "target"
         ],
-        "title": "OrderView"
+        "title": "OrderView",
+        "description": "A division's order."
       },
       "PackageView": {
         "properties": {
@@ -1852,6 +3257,11 @@
             "type": "string",
             "title": "Id"
           },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "description": "four-digit package number, as in Falcon's ATO"
+          },
           "faction": {
             "type": "string",
             "title": "Faction"
@@ -1864,7 +3274,10 @@
               "SEAD",
               "CAS",
               "BAI",
-              "STRIKE"
+              "STRIKE",
+              "AWACS",
+              "TANKER",
+              "TRANSPORT"
             ],
             "title": "Task"
           },
@@ -1892,6 +3305,7 @@
           "pos",
           "ll",
           "id",
+          "number",
           "faction",
           "task",
           "target",
@@ -1899,7 +3313,8 @@
           "created",
           "flights"
         ],
-        "title": "PackageView"
+        "title": "PackageView",
+        "description": "An ATO package."
       },
       "PlayerView": {
         "properties": {
@@ -1976,7 +3391,8 @@
           "altitude",
           "flight"
         ],
-        "title": "PlayerView"
+        "title": "PlayerView",
+        "description": "A connected player."
       },
       "Polyline": {
         "properties": {
@@ -2014,7 +3430,72 @@
           "pos",
           "ll"
         ],
-        "title": "Polyline"
+        "title": "Polyline",
+        "description": "A line on the map."
+      },
+      "PositionsView": {
+        "properties": {
+          "t": {
+            "type": "number",
+            "title": "T",
+            "description": "campaign time of the sample"
+          },
+          "d": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "D",
+            "description": "brigades"
+          },
+          "c": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "C",
+            "description": "convoys"
+          },
+          "f": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "F",
+            "description": "airborne flights (and enemy tracks in a faction's view)"
+          },
+          "s": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "S",
+            "description": "air defence sites"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t",
+          "d",
+          "c",
+          "f",
+          "s"
+        ],
+        "title": "PositionsView",
+        "description": "Compact positions of what moves (``id -> [lat, lon]``), for animation."
       },
       "ProvinceView": {
         "properties": {
@@ -2109,7 +3590,8 @@
           "neighbors",
           "territory"
         ],
-        "title": "ProvinceView"
+        "title": "ProvinceView",
+        "description": "A province with its territory polygon."
       },
       "RouteView": {
         "properties": {
@@ -2155,7 +3637,8 @@
           "ll",
           "provinces"
         ],
-        "title": "RouteView"
+        "title": "RouteView",
+        "description": "Remaining route along the roads."
       },
       "SamSiteView": {
         "properties": {
@@ -2240,7 +3723,14 @@
             "title": "Ceiling M"
           },
           "missiles": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Missiles"
           },
           "missiles_max": {
@@ -2291,6 +3781,16 @@
               "dematerializing"
             ],
             "title": "Authority"
+          },
+          "intel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -2317,7 +3817,8 @@
           "route",
           "authority"
         ],
-        "title": "SamSiteView"
+        "title": "SamSiteView",
+        "description": "A SAM site or early-warning radar."
       },
       "SeatView": {
         "properties": {
@@ -2348,7 +3849,8 @@
           "name",
           "state"
         ],
-        "title": "SeatView"
+        "title": "SeatView",
+        "description": "A player's seat in a flight."
       },
       "SectorView": {
         "properties": {
@@ -2390,7 +3892,63 @@
           "enemy_power",
           "divisions"
         ],
-        "title": "SectorView"
+        "title": "SectorView",
+        "description": "A front province with local force ratio."
+      },
+      "SensorView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "awacs",
+              "aircraft",
+              "ground_radar"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "range_km": {
+            "type": "number",
+            "title": "Range Km"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "kind",
+          "name",
+          "range_km"
+        ],
+        "title": "SensorView",
+        "description": "A friendly sensor and its reach."
       },
       "SnapshotView": {
         "properties": {
@@ -2427,7 +3985,8 @@
           "ato",
           "air_defense"
         ],
-        "title": "SnapshotView"
+        "title": "SnapshotView",
+        "description": "Every view in one document."
       },
       "SquadronView": {
         "properties": {
@@ -2464,7 +4023,10 @@
                 "SEAD",
                 "CAS",
                 "BAI",
-                "STRIKE"
+                "STRIKE",
+                "AWACS",
+                "TANKER",
+                "TRANSPORT"
               ]
             },
             "type": "array",
@@ -2502,7 +4064,8 @@
           "committed",
           "servicing"
         ],
-        "title": "SquadronView"
+        "title": "SquadronView",
+        "description": "A squadron and its availability."
       },
       "TargetRef": {
         "properties": {
@@ -2521,7 +4084,8 @@
           "kind",
           "id"
         ],
-        "title": "TargetRef"
+        "title": "TargetRef",
+        "description": "Reference to a flight's target."
       },
       "Time": {
         "properties": {
@@ -2542,7 +4106,8 @@
           "t",
           "label"
         ],
-        "title": "Time"
+        "title": "Time",
+        "description": "A campaign time."
       },
       "ValidationError": {
         "properties": {

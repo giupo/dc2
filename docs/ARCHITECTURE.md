@@ -205,6 +205,45 @@ verificati contro pydcs), schierato sulla strada, in allerta rossa e con
 fuoco libero. L'IADS dentro DCS (EMCON coordinato) richiederebbe uno script
 dedicato, per esempio Skynet: in gioco ogni sito combatte da solo.
 
+## Supporto aereo e nebbia di guerra
+
+**Supporto** (`Task.AWACS`, `Task.TANKER`, `Task.TRANSPORT`; `Task.support`,
+`Task.orbits`):
+- AWACS e tanker volano in orbita (`ON_STATION`) attorno a un punto dato da
+  `ato.support_station`: dietro il baricentro del fronte, verso le basi
+  amiche, e più indietro finché è fuori dai SAM nemici noti;
+- `air.tanker_on_station` allunga il raggio in `ato._allocate` e la stazione
+  delle CAP;
+- `air.awacs_on_station` dà il bonus ai duelli aria-aria;
+- i trasporti caricano al decollo (`_load_cargo`) e consegnano al bersaglio
+  (`air.deliver`): `airlift` verso il deposito di una base, `resupply` alle
+  brigate entro 15 km;
+- i pacchetti di supporto hanno un'allocazione propria (`MAX_NEW_SUPPORT`) e
+  non contano nel limite dei pacchetti attivi.
+
+**Nebbia di guerra** (`systems/intel.py`, primo sistema della pipeline):
+- *quadro:* `state.intel[fazione][entità] = Contact(position, seen,
+  first_seen, source, identified, detail)`;
+- *scansione:* `scan` ogni 60 s con tre gruppi di sensori (aria, terra,
+  ELINT), più `reveal` sugli eventi (lancio SAM);
+- *scadenza:* `_expire` toglie i contatti scaduti (`TTL_S`) o le entità
+  sparite; `stale` usa `STALE_S`;
+- *giocatori:* l'`Engine` copia le loro posizioni in `state.player_positions`,
+  così anche loro fanno da sensori.
+
+Consumatori del quadro:
+- `ato.requests`, cioè BAI, convogli e SEAD, tramite `intel.knows`,
+  `intel.located` e `intel.known`;
+- `intel.known_covering`, che sostituisce `air_defense.covering` in
+  pianificazione (CAP, stazioni, scorte SEAD);
+- `ai`, con `intel.known_divisions_in` al posto di `hostile_divisions_in`;
+- `artillery` (`TARGET_FRESH_S`);
+- `briefing.threats`;
+- le viste API con `viewer`.
+
+La simulazione fisica (combattimenti, ingaggi SAM, duelli) usa sempre la
+verità.
+
 ## Player bubble e handoff
 
 Ogni giocatore umano proietta una bolla (raggio per tipo: aereo 60 km,

@@ -10,9 +10,13 @@ import {
   pct,
   sideOf,
   TEMPLATE_SHORT,
+  ageLabel,
+  intelLabel,
+  fmtDist,
   type EventCategory,
+  type Units,
 } from "../lib/format";
-import { affiliation, airSidc, samSidc, symbol, unitSidc } from "../lib/symbols";
+import { affiliation, airSidc, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { Selection } from "../lib/selection";
 import type { CampaignData } from "../lib/useCampaign";
 
@@ -22,17 +26,21 @@ export interface PanelProps {
   select: (s: Selection, at?: number[] | null) => void;
   /** Side shown as friendly in NATO symbols. */
   viewpoint: string;
+  /** Display units (SI or kts/ft/NM). */
+  units: Units;
 }
 
 /** Inline NATO symbol (APP-6) for lists. */
 export function UnitSymbol({ d, data, viewpoint, size = 18 }: { d: Division; data: CampaignData; viewpoint: string; size?: number }) {
   // No text modifiers in lists: the name is right next to it.
-  const sym = symbol(unitSidc(d.template, affiliation(sideOf(data.campaign, d.faction), viewpoint)), { size, infoFields: false });
+  const sym = symbol(unitSidc(d.template, affiliation(sideOf(data.campaign, d.faction), viewpoint), knownStatus(d.intel)), { size, infoFields: false });
   return <span className="symbol" dangerouslySetInnerHTML={{ __html: sym.svg }} />;
 }
 
 export function FlightSymbol({ f, data, viewpoint }: { f: Flight; data: CampaignData; viewpoint: string }) {
-  const sym = symbol(airSidc(f.task, f.helo, affiliation(sideOf(data.campaign, f.faction), viewpoint)), { size: 14, infoFields: false });
+  const unidentified = f.intel != null && !f.intel.identified;
+  const aff = unidentified ? "U" : affiliation(sideOf(data.campaign, f.faction), viewpoint);
+  const sym = symbol(airSidc(unidentified ? null : f.task, f.helo, aff, knownStatus(f.intel)), { size: 14, infoFields: false });
   return <span className="symbol air" dangerouslySetInnerHTML={{ __html: sym.svg }} />;
 }
 
@@ -70,7 +78,7 @@ export function FrontPanel({ data, selected, select }: PanelProps) {
         </div>
       ))}
       <h3>Front sectors</h3>
-      {campaign?.factions.map((f) => (
+      {campaign?.factions.filter((f) => fronts?.sectors.some((s) => s.faction === f.id)).map((f) => (
         <div key={f.id}>
           <div className="group" style={{ color: factionColor(campaign, f.id) }}>
             {f.name}
@@ -110,17 +118,18 @@ export function DivisionRow({ d, data, selected, select, viewpoint }: PanelProps
       <div className="grow">
         <div className="title">
           {d.name} {d.authority !== "campaign" && <span className="chip game">IN GAME</span>}
+          {d.intel && <span className={`chip intel ${d.intel.stale ? "stale" : ""}`} title={intelLabel(d.intel)}>{d.intel.stale ? `seen ${ageLabel(d.intel.age_s)} ago` : "located"}</span>}
           {d.battle && <span className="chip battle">BATTLE</span>}
         </div>
         <div className="sub">
           {TEMPLATE_SHORT[d.template] ?? d.template} · {where}
-          {d.order.kind !== "hold" && ` · ${d.order.kind} → ${target}`}
+          {d.order.kind !== "hold" && d.order.kind !== "unknown" && ` · ${d.order.kind} → ${target}`}
         </div>
       </div>
       <div className="bars">
         <Bar value={d.strength} title={`strength ${pct(d.strength)}`} />
-        <Bar value={d.org} color="#60a5fa" title={`organisation ${pct(d.org)}`} />
-        <Bar value={d.supply} color="#facc15" title={`supply ${pct(d.supply)}`} />
+        {d.org != null && <Bar value={d.org} color="#60a5fa" title={`organisation ${pct(d.org)}`} />}
+        {d.supply != null && <Bar value={d.supply} color="#facc15" title={`supply ${pct(d.supply)}`} />}
       </div>
     </div>
   );
@@ -162,10 +171,10 @@ export function LogisticsPanel({ data, selected, select }: PanelProps) {
           <div className="grow">
             <div className="title">{d.name}</div>
             <div className="sub">
-              {d.stock.toLocaleString()} / {d.capacity.toLocaleString()} · +{d.production_per_hour}/h · {d.trucks} trucks
+              {d.stock != null ? `${d.stock.toLocaleString()} / ${d.capacity.toLocaleString()} · +${d.production_per_hour}/h · ${d.trucks} trucks` : "enemy depot: stock unknown"}
             </div>
           </div>
-          <Bar value={d.stock / Math.max(1, d.capacity)} color="#facc15" />
+          {d.stock != null && <Bar value={d.stock / Math.max(1, d.capacity)} color="#facc15" />}
         </div>
       ))}
       <h3>Convoys on the road ({logistics?.convoys.length ?? 0})</h3>
@@ -235,10 +244,67 @@ function FlightRow({ f, data, selected, select, viewpoint }: PanelProps & { f: F
   );
 }
 
+/** Falcon/BMS-style ATO: every flight on one line, by takeoff time. */
+function AtoList({ packages, data, selected, select }: PanelProps & { packages: NonNullable<CampaignData["ato"]>["packages"] }) {
+  const [showDone, setShowDone] = useState(false);
+  const now = data.clock?.t ?? 0;
+  const rows = packages
+    .flatMap((p) => p.flights.map((f) => ({ p, f })))
+    .filter(({ f }) => showDone || (f.status !== "done" && f.status !== "cancelled"))
+    .sort((a, b) => a.f.takeoff.t - b.f.takeoff.t || a.p.number.localeCompare(b.p.number));
+  return (
+    <>
+      <label className="muted check">
+        <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> show completed
+      </label>
+      <table className="table ato-list">
+        <thead>
+          <tr>
+            <th>Pkg</th>
+            <th>Flight</th>
+            <th>Mission</th>
+            <th>Aircraft</th>
+            <th title="takeoff time">T/O</th>
+            <th title="time on target">TOT</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ p, f }) => {
+            const soon = f.status === "scheduled" && f.takeoff.t - now < 1800;
+            const humans = f.players.filter((x) => x.state !== "left").length;
+            return (
+              <tr
+                key={f.id}
+                className={`clickable ${isSel(selected, "flight", f.id) ? "sel" : ""} ${f.status === "done" || f.status === "cancelled" ? "faded" : ""}`}
+                onClick={() => select({ kind: "flight", id: f.id }, f.ll)}
+                title={`${p.target}${f.seats_free ? ` — ${f.seats_free} seats open` : ""}`}
+              >
+                <td className="mono" style={{ color: factionColor(data.campaign, p.faction) }}>{p.number}</td>
+                <td>
+                  {f.callsign}
+                  {humans > 0 && <span title="players"> 👤{humans}</span>}
+                </td>
+                <td><span className={`chip task task-${f.task}`}>{f.task}</span></td>
+                <td className="muted ac" title={`${f.size}× ${f.aircraft_name}`}>{f.size}× {f.aircraft_name}</td>
+                <td className={`mono ${soon ? "soon" : ""}`}>{f.takeoff.label.slice(3)}</td>
+                <td className="mono">{f.tot.label.slice(3)}</td>
+                <td><span className={`chip status st-${f.status}`}>{STATUS_LABEL[f.status] ?? f.status}</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {!rows.length && <p className="muted pad">No flights.</p>}
+    </>
+  );
+}
+
 export function AtoPanel(props: PanelProps) {
   const { data, selected, select } = props;
   const { ato, campaign } = data;
   const [faction, setFaction] = useState<string>("all");
+  const [view, setView] = useState<"list" | "packages">("list");
   const packages = (ato?.packages ?? []).filter((p) => faction === "all" || p.faction === faction);
   return (
     <div className="panel">
@@ -248,14 +314,19 @@ export function AtoPanel(props: PanelProps) {
             {f === "all" ? "All" : factionName(campaign, f)}
           </button>
         ))}
+        <span className="grow" />
+        <button className={view === "list" ? "on" : ""} onClick={() => setView("list")} title="Falcon/BMS-style list of flights by takeoff time">ATO</button>
+        <button className={view === "packages" ? "on" : ""} onClick={() => setView("packages")}>Packages</button>
       </div>
       <h3>
         Packages ({packages.length}) · airborne {ato?.flights_airborne ?? 0}
       </h3>
-      {packages.map((p) => (
+      {view === "list" && <AtoList {...props} packages={packages} />}
+      {view === "packages" && packages.map((p) => (
         <div key={p.id} className={`package ${isSel(selected, "package", p.id) ? "sel" : ""}`}>
           <div className="package-head clickable" onClick={() => select({ kind: "package", id: p.id }, p.ll)}>
             <span className="side-dot" style={{ background: factionColor(campaign, p.faction) }} />
+            <span className="mono pkg-no">{p.number}</span>
             <span className={`chip task task-${p.task}`}>{p.task}</span>
             <span className="grow title">{p.target}</span>
             <span className="muted">TOT {p.tot.label.slice(3)}</span>
@@ -347,7 +418,7 @@ export function EventsPanel({ data }: PanelProps) {
 const SAM_STATUS: Record<string, string> = { active: "ACTIVE", setting_up: "SETUP", moving: "MOVING", suppressed: "SUPPR" };
 const ROLE_LABEL: Record<string, string> = { long: "Long range", medium: "Medium range", short: "Short range", ewr: "Early warning" };
 
-export function AirDefensePanel({ data, selected, select, viewpoint }: PanelProps) {
+export function AirDefensePanel({ data, selected, select, viewpoint, units }: PanelProps) {
   const { airDefense, campaign, map } = data;
   const prov = (id: string) => map?.provinces.find((p) => p.id === id)?.name ?? id;
   return (
@@ -377,15 +448,63 @@ export function AirDefensePanel({ data, selected, select, viewpoint }: PanelProp
                           </div>
                           <div className="sub">
                             {s.name} · {prov(s.location)}
-                            {s.range_km > 0 && ` · ${s.range_km} km`}
+                            {s.range_km > 0 && ` · ${fmtDist(s.range_km, units)}`}
                             {s.networked_to && " · IADS"}
                           </div>
                         </div>
-                        {s.missiles_max > 0 && <Bar value={s.missiles / s.missiles_max} color="#e879f9" title={`missiles ${Math.round(s.missiles)}/${s.missiles_max}`} />}
+                        {s.missiles_max > 0 && s.missiles != null && <Bar value={s.missiles / s.missiles_max} color="#e879f9" title={`missiles ${Math.round(s.missiles)}/${s.missiles_max}`} />}
+                        {s.intel && <span className={`chip intel ${s.intel.stale ? "stale" : ""}`} title={intelLabel(s.intel)}>{ageLabel(s.intel.age_s)}</span>}
                         <span className={`chip st-${s.status}`}>{SAM_STATUS[s.status] ?? s.status}</span>
                       </div>
                     );
                   })}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- intel
+
+const KIND_LABEL: Record<string, string> = { division: "Brigades", sam: "Air defence", flight: "Air tracks", convoy: "Convoys" };
+
+/** Fog of war: what the viewing faction knows about the enemy, and its sensors. */
+export function IntelPanel({ data, selected, select }: PanelProps) {
+  const intel = data.intel;
+  if (!data.faction || !intel) {
+    return <p className="muted pad">Umpire view: everything is visible. Pick a side with fog of war on to see only what its sensors found.</p>;
+  }
+  const kinds = ["flight", "sam", "division", "convoy"];
+  const selKind: Record<string, NonNullable<Selection>["kind"]> = { division: "division", sam: "sam", flight: "flight", convoy: "convoy" };
+  const awacs = intel.sensors.filter((s) => s.kind === "awacs");
+  return (
+    <div>
+      <h3>Picture of {factionName(data.campaign, data.faction)}</h3>
+      <div className="sub pad">
+        {intel.contacts.length} contacts · {intel.sensors.filter((s) => s.kind === "ground_radar").length} ground radars ·{" "}
+        {awacs.length ? `AWACS on station (${awacs.map((a) => a.name.replace("AWACS ", "")).join(", ")})` : "no AWACS on station"}
+      </div>
+      {kinds.map((k) => {
+        const list = intel.contacts.filter((c) => c.kind === k).sort((a, b) => a.age_s - b.age_s);
+        if (!list.length) return null;
+        return (
+          <div key={k}>
+            <h3>{KIND_LABEL[k]} <span className="muted">{list.length}</span></h3>
+            {list.map((c) => {
+              const det = c.detail as Record<string, string | number | boolean | undefined>;
+              const name = (det.name ?? det.aircraft_name ?? det.system_name ?? (c.kind === "flight" ? `Unknown ${det.helo ? "helicopter" : "aircraft"} (${det.size_class})` : c.id)) as string;
+              return (
+                <div key={c.id} className={`row clickable contact ${c.stale ? "stale" : ""} ${isSel(selected, selKind[c.kind], c.id) ? "sel" : ""}`} onClick={() => select({ kind: selKind[c.kind], id: c.id } as Selection, c.ll)}>
+                  <span className="icon" style={{ color: c.identified ? factionColor(data.campaign, c.faction) : "#facc15" }}>{c.identified ? "◆" : "?"}</span>
+                  <div className="grow">
+                    <div className="title">{name}</div>
+                    <div className="sub">{c.source}{c.kind === "flight" && det.heading_deg != null ? ` · hdg ${det.heading_deg}°` : ""}</div>
+                  </div>
+                  <span className={`chip intel ${c.stale ? "stale" : ""}`}>{ageLabel(c.age_s)}</span>
                 </div>
               );
             })}

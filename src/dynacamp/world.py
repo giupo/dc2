@@ -181,6 +181,8 @@ class Theater:
     name: str
     provinces: dict[str, Province] = field(default_factory=dict)
     _links: dict[str, dict[str, Link]] = field(default_factory=dict)
+    # (frm, to) -> (oriented polyline, polyline metres per progress metre)
+    _geom: dict[tuple[str, str], tuple[list[Vec2], float]] = field(default_factory=dict, repr=False, compare=False)
 
     def add_province(self, province: Province) -> Province:
         """Add a province.
@@ -237,6 +239,7 @@ class Theater:
         link = Link(a, b, length, kind, river, route_t)
         self._links[a][b] = link
         self._links[b][a] = link
+        self._geom.clear()
         return link
 
     def neighbors(self, pid: str) -> Iterable[str]:
@@ -277,13 +280,22 @@ class Theater:
             frm: Start province id.
             to: End province id.
         """
-        link = self._links[frm][to]
-        return link.points(frm, self.provinces[link.a].center, self.provinces[link.b].center)
+        return self._geometry(frm, to)[0]
+
+    def _geometry(self, frm: str, to: str) -> tuple[list[Vec2], float]:
+        """Cached oriented polyline and scale of a link (geometry never changes
+        after the theatre is built; :meth:`connect` clears the cache)."""
+        g = self._geom.get((frm, to))
+        if g is None:
+            link = self._links[frm][to]
+            pts = link.points(frm, self.provinces[link.a].center, self.provinces[link.b].center)
+            g = (pts, polyline_length(pts) / link.length if link.length else 0.0)
+            self._geom[(frm, to)] = g
+        return g
 
     def _scale(self, frm: str, to: str, pts: list[Vec2]) -> float:
         """Polyline metres per progress metre (1 on real roads)."""
-        length = self._links[frm][to].length
-        return polyline_length(pts) / length if length else 0.0
+        return self._geometry(frm, to)[1]
 
     def point_on_link(self, frm: str, to: str, s: float) -> Vec2:
         """Position at progress ``s`` along the link ``frm -> to``.

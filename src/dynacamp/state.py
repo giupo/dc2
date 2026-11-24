@@ -80,6 +80,7 @@ class CampaignState:
         factions: Factions by id.
         seed: Random seed.
         time: Campaign time in seconds since day 1 00:00.
+        units: Units of the texts for players: ``imperial`` (kts, ft, NM) or ``metric``.
         divisions: Brigades by id.
         convoys: Supply convoys by id.
         battles: Battles in progress by id.
@@ -99,6 +100,7 @@ class CampaignState:
     factions: dict[str, Faction]
     seed: int = 0
     time: float = 0.0  # campaign seconds since start
+    units: str = "imperial"  # of texts for players: "imperial" (kts/ft/NM) or "metric"
     divisions: dict[str, Division] = field(default_factory=dict)
     convoys: dict[str, Convoy] = field(default_factory=dict)
     battles: dict[str, Battle] = field(default_factory=dict)
@@ -114,6 +116,10 @@ class CampaignState:
     # Destroyed brigades waiting to be re-formed: (ready time, faction, template, name).
     reforming: list = field(default_factory=list)
     reforming_ad: list = field(default_factory=list)  # air defence batteries waiting for replacement
+    # Fog of war: faction -> entity id -> Contact (see systems.intel).
+    intel: dict[str, dict] = field(default_factory=dict)
+    # Players as last reported by the engine: id -> (side, position, kind).
+    player_positions: dict[str, tuple] = field(default_factory=dict)
     events: EventLog = field(default_factory=EventLog)
     rng: random.Random = field(init=False)
     # Entities whose orders/route changed this step (adapters must hear about it).

@@ -39,7 +39,16 @@ def test_mission_has_bridge_templates_and_slots(path, tmp_path):
     for sq in state.squadrons.values():
         for task in sq.tasks:
             assert any(g.name == f"DC_TPL_{sq.aircraft_type.id}_{task.value}" for g in templates)
-    assert all(g.late_activation and g.units[0].pylons for g in templates)
+    from dynacamp.air import AIRCRAFT, Task
+
+    def support_only(name: str) -> bool:
+        rest = name[len("DC_TPL_"):]
+        ac = rest.rsplit("_", 1)[0] if rest.rsplit("_", 1)[-1] in Task.__members__ else rest
+        return all(t.support for t in AIRCRAFT[ac].tasks)
+
+    assert all(g.late_activation for g in templates)
+    # combat aircraft carry their briefed ordnance; AWACS/tankers/transports none
+    assert all(g.units[0].pylons for g in templates if not support_only(g.name))
     assert any(u.skill == dcs.unit.Skill.Client for g in groups for u in g.units)
     actions = [type(a).__name__ for r in m.triggerrules.triggers for a in r.actions]
     assert actions == ["DoScript", "DoScriptFile"]

@@ -196,3 +196,87 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
 
 .maplibregl-ctrl-attrib { font-size: 10px; }
+
+/* ---------------------------------------------------------------- briefing (kneeboard) */
+
+button.primary { margin: 6px 0 8px; width: 100%; padding: 7px; border-radius: 4px; border: 1px solid #a16207; background: #3b2f05; color: var(--accent); font-weight: 700; }
+.briefing-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; z-index: 50; padding: 30px 10px; }
+.briefing { width: min(1000px, 100%); background: #f4f1e8; color: #1c1917; border-radius: 6px; padding: 22px 28px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); font-size: 13px; }
+.briefing h2 { margin: 2px 0 4px; font-size: 20px; }
+.briefing h3 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #57534e; border-bottom: 1px solid #d6d3c4; padding-bottom: 3px; }
+.briefing p { margin: 3px 0; }
+.briefing .muted { color: #78716c; }
+.briefing .mono { font-family: ui-monospace, "JetBrains Mono", monospace; }
+.briefing ul { margin: 4px 0; padding-left: 18px; }
+.briefing ul.compact li { margin: 2px 0; }
+.briefing .you { background: #fde68a; }
+.briefing-head { display: flex; gap: 20px; align-items: flex-start; border-bottom: 2px solid #1c1917; padding-bottom: 10px; }
+.briefing-head > div:first-child { flex: 1; }
+.briefing-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; color: #b45309; }
+.briefing-sub { color: #44403c; }
+.briefing-times { display: flex; gap: 14px; }
+.briefing-times div { display: flex; flex-direction: column; align-items: center; border: 2px solid #1c1917; border-radius: 4px; padding: 4px 10px; }
+.briefing-times span { font-size: 10px; letter-spacing: 0.1em; color: #57534e; }
+.briefing-times b { font-family: ui-monospace, monospace; font-size: 16px; }
+.briefing-actions { display: flex; gap: 6px; }
+.briefing-actions button { background: #1c1917; color: #f4f1e8; border: 0; border-radius: 4px; padding: 6px 10px; }
+.briefing .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.briefing .threats { list-style: none; padding: 0; }
+.briefing .threats li { margin: 4px 0; }
+.briefing .sev { display: inline-block; min-width: 52px; text-align: center; color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase; border-radius: 3px; padding: 1px 4px; margin-right: 6px; }
+.briefing .table.wp th { color: #57534e; }
+.briefing .table.wp td { border-top: 1px solid #d6d3c4; }
+.briefing .table.wp tr.hl td { background: #fde68a; font-weight: 600; }
+
+/* Printing the briefing: A4 kneeboard sheet. Only the briefing (a portal on
+   <body>) is printed; the app is removed from the flow, not just hidden. */
+@page { size: A4 portrait; margin: 12mm 12mm 14mm; }
+@media print {
+  :root, html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #1c1917; color-scheme: light; }
+  #root { display: none !important; }
+  .no-print { display: none !important; }
+  .briefing-backdrop { position: static; display: block; inset: auto; overflow: visible; background: none; padding: 0; }
+  .briefing { width: auto; max-width: none; margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: #fff; font-size: 9.5pt; line-height: 1.35; }
+  .briefing * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .briefing h2 { font-size: 15pt; }
+  .briefing h3 { margin-top: 10px; break-after: avoid; }
+  .briefing-head { gap: 12px; }
+  .briefing-times b { font-size: 12pt; }
+  .briefing .two { gap: 16px; }
+  .briefing section, .briefing tr, .briefing li { break-inside: avoid; }
+  .briefing .table.wp { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  .briefing .table.wp th, .briefing .table.wp td { padding: 2px 4px; }
+  .briefing .table.wp thead { display: table-header-group; }
+}
+
+/* ---- fog of war */
+.fog { margin-top: 6px; border-top: 1px solid #1f2937; padding-top: 6px; }
+.mk.stale { opacity: 0.55; }
+.mk.stale .unit-label small { color: #fbbf24; font-weight: 400; }
+.mk.track .flight-label { color: #facc15; }
+.chip.intel { background: #164e63; color: #a5f3fc; }
+.chip.intel.stale { background: #3f2d0a; color: #fbbf24; }
+.row.contact.stale { opacity: 0.7; }
+.pad { padding: 6px 10px; }
+
+/* ---- ATO list (Falcon/BMS style) and units */
+.ato-list { width: 100%; font-size: 12px; }
+.ato-list td, .ato-list th { white-space: nowrap; padding: 3px 4px; }
+.ato-list td.ac { max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
+.ato-list .chip { padding: 1px 4px; }
+.ato-list tr.sel td { background: #1e293b; }
+.ato-list tr.faded { opacity: 0.45; }
+.ato-list .soon { color: #fbbf24; font-weight: 600; }
+.mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+.pkg-no { color: #93c5fd; font-size: 12px; }
+.tabs.small .grow { flex: 1; }
+label.check { display: block; padding: 2px 10px 6px; font-size: 12px; }
+
+/* ---- time controls */
+.time-controls { display: flex; gap: 2px; margin-left: 10px; }
+.time-controls button { background: #111827; border: 1px solid #243045; color: #9ca3af; border-radius: 4px; padding: 2px 7px; font-size: 12px; font-family: ui-monospace, monospace; }
+.time-controls button.on { background: #1e3a5f; color: #e5e7eb; border-color: #4c8dff; }
+.time-controls button.play { min-width: 30px; }
+.time-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+.time-controls .err { color: #f87171; font-weight: 700; padding: 0 4px; }
+.badge.paused { background: #3f2d0a; color: #fbbf24; }

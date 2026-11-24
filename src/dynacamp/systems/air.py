@@ -24,6 +24,9 @@ PLAYER_FLIGHT_TIMEOUT_S = 3 * 3600.0
 TURNAROUND_S = 3 * 3600.0
 REPLACEMENT_INTERVAL_S = 8 * 3600.0  # one new airframe per squadron this often, up to establishment
 CAP_ORBIT_RADIUS_M = 15_000.0
+SUPPORT_ORBIT_RADIUS_M = 30_000.0
+AWACS_SUPPORT_RANGE_M = 350_000.0  # fighters under AWACS control fight better
+AWACS_A2A_BONUS = 1.15
 A2A_KILL = 0.1
 GROUND_STRENGTH_PER_EFF = 0.006
 GROUND_ORG_PER_EFF = 0.03
@@ -113,9 +116,25 @@ def _takeoff(state: CampaignState, f: Flight) -> None:
         _cancel(state, f, "no crews")
         return
     f.status = FlightStatus.AIRBORNE
+    if f.task is Task.TRANSPORT:
+        _load_cargo(state, f, base)
     if f.ai_count == 0:
         f.ai_done = True  # flown entirely by players
     state.emit("flight_takeoff", flight=f.id, callsign=f.callsign, faction=f.faction, task=f.task.value, ai=f.ai_count, players=len(f.active_seats))
+
+
+def _load_cargo(state: CampaignState, f: Flight, base) -> None:
+    """Load a transport at its home base: from the base's depot, or freely at a
+    rear base outside the map (the strategic supply chain)."""
+    want = f.aircraft_type.cargo * f.size
+    p = state.theater.provinces.get(base.province) if base.province else None
+    if p is None:
+        f.cargo = want
+    elif p.depot is not None and p.controller == f.faction:
+        f.cargo = min(want, p.depot.stock * 0.25)
+        p.depot.stock -= f.cargo
+    else:
+        f.cargo = 0.0
 
 
 def _cancel(state: CampaignState, f: Flight, reason: str) -> None:
@@ -145,10 +164,11 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
     """Move the AI part along its waypoints; attack, orbit or land on arrival."""
     if f.status is FlightStatus.ON_STATION:
         if state.time < f.station_until:
-            # Fly the CAP orbit around the station point.
-            f.orbit_angle = (f.orbit_angle + f.speed_ms * 0.6 * dt / CAP_ORBIT_RADIUS_M) % (2 * math.pi)
+            # Fly the orbit around the station point (wider for AWACS and tankers).
+            radius = CAP_ORBIT_RADIUS_M if f.task is Task.CAP else SUPPORT_ORBIT_RADIUS_M
+            f.orbit_angle = (f.orbit_angle + f.speed_ms * 0.6 * dt / radius) % (2 * math.pi)
             c = f.target_point
-            f.pos = Vec2(c.x + CAP_ORBIT_RADIUS_M * math.sin(f.orbit_angle), c.y + CAP_ORBIT_RADIUS_M * math.cos(f.orbit_angle))
+            f.pos = Vec2(c.x + radius * math.sin(f.orbit_angle), c.y + radius * math.cos(f.orbit_angle))
             return
         f.status = FlightStatus.RTB
         f.wp_index = f.target_index + 1
@@ -168,7 +188,7 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
         reached = f.wp_index
         f.wp_index += 1
         if reached == f.target_index:
-            if f.task is Task.CAP:
+            if f.task.orbits:
                 f.status = FlightStatus.ON_STATION
                 f.wp_index = reached  # stays on the station point
                 return
@@ -183,7 +203,7 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
 
 def _check_complete(state: CampaignState, f: Flight) -> None:
     """Close a flight whose AI part and players are done (or timed out)."""
-    if state.time > f.tot + PLAYER_FLIGHT_TIMEOUT_S:
+    if state.time > max(f.tot, f.station_until) + PLAYER_FLIGHT_TIMEOUT_S:
         for pid, seat in f.players.items():
             if seat.state is SeatState.ASSIGNED:
                 seat.state = SeatState.LEFT
@@ -203,8 +223,55 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
 # ---------------------------------------------------------------- attacks
 
 
+def deliver(state: CampaignState, f: Flight) -> None:
+    """A transport flight unloads its cargo: into a depot (airlift) or to the
+    brigades near the landing zone (helicopter resupply)."""
+    t = state.theater
+    cargo = f.cargo * (f.ai_count / f.size if f.size else 0.0)
+    f.cargo = 0.0
+    delivered = 0.0
+    if f.target_kind == "airlift" and f.target_id in state.airbases:
+        base = state.airbases[f.target_id]
+        p = t.provinces.get(base.province) if base.province else None
+        if p is not None and p.depot is not None and p.controller == f.faction:
+            delivered = min(cargo, p.depot.capacity - p.depot.stock)
+            p.depot.stock += delivered
+    elif f.target_kind == "resupply":
+        divs = [d for d in state.divisions.values() if d.faction == f.faction and d.position(t).distance_to(f.target_point) <= 15_000]
+        needs = {d.id: d.template.supply_capacity - d.supply for d in divs}
+        total = sum(needs.values())
+        if total > 0:
+            share = min(1.0, cargo / total)
+            for d in divs:
+                d.supply += needs[d.id] * share
+            delivered = min(cargo, total)
+    state.emit("airlift_delivered", flight=f.id, callsign=f.callsign, faction=f.faction, delivery=f.target_kind, target=f.target_id, amount=round(delivered, 1))
+
+
+def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = None, reach: float = AWACS_SUPPORT_RANGE_M) -> Flight | None:
+    """An AWACS of ``faction`` holding its orbit (within ``reach`` of ``near`` if given)."""
+    for f in state.flights.values():
+        if f.faction == faction and f.task is Task.AWACS and f.status is FlightStatus.ON_STATION and f.ai_count + len(f.active_seats) > 0:
+            if near is None or f.pos.distance_to(near) <= reach:
+                return f
+    return None
+
+
+def tanker_on_station(state: CampaignState, faction: str) -> Flight | None:
+    """A tanker of ``faction`` on its track."""
+    for f in state.flights.values():
+        if f.faction == faction and f.task is Task.TANKER and f.status is FlightStatus.ON_STATION:
+            return f
+    return None
+
+
 def attack(state: CampaignState, f: Flight) -> None:
     """Abstract attack run by the AI part of ``f`` at its target point."""
+    if f.task is Task.TRANSPORT:
+        deliver(state, f)
+        return
+    if f.task.support:
+        return
     t = state.theater
     point = f.target_point
     pkg = state.packages.get(f.package)
@@ -346,6 +413,11 @@ def _air_combat(state: CampaignState) -> None:
             continue
         state.timers[f"aa:{a.id}"] = state.timers[f"aa:{b.id}"] = state.time + ENGAGEMENT_COOLDOWN_S
         pa, pb = a.ai_count * a.aircraft_type.a2a, b.ai_count * b.aircraft_type.a2a
+        # Fighters controlled by their AWACS see the fight coming.
+        if awacs_on_station(state, a.faction, a.pos):
+            pa *= AWACS_A2A_BONUS
+        if awacs_on_station(state, b.faction, b.pos):
+            pb *= AWACS_A2A_BONUS
         la = sum(1 for _ in range(a.ai_count) if state.rng.random() < A2A_KILL * pb / (pa + pb))
         lb = sum(1 for _ in range(b.ai_count) if state.rng.random() < A2A_KILL * pa / (pa + pb))
         state.emit("air_engagement", flights=[a.id, b.id], callsigns=[a.callsign, b.callsign], losses=[la, lb])

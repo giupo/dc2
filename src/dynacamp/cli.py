@@ -96,6 +96,8 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     state = scenario.load(args.scenario)
+    if args.units:
+        state.units = args.units
 
     if not args.quiet:
         _print_events(state, args.verbose)
@@ -127,7 +129,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
             print(_summary(e.state))
 
     try:
-        run_realtime(engine, compression=args.compression, on_tick=on_tick)
+        run_realtime(engine, compression=args.compression, tick_s=1.0 / args.tick_hz, on_tick=on_tick)
 
     except KeyboardInterrupt:
         pass
@@ -159,6 +161,15 @@ def cmd_build_miz(args: argparse.Namespace) -> None:
 
         for n in notes:
             print(f"   note: {n}")
+
+
+def cmd_loadouts(args: argparse.Namespace) -> None:
+    """``dynacamp loadouts``: regenerate the aircraft loadouts from DCS' pylon tables."""
+    try:
+        from .adapters.dcs.miz import generate_loadouts
+    except ImportError:
+        raise SystemExit("pydcs is required: uv sync --extra miz") from None
+    print(f"Loadouts written to {generate_loadouts()}")
 
 
 def cmd_roads(args: argparse.Namespace) -> None:
@@ -210,6 +221,10 @@ def main(argv: list[str] | None = None) -> None:
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=50555)
     v.add_argument("--compression", type=float, default=60.0, help="time compression with no players")
+    v.add_argument("--tick-hz", type=float, default=10.0,
+                   help="engine steps per real second (smoother movement, more CPU)")
+    v.add_argument("--units", choices=["imperial", "metric"],
+                   help="units of briefings and map marks for players (default: the scenario's, else imperial)")
     v.add_argument("--report-hours", type=float, default=1)
     v.add_argument("--events")
     v.add_argument("--verbose", action="store_true")
@@ -225,6 +240,9 @@ def main(argv: list[str] | None = None) -> None:
     b.add_argument("--out-dir", default="missions")
     b.add_argument("--port", type=int, default=50555)
     b.set_defaults(func=cmd_build_miz)
+
+    lo = sub.add_parser("loadouts", help="regenerate aircraft loadouts from DCS pylon tables (needs pydcs)")
+    lo.set_defaults(func=cmd_loadouts)
 
     r = sub.add_parser("roads", help="route scenario links on real roads (OSRM, needs network) -> <scenario>.roads.json")
     r.add_argument("scenarios", nargs="+")

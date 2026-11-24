@@ -111,7 +111,7 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
     case "convoy_returned":
       return `Convoy ${d.convoy} back at depot`;
     case "package_planned":
-      return `${d.task} package: ${d.target}, TOT ${d.tot} — ${(d.flights as string[]).join(", ")}`;
+      return `${d.number ? `PKG ${d.number} · ` : ""}${d.task}: ${d.target}, TOT ${d.tot} — ${(d.flights as string[]).join(", ")}`;
     case "flight_takeoff":
       return `${d.callsign} airborne (${d.task})`;
     case "flight_landed":
@@ -147,4 +147,33 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
     default:
       return `${e.kind} ${JSON.stringify(d)}`;
   }
+}
+
+/** Age of a piece of intelligence: "now", "12 min", "3 h". */
+export function ageLabel(seconds: number): string {
+  if (seconds < 90) return "now";
+  if (seconds < 5400) return `${Math.round(seconds / 60)} min`;
+  return `${Math.round(seconds / 3600)} h`;
+}
+
+/** One-line description of how a contact is known. */
+export function intelLabel(i: { source: string; age_s: number; stale: boolean; identified: boolean }): string {
+  return `${i.identified ? "" : "unidentified · "}${i.source} · ${ageLabel(i.age_s)}${i.stale ? " (stale)" : ""}`;
+}
+
+// ---------------------------------------------------------------- units
+
+/** Display units: SI, or aviation imperial (NM, ft, kts). */
+export type Units = "metric" | "imperial";
+
+export function fmtDist(km: number, units: Units): string {
+  return units === "imperial" ? `${Math.round(km / 1.852)} NM` : `${Math.round(km)} km`;
+}
+
+export function fmtAlt(m: number, units: Units): string {
+  return units === "imperial" ? `${(Math.round(m / 0.3048 / 100) * 100).toLocaleString()} ft` : `${Math.round(m).toLocaleString()} m`;
+}
+
+export function fmtSpeed(kmh: number, units: Units): string {
+  return units === "imperial" ? `${Math.round(kmh / 1.852 / 5) * 5} kts` : `${Math.round(kmh)} km/h`;
 }

@@ -113,9 +113,30 @@ export interface paths {
         };
         /**
          * Get Ato
-         * @description Packages and flights, squadrons, sortie budget, in-game join boards.
+         * @description Packages and flights, squadrons, sortie budget, in-game join boards
+         *     (and the enemy radar tracks, in a faction's view).
          */
         get: operations["get_ato_api_ato_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ato/flights/{flight_id}/briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Briefing
+         * @description Mission package of a flight: briefing, named waypoints, threats, ordnance, comms.
+         */
+        get: operations["get_briefing_api_ato_flights__flight_id__briefing_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -136,6 +157,27 @@ export interface paths {
          * @description SAM sites and early-warning radars, their state, and the IADS network links.
          */
         get: operations["get_air_defense_api_airdefense_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/intel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Intel
+         * @description Fog of war: the contacts a faction holds on the enemy (last known
+         *     position, age, source, identification) and its air-search sensors.
+         */
+        get: operations["get_intel_api_intel_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -205,6 +247,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/positions/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Positions Stream
+         * @description Server-Sent Events: `positions` events (data = Positions) at `hz` per
+         *     second, for smooth animation: the client interpolates between samples.
+         *     Only what moves, as `id -> [lat, lon]`; fog of war applies with `faction`.
+         */
+        get: operations["positions_stream_api_positions_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Positions
+         * @description One sample of the positions stream.
+         */
+        get: operations["get_positions_api_positions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Control
+         * @description Pause and speed of the campaign clock.
+         */
+        get: operations["get_control_api_control_get"];
+        put?: never;
+        /**
+         * Post Control
+         * @description Pause / resume and fast-forward the campaign. Refused (409) while a
+         *     game simulates part of the campaign: then time must run 1:1.
+         */
+        post: operations["post_control_api_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api": {
         parameters: {
             query?: never;
@@ -229,14 +338,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AirDefenseView */
+        /**
+         * AirDefenseView
+         * @description Air defence sites and the IADS network.
+         */
         AirDefenseView: {
             /** Sites */
             sites: components["schemas"]["SamSiteView"][];
             /** Links */
             links: components["schemas"]["IadsLinkView"][];
         };
-        /** AirbaseView */
+        /**
+         * AirbaseView
+         * @description An airbase and its owner.
+         */
         AirbaseView: {
             /**
              * Pos
@@ -260,7 +375,10 @@ export interface components {
             /** Owner */
             owner: string | null;
         };
-        /** AtoView */
+        /**
+         * AtoView
+         * @description The air tasking order.
+         */
         AtoView: {
             /** Packages */
             packages: components["schemas"]["PackageView"][];
@@ -273,6 +391,11 @@ export interface components {
             /** Flights Airborne */
             flights_airborne: number;
             /**
+             * Tracks
+             * @description enemy flights detected (faction view)
+             */
+            tracks?: components["schemas"]["FlightView"][];
+            /**
              * Boards
              * @description side -> what players see in the in-game menu
              */
@@ -280,7 +403,10 @@ export interface components {
                 [key: string]: components["schemas"]["BoardPackage"][];
             };
         };
-        /** BattleView */
+        /**
+         * BattleView
+         * @description A battle in progress, located where the forces meet.
+         */
         BattleView: {
             /**
              * Pos
@@ -315,7 +441,10 @@ export interface components {
              */
             delegated: boolean;
         };
-        /** BoardFlight */
+        /**
+         * BoardFlight
+         * @description A flight players can join (in-game board).
+         */
         BoardFlight: {
             /** Id */
             id: string;
@@ -325,11 +454,14 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE";
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Seats */
             seats: number;
         };
-        /** BoardPackage */
+        /**
+         * BoardPackage
+         * @description A package on the in-game board.
+         */
         BoardPackage: {
             /** Id */
             id: string;
@@ -338,8 +470,244 @@ export interface components {
             /** Flights */
             flights: components["schemas"]["BoardFlight"][];
         };
-        /** CampaignView */
+        /**
+         * BriefingFlight
+         * @description A flight of the package.
+         */
+        BriefingFlight: {
+            /** Callsign */
+            callsign: string;
+            /** Aircraft */
+            aircraft: string;
+            /**
+             * Task
+             * @enum {string}
+             */
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            /** Size */
+            size: number;
+            /** Base */
+            base: string;
+            takeoff: components["schemas"]["Time"];
+            /** You */
+            you: boolean;
+        };
+        /**
+         * BriefingStore
+         * @description Ordnance item and number of pylons carrying it.
+         */
+        BriefingStore: {
+            /** Store */
+            store: string;
+            /** Count */
+            count: number;
+        };
+        /**
+         * BriefingSupport
+         * @description A friendly AWACS or tanker available during the mission.
+         */
+        BriefingSupport: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /**
+             * Task
+             * @enum {string}
+             */
+            task: "AWACS" | "TANKER";
+            /** Callsign */
+            callsign: string;
+            /** Aircraft */
+            aircraft: string;
+            /** Status */
+            status: string;
+            /** Position */
+            position: string;
+            /** From Target */
+            from_target: string;
+            /** Frequency */
+            frequency: string;
+            until: components["schemas"]["Time"];
+        };
+        /**
+         * BriefingTarget
+         * @description The target of a flight.
+         */
+        BriefingTarget: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /** Kind */
+            kind: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Composition */
+            composition: string[];
+            /**
+             * Coordinates
+             * @description degrees and decimal minutes
+             */
+            coordinates: string;
+            /**
+             * From Base
+             * @description bearing and range from the home base
+             */
+            from_base: string;
+        };
+        /**
+         * BriefingThreat
+         * @description A threat to the flight.
+         */
+        BriefingThreat: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "sam" | "shorad" | "fighters";
+            /** Name */
+            name: string;
+            /** Detail */
+            detail: string;
+            /** Range Km */
+            range_km: number;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+        };
+        /**
+         * BriefingView
+         * @description The mission package of a flight. Numbers are SI (``alt_m``, ``speed_kmh``,
+         *     ``range_km``); texts are written in ``units``.
+         */
+        BriefingView: {
+            /**
+             * Units
+             * @enum {string}
+             */
+            units: "metric" | "imperial";
+            /** Package Number */
+            package_number: string;
+            /** Flight Id */
+            flight_id: string;
+            /** Callsign */
+            callsign: string;
+            /** Title */
+            title: string;
+            /**
+             * Task
+             * @enum {string}
+             */
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            /** Aircraft */
+            aircraft: string;
+            /** Size */
+            size: number;
+            /** Squadron */
+            squadron: string;
+            /** Base */
+            base: string;
+            takeoff: components["schemas"]["Time"];
+            tot: components["schemas"]["Time"];
+            /** Mission */
+            mission: string;
+            /** Situation */
+            situation: string[];
+            target: components["schemas"]["BriefingTarget"];
+            /** Threats */
+            threats: components["schemas"]["BriefingThreat"][];
+            /** Loadout */
+            loadout: components["schemas"]["BriefingStore"][];
+            /** Loadout Note */
+            loadout_note: string;
+            /** Comms */
+            comms: {
+                [key: string]: string;
+            };
+            /** Support */
+            support: components["schemas"]["BriefingSupport"][];
+            /** Waypoints */
+            waypoints: components["schemas"]["BriefingWaypoint"][];
+            /** Package */
+            package: components["schemas"]["BriefingFlight"][];
+            /**
+             * Text
+             * @description the briefing as sent to players in the game
+             */
+            text: string;
+        };
+        /**
+         * BriefingWaypoint
+         * @description A named waypoint of a flight plan.
+         */
+        BriefingWaypoint: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /** Index */
+            index: number;
+            /**
+             * Name
+             * @description TAKEOFF, IP, TARGET, EGRESS, CAP STATION, LAND...
+             */
+            name: string;
+            eta: components["schemas"]["Time"];
+            /** Alt M */
+            alt_m: number;
+            /** Speed Kmh */
+            speed_kmh: number;
+            /** Note */
+            note: string;
+        };
+        /**
+         * CampaignView
+         * @description Campaign overview: clock, factions, players.
+         */
         CampaignView: {
+            /**
+             * Units
+             * @description units of the texts for players (default of the UI)
+             * @enum {string}
+             */
+            units: "metric" | "imperial";
+            /** @description pause and speed (null without a running engine) */
+            control?: components["schemas"]["ControlView"] | null;
             /** Api Version */
             api_version: number;
             /** Name */
@@ -362,7 +730,109 @@ export interface components {
              */
             events: number;
         };
-        /** ConvoyView */
+        /**
+         * ContactInfo
+         * @description How a faction knows about an enemy entity (fog of war views only).
+         */
+        ContactInfo: {
+            /**
+             * Source
+             * @description sensor of the last detection
+             */
+            source: string;
+            /** @description time of the last detection */
+            seen: components["schemas"]["Time"];
+            /** Age S */
+            age_s: number;
+            /**
+             * Stale
+             * @description old information: shown at its last known position
+             */
+            stale: boolean;
+            /**
+             * Identified
+             * @description type known (else an unidentified radar track)
+             */
+            identified: boolean;
+        };
+        /**
+         * ContactView
+         * @description One contact of a faction's intelligence picture.
+         */
+        ContactView: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "division" | "convoy" | "flight" | "sam";
+            /** Faction */
+            faction: string;
+            /** Source */
+            source: string;
+            seen: components["schemas"]["Time"];
+            first_seen: components["schemas"]["Time"];
+            /** Age S */
+            age_s: number;
+            /** Stale */
+            stale: boolean;
+            /** Identified */
+            identified: boolean;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ControlRequest
+         * @description Change pause and/or speed (fields left out are unchanged).
+         */
+        ControlRequest: {
+            /** Paused */
+            paused?: boolean | null;
+            /**
+             * Compression
+             * @description campaign seconds per real second
+             */
+            compression?: number | null;
+        };
+        /**
+         * ControlView
+         * @description Pause and speed of the campaign clock.
+         */
+        ControlView: {
+            /** Paused */
+            paused: boolean;
+            /**
+             * Compression
+             * @description campaign seconds per real second when not live
+             */
+            compression: number;
+            /**
+             * Rate
+             * @description effective rate now: 0 paused, 1 live, else the compression
+             */
+            rate: number;
+            /** Min Compression */
+            min_compression: number;
+            /** Max Compression */
+            max_compression: number;
+        };
+        /**
+         * ConvoyView
+         * @description A supply convoy.
+         */
         ConvoyView: {
             /**
              * Pos
@@ -396,8 +866,12 @@ export interface components {
              * @enum {string}
              */
             authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            intel?: components["schemas"]["ContactInfo"] | null;
         };
-        /** DepotView */
+        /**
+         * DepotView
+         * @description A supply depot.
+         */
         DepotView: {
             /**
              * Pos
@@ -415,16 +889,22 @@ export interface components {
             name: string;
             /** Controller */
             controller: string;
-            /** Stock */
-            stock: number;
+            /**
+             * Stock
+             * @description null for enemy depots in a faction's view
+             */
+            stock: number | null;
             /** Capacity */
             capacity: number;
             /** Production Per Hour */
             production_per_hour: number;
             /** Trucks */
-            trucks: number;
+            trucks: number | null;
         };
-        /** DivisionSupplyView */
+        /**
+         * DivisionSupplyView
+         * @description Supply state of a brigade.
+         */
         DivisionSupplyView: {
             /** Id */
             id: string;
@@ -441,7 +921,10 @@ export interface components {
             /** Convoy Incoming */
             convoy_incoming: boolean;
         };
-        /** DivisionView */
+        /**
+         * DivisionView
+         * @description A brigade.
+         */
         DivisionView: {
             /**
              * Pos
@@ -468,9 +951,9 @@ export interface components {
             /** Strength */
             strength: number;
             /** Org */
-            org: number;
+            org: number | null;
             /** Supply */
-            supply: number;
+            supply: number | null;
             /** Elements */
             elements: {
                 [key: string]: number;
@@ -486,8 +969,13 @@ export interface components {
             authority: "campaign" | "materializing" | "delegated" | "dematerializing";
             /** Moving */
             moving: boolean;
+            /** @description set on enemy brigades in a faction's view */
+            intel?: components["schemas"]["ContactInfo"] | null;
         };
-        /** EventView */
+        /**
+         * EventView
+         * @description A campaign event.
+         */
         EventView: {
             /** Seq */
             seq: number;
@@ -499,7 +987,10 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** EventsPage */
+        /**
+         * EventsPage
+         * @description A page of events.
+         */
         EventsPage: {
             /** Events */
             events: components["schemas"]["EventView"][];
@@ -509,7 +1000,10 @@ export interface components {
              */
             next: number;
         };
-        /** FactionView */
+        /**
+         * FactionView
+         * @description A faction with its score.
+         */
         FactionView: {
             /** Id */
             id: string;
@@ -551,7 +1045,10 @@ export interface components {
              */
             age_s: number;
         };
-        /** FlightView */
+        /**
+         * FlightView
+         * @description A flight of the ATO.
+         */
         FlightView: {
             /**
              * Pos
@@ -567,6 +1064,8 @@ export interface components {
             id: string;
             /** Package */
             package: string;
+            /** Package Number */
+            package_number: string;
             /** Callsign */
             callsign: string;
             /** Faction */
@@ -587,7 +1086,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE";
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /**
              * Status
              * @enum {string}
@@ -615,15 +1114,23 @@ export interface components {
              */
             authority: "campaign" | "materializing" | "delegated" | "dematerializing";
             on_station_until: components["schemas"]["Time"] | null;
+            /** @description set on enemy radar tracks in a faction's view */
+            intel?: components["schemas"]["ContactInfo"] | null;
         };
-        /** ForcesView */
+        /**
+         * ForcesView
+         * @description All brigades and battles.
+         */
         ForcesView: {
             /** Divisions */
             divisions: components["schemas"]["DivisionView"][];
             /** Battles */
             battles: components["schemas"]["BattleView"][];
         };
-        /** FrontLineView */
+        /**
+         * FrontLineView
+         * @description A front line between two factions.
+         */
         FrontLineView: {
             /** Pos */
             pos: number[][];
@@ -638,7 +1145,10 @@ export interface components {
             /** Battles */
             battles: string[];
         };
-        /** FrontsView */
+        /**
+         * FrontsView
+         * @description Front lines, sectors, battles and recent fire missions.
+         */
         FrontsView: {
             /** Lines */
             lines: components["schemas"]["FrontLineView"][];
@@ -654,7 +1164,10 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** IadsLinkView */
+        /**
+         * IadsLinkView
+         * @description IADS link between an EWR and a site it cues.
+         */
         IadsLinkView: {
             /** Pos */
             pos: number[][];
@@ -667,7 +1180,29 @@ export interface components {
             /** Faction */
             faction: string;
         };
-        /** LinkView */
+        /**
+         * IntelView
+         * @description A faction's intelligence picture and its air-search sensors.
+         */
+        IntelView: {
+            /** Faction */
+            faction: string;
+            /** Contacts */
+            contacts: components["schemas"]["ContactView"][];
+            /** Sensors */
+            sensors: components["schemas"]["SensorView"][];
+            /**
+             * Counts
+             * @description contacts per kind
+             */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * LinkView
+         * @description A road/track/rail link with its geometry.
+         */
         LinkView: {
             /** Pos */
             pos: number[][];
@@ -692,7 +1227,10 @@ export interface components {
              */
             road: boolean;
         };
-        /** LogisticsView */
+        /**
+         * LogisticsView
+         * @description Depots, convoys, supply network and brigade supply.
+         */
         LogisticsView: {
             /** Depots */
             depots: components["schemas"]["DepotView"][];
@@ -712,7 +1250,10 @@ export interface components {
             /** Direct Range Km */
             direct_range_km: number;
         };
-        /** MapView */
+        /**
+         * MapView
+         * @description Static map geometry (changes only with control).
+         */
         MapView: {
             /** Theater */
             theater: string;
@@ -723,7 +1264,10 @@ export interface components {
             /** Airbases */
             airbases: components["schemas"]["AirbaseView"][];
         };
-        /** NetworkEntry */
+        /**
+         * NetworkEntry
+         * @description Supply reach of a province.
+         */
         NetworkEntry: {
             /** Depot */
             depot: string;
@@ -732,7 +1276,10 @@ export interface components {
             /** Direct */
             direct: boolean;
         };
-        /** ObjectiveView */
+        /**
+         * ObjectiveView
+         * @description A faction objective and whether it is held.
+         */
         ObjectiveView: {
             /** Province */
             province: string;
@@ -743,17 +1290,23 @@ export interface components {
             /** Achieved */
             achieved: boolean;
         };
-        /** OrderView */
+        /**
+         * OrderView
+         * @description A division's order.
+         */
         OrderView: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "hold" | "move" | "attack";
+            kind: "hold" | "move" | "attack" | "unknown";
             /** Target */
             target: string | null;
         };
-        /** PackageView */
+        /**
+         * PackageView
+         * @description An ATO package.
+         */
         PackageView: {
             /**
              * Pos
@@ -767,13 +1320,18 @@ export interface components {
             ll: number[] | null;
             /** Id */
             id: string;
+            /**
+             * Number
+             * @description four-digit package number, as in Falcon's ATO
+             */
+            number: string;
             /** Faction */
             faction: string;
             /**
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE";
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Target */
             target: string;
             tot: components["schemas"]["Time"];
@@ -781,7 +1339,10 @@ export interface components {
             /** Flights */
             flights: components["schemas"]["FlightView"][];
         };
-        /** PlayerView */
+        /**
+         * PlayerView
+         * @description A connected player.
+         */
         PlayerView: {
             /**
              * Pos
@@ -812,14 +1373,59 @@ export interface components {
              */
             flight: string | null;
         };
-        /** Polyline */
+        /**
+         * Polyline
+         * @description A line on the map.
+         */
         Polyline: {
             /** Pos */
             pos: number[][];
             /** Ll */
             ll: number[][] | null;
         };
-        /** ProvinceView */
+        /**
+         * PositionsView
+         * @description Compact positions of what moves (``id -> [lat, lon]``), for animation.
+         */
+        PositionsView: {
+            /**
+             * T
+             * @description campaign time of the sample
+             */
+            t: number;
+            /**
+             * D
+             * @description brigades
+             */
+            d: {
+                [key: string]: number[];
+            };
+            /**
+             * C
+             * @description convoys
+             */
+            c: {
+                [key: string]: number[];
+            };
+            /**
+             * F
+             * @description airborne flights (and enemy tracks in a faction's view)
+             */
+            f: {
+                [key: string]: number[];
+            };
+            /**
+             * S
+             * @description air defence sites
+             */
+            s: {
+                [key: string]: number[];
+            };
+        };
+        /**
+         * ProvinceView
+         * @description A province with its territory polygon.
+         */
         ProvinceView: {
             /**
              * Pos
@@ -855,7 +1461,10 @@ export interface components {
             /** @description closed polygon (Voronoi cell of the centre, max 60 km) */
             territory: components["schemas"]["Polyline"];
         };
-        /** RouteView */
+        /**
+         * RouteView
+         * @description Remaining route along the roads.
+         */
         RouteView: {
             /** Pos */
             pos: number[][];
@@ -864,7 +1473,10 @@ export interface components {
             /** Provinces */
             provinces: string[];
         };
-        /** SamSiteView */
+        /**
+         * SamSiteView
+         * @description A SAM site or early-warning radar.
+         */
         SamSiteView: {
             /**
              * Pos
@@ -908,7 +1520,7 @@ export interface components {
             /** Ceiling M */
             ceiling_m: number;
             /** Missiles */
-            missiles: number;
+            missiles: number | null;
             /** Missiles Max */
             missiles_max: number;
             /**
@@ -934,8 +1546,12 @@ export interface components {
              * @enum {string}
              */
             authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            intel?: components["schemas"]["ContactInfo"] | null;
         };
-        /** SeatView */
+        /**
+         * SeatView
+         * @description A player's seat in a flight.
+         */
         SeatView: {
             /** Id */
             id: string;
@@ -947,7 +1563,10 @@ export interface components {
              */
             state: "assigned" | "airborne" | "landed" | "lost" | "left";
         };
-        /** SectorView */
+        /**
+         * SectorView
+         * @description A front province with local force ratio.
+         */
         SectorView: {
             /** Faction */
             faction: string;
@@ -962,7 +1581,35 @@ export interface components {
             /** Divisions */
             divisions: string[];
         };
-        /** SnapshotView */
+        /**
+         * SensorView
+         * @description A friendly sensor and its reach.
+         */
+        SensorView: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "awacs" | "aircraft" | "ground_radar";
+            /** Name */
+            name: string;
+            /** Range Km */
+            range_km: number;
+        };
+        /**
+         * SnapshotView
+         * @description Every view in one document.
+         */
         SnapshotView: {
             campaign: components["schemas"]["CampaignView"];
             map: components["schemas"]["MapView"];
@@ -972,7 +1619,10 @@ export interface components {
             ato: components["schemas"]["AtoView"];
             air_defense: components["schemas"]["AirDefenseView"];
         };
-        /** SquadronView */
+        /**
+         * SquadronView
+         * @description A squadron and its availability.
+         */
         SquadronView: {
             /** Id */
             id: string;
@@ -987,7 +1637,7 @@ export interface components {
             /** Aircraft Name */
             aircraft_name: string;
             /** Tasks */
-            tasks: ("CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE")[];
+            tasks: ("CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT")[];
             /** Strength */
             strength: number;
             /** Available */
@@ -997,14 +1647,20 @@ export interface components {
             /** Servicing */
             servicing: number;
         };
-        /** TargetRef */
+        /**
+         * TargetRef
+         * @description Reference to a flight's target.
+         */
         TargetRef: {
             /** Kind */
             kind: string;
             /** Id */
             id: string;
         };
-        /** Time */
+        /**
+         * Time
+         * @description A campaign time.
+         */
         Time: {
             /**
              * T
@@ -1081,7 +1737,10 @@ export interface operations {
     };
     get_fronts_api_fronts_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1097,11 +1756,23 @@ export interface operations {
                     "application/json": components["schemas"]["FrontsView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_forces_api_forces_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1117,11 +1788,23 @@ export interface operations {
                     "application/json": components["schemas"]["ForcesView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_logistics_api_logistics_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1137,11 +1820,23 @@ export interface operations {
                     "application/json": components["schemas"]["LogisticsView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_ato_api_ato_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1157,11 +1852,59 @@ export interface operations {
                     "application/json": components["schemas"]["AtoView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_briefing_api_ato_flights__flight_id__briefing_get: {
+        parameters: {
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+                /** @description units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's) */
+                units?: ("metric" | "imperial") | null;
+            };
+            header?: never;
+            path: {
+                flight_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_air_defense_api_airdefense_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1177,6 +1920,47 @@ export interface operations {
                     "application/json": components["schemas"]["AirDefenseView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_intel_api_intel_get: {
+        parameters: {
+            query: {
+                /** @description faction whose intelligence picture to give */
+                faction: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntelView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_events_api_events_get: {
@@ -1187,6 +1971,8 @@ export interface operations {
                 /** @description comma separated event kinds to keep */
                 kinds?: string | null;
                 limit?: number;
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
             };
             header?: never;
             path?: never;
@@ -1216,7 +2002,10 @@ export interface operations {
     };
     get_snapshot_api_snapshot_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1232,6 +2021,15 @@ export interface operations {
                     "application/json": components["schemas"]["SnapshotView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     stream_api_stream_get: {
@@ -1239,6 +2037,8 @@ export interface operations {
             query?: {
                 /** @description replay from this seq */
                 since?: number | null;
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
             };
             header?: never;
             path?: never;
@@ -1253,6 +2053,125 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    positions_stream_api_positions_stream_get: {
+        parameters: {
+            query?: {
+                /** @description samples per second */
+                hz?: number;
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-Sent Events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_positions_api_positions_get: {
+        parameters: {
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_control_api_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlView"];
+                };
+            };
+        };
+    };
+    post_control_api_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ControlRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlView"];
                 };
             };
             /** @description Validation Error */

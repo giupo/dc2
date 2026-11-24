@@ -315,6 +315,10 @@ class DcsTranslator:
     @staticmethod
     def _enroute_tasks(task: str) -> list[dict[str, Any]]:
         """En-route DCS tasks of a flight (engage air / air defence)."""
+        if task == "AWACS":
+            return [{"number": 1, "auto": False, "enabled": True, "id": "AWACS", "params": {}}]
+        if task == "TANKER":
+            return [{"number": 1, "auto": False, "enabled": True, "id": "Tanker", "params": {}}]
         if task in ("CAP", "ESCORT"):
             targets, dist = ["Air"], 60_000
         elif task == "SEAD":
@@ -334,7 +338,7 @@ class DcsTranslator:
     @staticmethod
     def _target_tasks(task: str, target: Vec2 | None, station_s: float, helo: bool) -> list[dict[str, Any]]:
         """DCS tasks at the target waypoint (orbit, bombing, engage in zone)."""
-        if task == "CAP":
+        if task in ("CAP", "AWACS", "TANKER"):
             return [
                 {
                     "number": 1,
@@ -347,7 +351,7 @@ class DcsTranslator:
                     },
                 }
             ]
-        if target is None:
+        if target is None or task == "TRANSPORT":
             return []
         tx, ty = to_dcs(target)
         if task == "STRIKE":
