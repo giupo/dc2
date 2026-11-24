@@ -2,6 +2,7 @@
 
     dynacamp simulate scenarios/western_georgia.toml --days 5
     dynacamp serve scenarios/western_georgia.toml --port 50555 --compression 60
+    dynacamp serve scenarios/syria_m5.toml --save syria.dcsave  # resumes syria.dcsave if it exists
     dynacamp lua-path
 """
 
@@ -9,10 +10,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import secrets
+import signal
+import time
 from collections import Counter
 from pathlib import Path
 
-from . import scenario
+from . import persistence, scenario
 from .engine import Engine
 from .state import CampaignState
 
@@ -69,9 +74,26 @@ def _print_events(state: CampaignState, verbose: bool) -> None:
     state.events.subscribe(show)
 
 
+def _load_campaign(path: str) -> tuple[CampaignState, persistence.SaveInfo | None]:
+    """Load a scenario (``.toml``) or resume a save file.
+
+    Args:
+        path: Scenario or save file.
+
+    Returns:
+        The campaign, and the save's details when resuming (None for a scenario).
+    """
+    if persistence.is_save(path):
+        state, info = persistence.load(path)
+        print(f"Resumed '{info.name}' at {_clock(info.campaign_time)} from {path} "
+              f"(saved {time.strftime('%Y-%m-%d %H:%M', time.localtime(info.saved_at))} by {info.version})", flush=True)
+        return state, info
+    return scenario.load(path), None
+
+
 def cmd_simulate(args: argparse.Namespace) -> None:
     """``dynacamp simulate``: run a campaign headless as fast as possible."""
-    state = scenario.load(args.scenario)
+    state, _ = _load_campaign(args.scenario)
     if args.seed is not None:
         state.rng.seed(args.seed)
 
@@ -88,6 +110,10 @@ def cmd_simulate(args: argparse.Namespace) -> None:
         state.events.write_jsonl(Path(args.events))
         print(f"{len(state.events)} events written to {args.events}")
 
+    if args.save:
+        persistence.save(state, args.save)
+        print(f"Campaign saved to {args.save} at {_clock(state.time)}")
+
 
 def cmd_serve(args: argparse.Namespace) -> None:
     """``dynacamp serve``: real-time campaign with the DCS adapter, the API and the web UI."""
@@ -95,7 +121,14 @@ def cmd_serve(args: argparse.Namespace) -> None:
     from .runtime import run_realtime
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    state = scenario.load(args.scenario)
+    source = args.scenario
+    if args.save and not args.new and Path(args.save).exists() and not persistence.is_save(source):
+        # Never overwrite a running campaign with a fresh one by accident.
+        source = args.save
+    state, info = _load_campaign(source)
+    compression = args.compression
+    if compression is None:
+        compression = info.compression if info and info.compression else 60.0
     if args.units:
         state.units = args.units
 
@@ -110,26 +143,53 @@ def cmd_serve(args: argparse.Namespace) -> None:
         print(f"Waiting for DCS on {args.host}:{adapter.port}. Bridge script: {LUA_BRIDGE}")
 
     engine = Engine(state, adapter)
+    saver = persistence.Saver(args.save, args.autosave_minutes * 60) if args.save else None
     api = None
 
     if args.api_port:
         from .api import ApiServer
 
-        api = ApiServer(engine, args.api_host, args.api_port, web_dir=args.web_dir)
+        token = args.api_token or os.environ.get("DYNACAMP_API_TOKEN") or secrets.token_urlsafe(18)
+        api = ApiServer(engine, args.api_host, args.api_port, web_dir=args.web_dir, token=token, saver=saver)
         api.start()
-        print(f"API on http://{api.host}:{api.port}/api  (docs /docs)")
+        host = "localhost" if api.host in ("0.0.0.0", "::") else api.host
+        print(f"API on http://{host}:{api.port}/api  (docs /docs)")
+        if args.api_token or os.environ.get("DYNACAMP_API_TOKEN"):
+            print("API token: the one given (--api-token / DYNACAMP_API_TOKEN)")
+        else:
+            print(f"API token (new at every start; fix it with DYNACAMP_API_TOKEN): {token}")
         if Path(args.web_dir).is_dir():
-            print(f"Web UI on http://{api.host}:{api.port}/")
-    last_report = [0.0]
+            # The UI takes the token from the fragment, which never reaches the server.
+            print(f"Web UI on http://{host}:{api.port}/#token={token}", flush=True)
+    last_report = [state.time]
+    log = logging.getLogger(__name__)
+
+    def save_now(e: Engine, trigger: str) -> None:
+        """Save to ``--save`` and log it."""
+        assert saver is not None
+        record = saver.save(e, trigger)
+        log.info("campaign saved to %s at %s (%s)", saver.path, _clock(record.campaign_time), trigger)
 
     def on_tick(e: Engine) -> None:
-        """Print a summary every ``--report-hours``."""
+        """Print a summary every ``--report-hours``; autosave every ``--autosave-minutes``."""
         if e.state.time - last_report[0] >= args.report_hours * 3600:
             last_report[0] = e.state.time
             print(_summary(e.state))
+        if saver is not None and saver.due():
+            try:
+                save_now(e, "auto")
+            except OSError as exc:  # a full disk must not stop the campaign
+                log.error("autosave to %s failed: %s", saver.path, exc)
+
+    def stop(signum: int, _frame: object) -> None:
+        """SIGTERM (systemd, ``docker stop``) stops the server like Ctrl-C: cleanly, saving."""
+        raise KeyboardInterrupt(signal.Signals(signum).name)
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)  # also when started with SIGINT ignored (background jobs)
 
     try:
-        run_realtime(engine, compression=args.compression, tick_s=1.0 / args.tick_hz, on_tick=on_tick)
+        run_realtime(engine, compression=compression, tick_s=1.0 / args.tick_hz, on_tick=on_tick)
 
     except KeyboardInterrupt:
         pass
@@ -143,6 +203,10 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
         if args.events:
             state.events.write_jsonl(Path(args.events))
+
+        if saver is not None:
+            save_now(engine, "exit")
+            print(f"Campaign saved to {args.save}")
 
 
 def cmd_build_miz(args: argparse.Namespace) -> None:
@@ -216,20 +280,22 @@ def main(argv: list[str] | None = None) -> None:
     sub = p.add_subparsers(dest="command", required=True)
 
     s = sub.add_parser("simulate", help="run a campaign headless, as fast as possible")
-    s.add_argument("scenario")
+    s.add_argument("scenario", help="scenario (.toml) or save file to resume")
     s.add_argument("--days", type=float, default=5)
     s.add_argument("--report-hours", type=float, default=24)
     s.add_argument("--seed", type=int)
     s.add_argument("--events", help="write the event log to this JSONL file")
     s.add_argument("--quiet", action="store_true", help="only print periodic summaries")
     s.add_argument("--verbose", action="store_true", help="print every event")
+    s.add_argument("--save", help="save the campaign to this file at the end")
     s.set_defaults(func=cmd_simulate)
 
     v = sub.add_parser("serve", help="run in real time with the DCS adapter")
-    v.add_argument("scenario")
+    v.add_argument("scenario", help="scenario (.toml) or save file to resume")
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=50555)
-    v.add_argument("--compression", type=float, default=60.0, help="time compression with no players")
+    v.add_argument("--compression", type=float,
+                   help="time compression with no players (default: the save's, else 60)")
     v.add_argument("--tick-hz", type=float, default=10.0,
                    help="engine steps per real second (smoother movement, more CPU)")
     v.add_argument("--units", choices=["imperial", "metric"],
@@ -238,9 +304,16 @@ def main(argv: list[str] | None = None) -> None:
     v.add_argument("--events")
     v.add_argument("--verbose", action="store_true")
     v.add_argument("--quiet", action="store_true", help="do not print events")
+    v.add_argument("--save", help="save the campaign to this file periodically and on exit")
+    v.add_argument("--autosave-minutes", type=float, default=10.0,
+                   help="real minutes between autosaves with --save (0: only on exit)")
+    v.add_argument("--new", action="store_true",
+                   help="start the scenario afresh even if the --save file exists (overwrites it)")
     v.add_argument("--no-dcs", action="store_true", help="run without the DCS adapter (e.g. to develop the web UI)")
     v.add_argument("--api-host", default="127.0.0.1")
     v.add_argument("--api-port", type=int, default=8080, help="HTTP API port (0 disables it)")
+    v.add_argument("--api-token",
+                   help="token for API commands (default: $DYNACAMP_API_TOKEN, else a random one printed at start)")
     v.add_argument("--web-dir", default="web/dist", help="built front-end to serve at / (if it exists)")
     v.set_defaults(func=cmd_serve)
 
@@ -267,7 +340,10 @@ def main(argv: list[str] | None = None) -> None:
     lp.set_defaults(func=lambda a: print(__import__("dynacamp.adapters.dcs", fromlist=["LUA_BRIDGE"]).LUA_BRIDGE))
 
     args = p.parse_args(argv)
-    args.func(args)
+    try:
+        args.func(args)
+    except persistence.SaveError as exc:
+        p.exit(1, f"dynacamp: {exc}\n")
 
 
 if __name__ == "__main__":

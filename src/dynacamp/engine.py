@@ -29,6 +29,7 @@ from .adapters.base import (
     Report,
     UpdateRoute,
 )
+from . import callsigns
 from .air import Flight, FlightStatus, Task
 from .air_defense import AirDefenseUnit
 from .bubble import BubbleConfig, BubbleManager, Player
@@ -532,6 +533,9 @@ class Engine:
                 "aircraft": f.aircraft_type.id,
                 "task": f.task.value,
                 "callsign": f.callsign,
+                # DCS radio callsign (None for eastern sides); AI after the players' seats
+                "radio_callsign": callsigns.radio_callsign(self.state, f),
+                "first_unit": len(f.active_seats) + 1,
                 "helo": f.aircraft_type.helo,
                 "home": self.state.airbases[self.state.squadrons[f.squadron].airbase].name,
                 "target": f.target_point,

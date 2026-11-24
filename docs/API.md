@@ -1,7 +1,7 @@
 # DynaCamp HTTP API (v1)
 
-API in sola lettura per la web app: mappa, fronti, forze, logistica, ATO ed
-eventi in tempo reale. È un'app **FastAPI** (`src/dynacamp/api/app.py`) servita
+API per la web app: mappa, fronti, forze, logistica, ATO ed eventi in tempo
+reale, più il controllo del tempo. È un'app **FastAPI** (`src/dynacamp/api/app.py`) servita
 da uvicorn nello stesso processo del motore, in un thread a parte.
 
 - **Documentazione interattiva:** `http://localhost:8080/docs`
@@ -19,6 +19,37 @@ Opzioni: `--api-host` (default `127.0.0.1`), `--api-port` (default `8080`, `0`
 la disattiva). CORS è aperto (`*`), quindi un dev server su un'altra porta può
 chiamarla direttamente. I parametri sono validati: un valore sbagliato dà 422
 con il dettaglio dell'errore.
+
+## Autenticazione
+
+La lettura (`GET`) è libera. I comandi (`POST`) vogliono
+`Authorization: Bearer <token>`, altrimenti rispondono `401` con
+`WWW-Authenticate: Bearer`. Il confronto del token è a tempo costante. Lo
+schema OpenAPI dichiara lo schema `HTTPBearer`, quindi su `/docs` il pulsante
+*Authorize* abilita le prove.
+
+Da dove viene il token:
+- da `--api-token TOKEN`;
+- dalla variabile d'ambiente `DYNACAMP_API_TOKEN`;
+- altrimenti `serve` ne genera uno casuale a ogni avvio e lo stampa, insieme
+  al link `http://host:porta/#token=...` per la UI. Il frammento `#` non
+  arriva mai al server, quindi non finisce nei log.
+
+```bash
+curl -X POST -H "Authorization: Bearer $DYNACAMP_API_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"paused": true}' http://localhost:8080/api/control
+```
+
+### `GET /api/auth`
+
+`{"required": bool, "authenticated": bool}`. `authenticated` dice se la
+richiesta aveva il token giusto, ed è sempre `true` quando il token non è
+richiesto. La UI lo usa per sapere se sbloccare i comandi.
+
+Il token protegge i comandi, non i dati. Le viste senza `faction`, cioè
+quelle dell'arbitro, restano leggibili da chiunque raggiunga la porta. Il
+traffico è HTTP in chiaro: per esporre il servizio serve un reverse proxy con
+HTTPS.
 
 ## Convenzioni
 
@@ -71,14 +102,39 @@ Il parametro `faction` è obbligatorio.
 
 ### `GET /api/control`, `POST /api/control`
 
-Pausa e velocità dell'orologio di campagna. `POST` con
+Pausa e velocità dell'orologio di campagna. `POST` (con token, vedi
+*Autenticazione*) con
 `{"paused": true|false, "compression": 3600}`; i campi omessi restano invariati.
 La risposta (`paused`, `compression`, `rate`, `min_compression`,
 `max_compression`) è anche in `/api/campaign` (`control`) e in ogni `tick` dello
 stream. `rate` è la velocità effettiva: 0 in pausa, 1 se un gioco è live,
 altrimenti la compressione. Mentre un gioco è live il tempo deve scorrere 1:1:
 pausa e accelerazione rispondono 409. Una compressione fuori da
-[1, 7200] risponde 422.
+[1, 7200] risponde 422. Senza token, o con un token sbagliato, la risposta
+è 401.
+
+### `GET /api/save`, `POST /api/save`
+
+Salvataggio della campagna sul file di `dynacamp serve --save FILE`. La
+risposta è uguale per `GET` e `POST`, e si trova anche in `/api/campaign`
+(`save`):
+
+```json
+{"enabled": true, "file": "syria.dcsave", "autosave_minutes": 10.0,
+ "last": {"saved_at": 1795554880.1, "time": {"t": 29215.9, "label": "D1 08:06"}, "trigger": "api"}}
+```
+
+- `enabled`: `false` se il server non ha `--save`.
+- `saved_at`: ora reale del salvataggio, in secondi Unix.
+- `trigger`: chi l'ha chiesto, cioè `auto` (salvataggio automatico), `api` o
+  `exit` (chiusura del server).
+- `last`: riguarda solo l'esecuzione corrente del server; vale `null` finché
+  non si salva.
+
+`POST` salva subito; serve il token. Risponde 409 senza `--save` e 500 se il
+file non si può scrivere: in quel caso il salvataggio precedente resta
+intatto. Ogni salvataggio emette l'evento `campaign_saved`
+(`file`, `trigger`, `campaign_time`).
 
 ### `GET /api/positions/stream?hz=5&faction=<id>`
 

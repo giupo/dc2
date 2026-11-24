@@ -253,5 +253,17 @@ DC.apply_template(g2)
 check(g2.data.frequency == 251 and g2.data.units[1].type == "F-16C_50", "template frequency when none given")
 DC.templates = nil
 
+-- western callsigns: JSON {index = {list, flight, unit}, name} -> DCS {[1], [2], [3], name};
+-- the ATO's callsign wins over the template's, which stays for units without one
+DC.templates = { DC_TPL_f16c = { units = { { type = "F-16C_50", callsign = { 1, 1, 1, name = "Enfield11" } } } } }
+local g3 = { templates = { "DC_TPL_f16c" }, data = { name = "z", units = {
+  { callsign = { index = { 11, 3, 1 }, name = "Lobo31" } }, {} } } }
+DC.apply_callsign(g3)
+DC.apply_template(g3)
+local c1, c2 = g3.data.units[1].callsign, g3.data.units[2].callsign
+check(c1[1] == 11 and c1[2] == 3 and c1[3] == 1 and c1.name == "Lobo31" and c1.index == nil, "applies the ATO callsign")
+check(c2[1] == 1 and c2.name == "Enfield11", "template callsign when none given")
+DC.templates = nil
+
 if failures > 0 then print(failures .. " failure(s)"); os.exit(1) end
 print("all bridge tests passed")

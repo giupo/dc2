@@ -44,13 +44,14 @@ Documentazione completa:
 
 ```bash
 uv sync --extra miz --group dev --group docs     # tutto (pydcs serve solo per .miz/loadouts/radio)
-uv run pytest -q -W ignore::SyntaxWarning        # ~117 test, ~16 s (pydcs emette SyntaxWarning)
+uv run pytest -q -W ignore::SyntaxWarning        # ~134 test, 16–75 s (pydcs emette SyntaxWarning)
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 cd web && npx tsc --noEmit -p . && npm run build # UI; `npm run gen:api` dopo ogni modifica all'API
 uv run --group docs sphinx-build -q -b html docs/sphinx docs/sphinx/_build/html   # deve uscire senza avvisi
 
 uv run dynacamp simulate scenarios/syria_m5.toml --days 5
 uv run dynacamp serve scenarios/syria_m5.toml --no-dcs --compression 600   # UI su :8080
+uv run dynacamp serve scenarios/syria_m5.toml --save syria.dcsave         # persistente: riprende se il file esiste
 uv run --extra miz dynacamp build-miz scenarios/*.toml    # rigenera missions/*.miz
 uv run --extra miz dynacamp loadouts                      # rigenera data/loadouts.json
 uv run --extra miz dynacamp radio                         # rigenera data/radio.json
@@ -83,9 +84,14 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Nebbia di guerra:** le *decisioni* (ATO, IA, artiglieria, briefing) usano
   `systems/intel.py`, mai la verità. La *fisica* (combattimenti, ingaggi) usa
   la verità. Le viste API con `?faction=` mostrano solo i contatti.
+- **Call sign DCS:** si calcolano solo con `dynacamp.callsigns`. Gli elenchi
+  per tipo sono copiati da pydcs e verificati da `tests/test_callsigns.py`;
+  se si aggiunge un aereo con nomi propri, aggiornare `TYPE_NAMES`.
 - **Frequenze radio:** si assegnano solo con `dynacamp.radio.allocate`, lontano
   dalle ATC degli aeroporti della zona (`data/radio.json`), dalle frequenze di
   emergenza e dagli altri voli. Requisito esplicito dell'utente.
+- **Comandi API:** ogni nuovo `POST` deve avere
+  `dependencies=[Depends(require_token)]` (vedi `api/app.py`).
 - **Endpoint SSE** (`/api/stream`, `/api/positions/stream`) sono infiniti: i
   test che percorrono gli endpoint devono escludere i path che finiscono in
   `/stream`.
@@ -94,7 +100,7 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Python 3.14:** il motore gira in un solo thread con `Engine.lock` (RLock);
   l'API legge sotto lock.
 
-## Stato attuale (2026-11-24)
+## Stato attuale (2026-11-24, sera)
 
 Tutto funziona in simulazione, ma **non è ancora stato provato in un DCS
 vero**. Funzionalità implementate:
@@ -111,7 +117,11 @@ vero**. Funzionalità implementate:
   - supporto: AWACS, tanker, trasporti con ponte aereo e rifornimento in
     elicottero;
   - giocatori nei voli dal menu F10;
-  - numeri di package a 4 cifre stile BMS.
+  - numeri di package a 4 cifre stile BMS;
+  - squadroni blu con nomi e call sign reali (USAF/USN/USMC/Army, RAF, NATO),
+    dove possibile presi dagli enum di DCS (Lobo, Tusk, Devil...). Il call
+    sign arriva alle unità IA in DCS; se il nome non è vocalizzabile, si usa
+    un sostituto generico, mostrato nel briefing come "radio callsign".
 - **Mission package:** briefing, waypoint, minacce note, armamento,
   frequenze e supporti. È stampabile in A4 dalla UI.
 - **Difesa aerea:** 12 sistemi, rete IADS, SAM mobili su strada, SEAD.
@@ -124,20 +134,35 @@ vero**. Funzionalità implementate:
   - posizioni a 5 Hz interpolate a 60 fps nella UI.
 - **Unità e radio:** unità SI o kts/ft/NM; frequenze lontane dalle torri.
 - **Deploy:** Dockerfile in un'immagine unica (~140 MB, utente non-root,
-  healthcheck).
+  healthcheck), con la campagna salvata nel volume `/data`.
+- **Salvataggio e ripresa** (`persistence.py`): pickle gzip dell'intero
+  `CampaignState`, con ripresa deterministica.
+  - `simulate`/`serve` accettano un `.dcsave` al posto dello scenario.
+  - `--save` salva in automatico (`--autosave-minutes`, default 10) e
+    all'uscita (Ctrl-C/SIGTERM). Se il file esiste, `serve` riprende da lì
+    (`--new` per ricominciare).
+  - Al caricamento, ciò che teneva DCS torna al motore.
+  - Dalla UI: pulsante del dischetto (`POST /api/save`, con token). Tutto passa
+    da `persistence.Saver`. Lo stato del salvataggio è in `/api/campaign.save`.
 
 ## Prossimi passi / problemi aperti
 
 1. **Prova in DCS vero:** task AWACS/Tanker/Bombing, spawn su strada,
    frequenze dei gruppi, menu F10, handoff.
-2. **Persistenza:** manca salva/carica della campagna; serve per un server
-   persistente.
+2. **Salvataggi:** fatti salva/carica da CLI e salvataggio dalla UI. Restano
+   - slot e storico (oggi c'è un solo file), più il caricamento dalla UI;
+   - formato robusto ai refactoring: il pickle si rompe se cambiano molto le
+     classi di stato. Se serve, bumpare `persistence.FORMAT_VERSION`.
 3. **Equilibrio:** in alcuni seed una parte conquista tutto in 4–7 giorni, per
    una spirale (perde i depositi, quindi non ha più ricomplementi). Non dipende
    dalla nebbia. Idee: rinforzi da fuori mappa, difesa più forte nelle ultime
    province, fasi e condizioni di vittoria.
-4. **Sicurezza:** `POST /api/control` non ha autenticazione. Servono un token o
-   un reverse proxy prima di esporre il servizio.
+4. **Sicurezza:** fatto il bearer token per i `POST` (`--api-token` /
+   `DYNACAMP_API_TOKEN`, altrimenti generato e stampato come link
+   `#token=`; lucchetto nella UI). Restano
+   - la lettura aperta, compresa la vista dell'arbitro;
+   - HTTPS, da fare con un reverse proxy;
+   - token per fazione, se serviranno.
 5. **Aria:** mancano
    - missioni di ricognizione per rinfrescare il quadro informativo;
    - rotte attorno ai SAM;
@@ -155,5 +180,6 @@ vero**. Funzionalità implementate:
 - `src/dynacamp/data/loadouts.json`, `src/dynacamp/data/radio.json`: generati
   dai dati di DCS. Vanno versionati, perché il runtime non richiede pydcs.
 - `missions/*.miz`: generati. Vanno versionati e copiati in DCS.
-- `tools/ui/`: script di verifica della UI in Chrome headless (screenshot,
-  stampa PDF, misura della fluidità).
+- `tools/ui/`: script di verifica della UI in Chrome headless. Su questo PC
+  serve `CHROME=chromium`. Fanno screenshot, stampa PDF e misura della
+  fluidità.

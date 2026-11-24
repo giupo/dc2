@@ -1,7 +1,7 @@
 # UI checks (headless Chrome over CDP)
 
 Scripts used to verify the web UI without a desktop browser. They start their
-own headless Chrome with an isolated profile (`$CHROME_PROFILE`, default
+own headless Chrome (`$CHROME`, default `google-chrome`) with an isolated profile (`$CHROME_PROFILE`, default
 `/tmp/dynacamp-chrome-profile`), never the user's.
 
 Start a test server on spare ports first (and stop it by PID afterwards):

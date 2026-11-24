@@ -1,6 +1,8 @@
-"""FastAPI application exposing the campaign (read-only for now).
+"""FastAPI application exposing the campaign.
 
 OpenAPI schema at ``/openapi.json``, interactive docs at ``/docs``.
+Reading is open; commands (``POST``) need ``Authorization: Bearer <token>``
+when the app is built with a token.
 Endpoints are plain ``def`` functions: FastAPI runs them in its threadpool, so
 taking the engine lock never blocks the event loop.
 """
@@ -9,27 +11,41 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Literal
 
 import anyio
-from fastapi import FastAPI, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import Engine
+from ..persistence import Saver
 from . import schemas, views
 
 STREAM_TICK_S = 1.0
 
 
 def create_app(
-    engine: Engine | None, cors_origins: list[str] | None = None, web_dir: str | Path | None = None
+    engine: Engine | None,
+    cors_origins: list[str] | None = None,
+    web_dir: str | Path | None = None,
+    token: str | None = None,
+    saver: Saver | None = None,
 ) -> FastAPI:
-    """Build the app. ``engine`` may be None only to export the OpenAPI schema.
-    ``web_dir``, if it exists, is served at ``/`` (the built React front-end)."""
+    """Build the app.
+
+    Args:
+        engine: The engine; None only to export the OpenAPI schema.
+        cors_origins: Allowed origins (default ``*``).
+        web_dir: Built React front-end to serve at ``/``, if it exists.
+        token: Bearer token required by commands (``POST``); None leaves them open.
+        saver: Saves the campaign on ``POST /api/save`` (None: saving disabled).
+    """
     app = FastAPI(
         title="DynaCamp",
         version=str(views.API_VERSION),
@@ -56,18 +72,37 @@ def create_app(
     def viewer(faction: str | None) -> str | None:
         """Validate the ``faction`` query parameter (None = umpire view)."""
         if faction is not None and faction not in engine.state.factions:
-            from fastapi import HTTPException
-
             raise HTTPException(status_code=404, detail=f"no faction {faction}")
         return faction
 
     FACTION = Query(None, description="faction whose fog-of-war view to give (omit for the umpire's view)")
 
+    bearer = HTTPBearer(auto_error=False, description="token printed by `dynacamp serve` (or `--api-token`)")
+
+    def authenticated(credentials: HTTPAuthorizationCredentials | None) -> bool:
+        """True if no token is required or the request carries the right one."""
+        if token is None:
+            return True
+        return credentials is not None and secrets.compare_digest(credentials.credentials.encode(), token.encode())
+
+    def require_token(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> None:
+        """Dependency of commands: refuse (401) a request without the right token."""
+        if not authenticated(credentials):
+            raise HTTPException(
+                status_code=401, detail="missing or wrong API token", headers={"WWW-Authenticate": "Bearer"}
+            )
+
+    @app.get("/api/auth", response_model=schemas.AuthView, tags=["campaign"])
+    def get_auth(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
+        """Whether commands need a token and whether the one sent (if any) is valid."""
+        return {"required": token is not None, "authenticated": authenticated(credentials)}
+
     @app.get("/api/campaign", response_model=schemas.CampaignView, tags=["campaign"])
     def get_campaign():
         """Clock, factions and objectives, connected players."""
         with engine.lock:
-            return views.campaign(state(), engine.live, views.players(engine), views.control(engine))
+            view = views.campaign(state(), engine.live, views.players(engine), views.control(engine))
+        return {**view, "save": views.save_view(saver)}
 
     @app.get("/api/map", response_model=schemas.MapView, tags=["map"])
     def get_map():
@@ -109,8 +144,6 @@ def create_app(
         ),
     ):
         """Mission package of a flight: briefing, named waypoints, threats, ordnance, comms."""
-        from fastapi import HTTPException
-
         from ..systems import briefing
 
         with engine.lock:
@@ -148,7 +181,9 @@ def create_app(
     def get_snapshot(faction: str | None = FACTION):
         """Everything above in one document."""
         with engine.lock:
-            return views.snapshot(state(), engine.live, views.players(engine), viewer(faction), views.control(engine))
+            snap = views.snapshot(state(), engine.live, views.players(engine), viewer(faction), views.control(engine))
+        snap["campaign"]["save"] = views.save_view(saver)
+        return snap
 
     @app.get(
         "/api/stream",
@@ -237,12 +272,16 @@ def create_app(
         with engine.lock:
             return views.control(engine)
 
-    @app.post("/api/control", response_model=schemas.ControlView, tags=["campaign"])
+    @app.post(
+        "/api/control",
+        response_model=schemas.ControlView,
+        tags=["campaign"],
+        dependencies=[Depends(require_token)],
+        responses={401: {"description": "missing or wrong API token"}},
+    )
     def post_control(body: schemas.ControlRequest):
-        """Pause / resume and fast-forward the campaign. Refused (409) while a
-        game simulates part of the campaign: then time must run 1:1."""
-        from fastapi import HTTPException
-
+        """Pause / resume and fast-forward the campaign (needs the API token).
+        Refused (409) while a game simulates part of the campaign: then time must run 1:1."""
         with engine.lock:
             if engine.live and (body.paused or (body.compression not in (None, engine.control.compression))):
                 raise HTTPException(status_code=409, detail="a game is live: time runs 1:1 and cannot be paused or accelerated")
@@ -252,6 +291,29 @@ def create_app(
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
             engine.state.emit("time_control", paused=engine.control.paused, compression=engine.control.compression)
             return views.control(engine)
+
+    @app.get("/api/save", response_model=schemas.SaveView, tags=["campaign"])
+    def get_save():
+        """Whether the server saves the campaign, where, and the latest save."""
+        return views.save_view(saver)
+
+    @app.post(
+        "/api/save",
+        response_model=schemas.SaveView,
+        tags=["campaign"],
+        dependencies=[Depends(require_token)],
+        responses={401: {"description": "missing or wrong API token"}, 409: {"description": "server started without --save"}},
+    )
+    def post_save():
+        """Save the campaign now to the server's save file (needs the API token).
+        409 if the server was started without `--save`, 500 if the file cannot be written."""
+        if saver is None:
+            raise HTTPException(status_code=409, detail="saving is disabled: start the server with --save FILE")
+        try:
+            saver.save(engine, "api")
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"save failed: {exc}") from exc
+        return views.save_view(saver)
 
     @app.get("/api", tags=["campaign"])
     def index():

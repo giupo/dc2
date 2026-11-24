@@ -251,11 +251,14 @@ class DcsTranslator:
         speed = snap.speed_kmh / 3.6
         name = f"{UNIT_PREFIX}.{snap.id}.g0"
         back = Vec2(-math.sin(snap.heading), -math.cos(snap.heading))
+        radio = a.get("radio_callsign")  # callsigns.RadioCallsign, None for eastern sides
+        first = int(a.get("first_unit", 1))
         units = []
         for i in range(count):
             x, y = to_dcs(snap.position + back * (i * 150.0))
             units.append(
                 {
+                    **({"callsign": radio.unit(first + i)} if radio else {}),
                     "type": catalog.AIRCRAFT_TYPES.get(aircraft, aircraft),
                     "name": unit_name(snap.id, "aircraft", i),
                     "x": x,

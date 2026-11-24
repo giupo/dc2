@@ -40,6 +40,15 @@ class EventLog:
         self._events: list[Event] = []
         self._subscribers: list[Subscriber] = []
 
+    def __getstate__(self) -> dict[str, Any]:
+        """Pickle the events only: subscribers belong to the running process."""
+        return {"_events": self._events}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Restore the events with no subscribers."""
+        self._events = state["_events"]
+        self._subscribers = []
+
     def emit(self, time: float, kind: str, **data: Any) -> Event:
         """Append an event and notify subscribers.
 

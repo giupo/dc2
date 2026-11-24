@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Auth
+         * @description Whether commands need a token and whether the one sent (if any) is valid.
+         */
+        get: operations["get_auth_api_auth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaign": {
         parameters: {
             query?: never;
@@ -304,10 +324,35 @@ export interface paths {
         put?: never;
         /**
          * Post Control
-         * @description Pause / resume and fast-forward the campaign. Refused (409) while a
-         *     game simulates part of the campaign: then time must run 1:1.
+         * @description Pause / resume and fast-forward the campaign (needs the API token).
+         *     Refused (409) while a game simulates part of the campaign: then time must run 1:1.
          */
         post: operations["post_control_api_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Save
+         * @description Whether the server saves the campaign, where, and the latest save.
+         */
+        get: operations["get_save_api_save_get"];
+        put?: never;
+        /**
+         * Post Save
+         * @description Save the campaign now to the server's save file (needs the API token).
+         *     409 if the server was started without `--save`, 500 if the file cannot be written.
+         */
+        post: operations["post_save_api_save_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -402,6 +447,22 @@ export interface components {
             boards: {
                 [key: string]: components["schemas"]["BoardPackage"][];
             };
+        };
+        /**
+         * AuthView
+         * @description Whether commands need a token, and whether the one sent is valid.
+         */
+        AuthView: {
+            /**
+             * Required
+             * @description commands (POST) need `Authorization: Bearer <token>`
+             */
+            required: boolean;
+            /**
+             * Authenticated
+             * @description the request carried a valid token (always true when none is required)
+             */
+            authenticated: boolean;
         };
         /**
          * BattleView
@@ -621,6 +682,12 @@ export interface components {
             flight_id: string;
             /** Callsign */
             callsign: string;
+            /**
+             * Radio Callsign
+             * @description DCS radio callsign (what the AI calls the flight); differs from `callsign` when the squadron's own name is not in DCS' list for the type; empty for eastern sides
+             * @default
+             */
+            radio_callsign: string;
             /** Title */
             title: string;
             /**
@@ -700,6 +767,8 @@ export interface components {
          * @description Campaign overview: clock, factions, players.
          */
         CampaignView: {
+            /** @description saving (null without a running engine) */
+            save?: components["schemas"]["SaveView"] | null;
             /**
              * Units
              * @description units of the texts for players (default of the UI)
@@ -1549,6 +1618,48 @@ export interface components {
             intel?: components["schemas"]["ContactInfo"] | null;
         };
         /**
+         * SaveRecordView
+         * @description A save of the campaign.
+         */
+        SaveRecordView: {
+            /**
+             * Saved At
+             * @description wall-clock time, Unix seconds
+             */
+            saved_at: number;
+            /** @description campaign time saved */
+            time: components["schemas"]["Time"];
+            /**
+             * Trigger
+             * @description autosave, request (POST /api/save) or shutdown
+             * @enum {string}
+             */
+            trigger: "auto" | "api" | "exit";
+        };
+        /**
+         * SaveView
+         * @description Saving of the campaign by the server (``dynacamp serve --save``).
+         */
+        SaveView: {
+            /**
+             * Enabled
+             * @description the server was started with --save: POST /api/save works
+             */
+            enabled: boolean;
+            /**
+             * File
+             * @description name of the save file
+             */
+            file?: string | null;
+            /**
+             * Autosave Minutes
+             * @description real minutes between autosaves (0 = only on request/exit)
+             */
+            autosave_minutes?: number | null;
+            /** @description latest save made by this server run */
+            last?: components["schemas"]["SaveRecordView"] | null;
+        };
+        /**
          * SeatView
          * @description A player's seat in a flight.
          */
@@ -1695,6 +1806,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_auth_api_auth_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthView"];
+                };
+            };
+        };
+    };
     get_campaign_api_campaign_get: {
         parameters: {
             query?: never;
@@ -2174,6 +2305,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlView"];
                 };
             };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2182,6 +2320,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_save_api_save_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveView"];
+                };
+            };
+        };
+    };
+    post_save_api_save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveView"];
+                };
+            };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description server started without --save */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

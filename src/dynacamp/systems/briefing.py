@@ -26,7 +26,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .. import loadouts
+from .. import callsigns, loadouts
 from .. import units as U
 from ..units import Units
 from ..air import Flight, Task
@@ -370,6 +370,7 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
         "support": support(state, f, units),
         "flight_id": f.id,
         "callsign": f.callsign,
+        "radio_callsign": radio.label if (radio := callsigns.radio_callsign(state, f)) else "",
         "title": f"{'PKG ' + pkg.number if pkg else ''} {f.task.value} - {pkg.target_label if pkg else ''}".strip(),
         "task": f.task.value,
         "aircraft": f.aircraft_type.name,
@@ -459,6 +460,8 @@ def render(b: dict[str, Any], now: float | None = None) -> str:
     elif b["loadout_note"]:
         lines.append("ORDNANCE: " + b["loadout_note"])
     lines.append(f"COMMS: package {b['comms']['package']}, flight {b['comms']['flight']}")
+    if b.get("radio_callsign") and b["radio_callsign"] != b["callsign"]:
+        lines.append(f"RADIO CALLSIGN: {b['radio_callsign']} (the AI and the radio menus call you so)")
     for s in b.get("support", []):
         lines.append(f"SUPPORT: {s['task']} {s['callsign']} ({s['aircraft']}) at {s['position']}, {s['frequency']}, until {s['until']['label'][3:]}")
     lines.append("WAYPOINTS (ETA / alt / speed):")

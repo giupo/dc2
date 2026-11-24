@@ -145,6 +145,12 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
               Package {b.comms.package}
               <br />
               Flight {b.comms.flight}
+              {b.radio_callsign && b.radio_callsign !== b.callsign && (
+                <>
+                  <br />
+                  Radio callsign {b.radio_callsign}
+                </>
+              )}
             </p>
           </div>
         </section>

@@ -24,6 +24,8 @@ class ApiServer:
         cors_origins: list[str] | None = None,
         log_level: str = "warning",
         web_dir: str | None = None,
+        token: str | None = None,
+        saver=None,
     ) -> None:
         """Args:
             engine: The engine whose campaign is served.
@@ -32,8 +34,10 @@ class ApiServer:
             cors_origins: Allowed origins (default ``*``).
             log_level: uvicorn log level.
             web_dir: Built front-end to serve at ``/``.
+            token: Bearer token required by commands; None leaves them open.
+            saver: :class:`~dynacamp.persistence.Saver` behind ``POST /api/save`` (None: disabled).
         """
-        self.app = create_app(engine, cors_origins, web_dir)
+        self.app = create_app(engine, cors_origins, web_dir, token, saver)
         self.host, self.port = host, port
         self._server = uvicorn.Server(
             uvicorn.Config(self.app, host=host, port=port, log_level=log_level, lifespan="off")

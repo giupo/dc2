@@ -281,7 +281,7 @@ function DC.apply_template(g)
         u.type = tu.type
         u.payload = deepcopy(tu.payload)
         u.livery_id = tu.livery_id
-        u.callsign = deepcopy(tu.callsign)
+        u.callsign = u.callsign or deepcopy(tu.callsign)  -- the ATO's callsign wins
         u.onboard_num = tu.onboard_num
       end
       -- the ATO's frequency wins: it is clear of the airfields' ATC
@@ -290,6 +290,17 @@ function DC.apply_template(g)
     end
   end
   log("no template for " .. tostring(g.data.name) .. ": spawning without payload")
+end
+
+--[==[ Western callsigns arrive as { index = { list index, flight, unit },
+name = "Lobo31" } (JSON has no numeric keys): DCS wants { [1], [2], [3], name }. ]==]
+function DC.apply_callsign(g)
+  for _, u in ipairs((g.data and g.data.units) or {}) do
+    local c = u.callsign
+    if type(c) == "table" and c.index then
+      u.callsign = { c.index[1], c.index[2], c.index[3], name = c.name }
+    end
+  end
 end
 
 function DC.apply_landing(g)
@@ -335,6 +346,7 @@ function handlers.spawn(msg)
   local ok, err = pcall(function()
     for _, g in ipairs(msg.groups) do
       DC.snap_to_road(g)
+      DC.apply_callsign(g)
       DC.apply_template(g)
       DC.apply_landing(g)
       coalition.addGroup(g.country, group_category(g.category), g.data)

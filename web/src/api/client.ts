@@ -32,6 +32,8 @@ export interface Tick {
   rate: number;
 }
 export type Control = S["ControlView"];
+export type Auth = S["AuthView"];
+export type SaveStatus = S["SaveView"];
 export type Player = S["PlayerView"];
 export type Intel = S["IntelView"];
 export type Contact = S["ContactView"];
@@ -41,8 +43,41 @@ export type Polyline = S["Polyline"];
 // Empty = same origin (Vite proxies /api in development, FastAPI serves the build).
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
 
+// ---------------------------------------------------------------- API token
+// Commands (POST) need `Authorization: Bearer <token>`; reading is open.
+// `dynacamp serve` prints a link with `#token=...`: the fragment never reaches
+// the server, and is removed from the address bar once stored.
+const TOKEN_KEY = "dynacamp.token";
+
+function takeTokenFromUrl(): void {
+  const m = /(?:^#|&)token=([^&]+)/.exec(window.location.hash);
+  if (!m) return;
+  localStorage.setItem(TOKEN_KEY, decodeURIComponent(m[1]));
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+}
+takeTokenFromUrl();
+
+export const token = {
+  get: (): string | null => localStorage.getItem(TOKEN_KEY),
+  set: (value: string) => localStorage.setItem(TOKEN_KEY, value.trim()),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
+};
+
+function authHeader(): Record<string, string> {
+  const t = token.get();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+/** A command was refused for a missing or wrong token (HTTP 401). */
+export class AuthError extends Error {}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeader() },
+    body: JSON.stringify(body),
+  });
+  if (r.status === 401) throw new AuthError("API token missing or wrong");
   if (!r.ok) {
     const detail = await r.json().then((j) => j.detail).catch(() => r.statusText);
     throw new Error(typeof detail === "string" ? detail : `HTTP ${r.status}`);
@@ -50,8 +85,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return (await r.json()) as T;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const r = await fetch(BASE + path);
+async function get<T>(path: string, headers?: Record<string, string>): Promise<T> {
+  const r = await fetch(BASE + path, headers ? { headers } : undefined);
   if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
   return (await r.json()) as T;
 }
@@ -62,8 +97,12 @@ const fq = (faction: string | null | undefined, sep = "?") => (faction ? `${sep}
 export const api = {
   campaign: () => get<Campaign>("/api/campaign"),
   map: () => get<MapData>("/api/map"),
+  /** Whether commands need a token and whether the stored one is valid. */
+  auth: () => get<Auth>("/api/auth", authHeader()),
   /** Pause / resume, fast-forward (refused with an error while a game is live). */
   control: (change: { paused?: boolean; compression?: number }) => post<Control>("/api/control", change),
+  /** Save the campaign now to the server's `--save` file. */
+  save: () => post<SaveStatus>("/api/save", {}),
   fronts: (faction?: string | null) => get<Fronts>("/api/fronts" + fq(faction)),
   forces: (faction?: string | null) => get<Forces>("/api/forces" + fq(faction)),
   logistics: (faction?: string | null) => get<Logistics>("/api/logistics" + fq(faction)),

@@ -109,6 +109,19 @@ Tutto ciò che cambia finisce nell'**event log** (`events.py`), la base per la
 futura UI web (timeline, replay, storia del fronte). `CampaignState.snapshot()`
 dà una vista JSON dello stato corrente.
 
+**Salvataggio** (`persistence.py`). Si salva l'intero `CampaignState` come
+pickle compresso con gzip, dentro un involucro con versione del formato,
+versione del pacchetto e compressione temporale. L'`EventLog` non salva i
+subscriber, che appartengono al processo. Al caricamento ciò che teneva un
+gioco torna al motore: authority `CAMPAIGN`, posti dei giocatori liberati come
+in una disconnessione. Il log riceve un evento `campaign_resumed`. La
+scrittura è atomica (file temporaneo, `fsync`, `os.replace`). In `serve` lo
+stato si serializza sotto `Engine.lock`, mentre la scrittura su disco avviene
+fuori dal lock. `persistence.Saver` serve i tre casi: salvataggio automatico
+dal thread del motore, `POST /api/save` dal threadpool dell'API, e chiusura
+del server. Un lock proprio impedisce che due salvataggi si accavallino; ogni
+salvataggio emette `campaign_saved`.
+
 **Determinismo.** Senza giochi collegati, stesso scenario + stesso seed = stessa
 campagna (c'è un test). Con un gioco live gli input esterni entrano come eventi.
 
@@ -149,6 +162,15 @@ un volo IA dentro una bolla lo fa volare DCS.
    (`data/radio.json`, generato dai dati di DCS con `dynacamp radio`), dalle
    frequenze di emergenza (121.5/243.0) e dagli altri package e voli attivi.
    Gli aerei IA in DCS parlano sulla UHF del package.
+   Il **call sign** del volo nasce dallo squadrone (`Lobo 3`). In DCS gli
+   aerei occidentali accettano solo i nomi di un elenco fisso: gli 8 generici
+   (Enfield…Pontiac), più quelli del tipo (F-16 Viper…Jedi, A-10 Hawg…Tusk…)
+   e le liste di AWACS e tanker. `dynacamp.callsigns` usa il nome dello
+   squadrone se è nell'elenco, altrimenti gli dà un nome generico stabile.
+   Gli squadroni che condividono lo stesso nome si dividono i numeri di volo.
+   Il bridge lo applica alle unità IA (`DC.apply_callsign`), e il briefing
+   mostra il "radio callsign" quando è diverso. Il lato rosso usa i numeri
+   del template.
 
 **Risoluzione astratta** (fuori dalle bolle): perdite contro la difesa aerea
 (SHORAD/AAA delle divisioni entro 15 km, ridotte se il SEAD del pacchetto è
@@ -381,8 +403,11 @@ gruppi DCS l'est si chiama `y`.
 * **DCS vero:** il bridge non è ancora stato provato in un DCS reale. Da
   verificare: parametri dei task (soprattutto `weaponType` del Bombing e i task
   AWACS/Tanker), resa dello spawn su strada, frequenze dei gruppi.
-* **Persistenza:** manca il salvataggio e il caricamento dello stato,
-  fondamentale per un server persistente. Lo snapshot JSON esiste già.
+* **Salvataggi:** `persistence.py` salva l'intero `CampaignState` come
+  pickle gzip (generatore casuale compreso, quindi la ripresa è
+  deterministica). Il formato è fragile rispetto ai refactoring delle classi;
+  per una compatibilità lunga servirebbe una serializzazione esplicita e
+  versionata. C'è un solo file per server, senza slot né storico.
 * **Aria:** mancano:
   - OCA sulle basi e la ricostituzione completa degli squadroni (oggi c'è solo
     il rimpiazzo graduale);
@@ -401,8 +426,10 @@ gruppi DCS l'est si chiama `y`.
   non ci sono ancora.
 * **Radio:** le frequenze evitano le torri, ma non radiofari e TACAN, perché
   pydcs non le espone. Stanno comunque in bande diverse.
-* **API web:** l'unico comando è il controllo del tempo (`POST /api/control`),
-  senza autenticazione: per esporla serve un reverse proxy con login. Mancano
+* **API web:** l'unico comando è il controllo del tempo (`POST /api/control`).
+  È protetto da un bearer token unico, senza utenti né ruoli. La lettura è
+  libera, compresa la vista dell'arbitro, e il traffico è in chiaro: per
+  esporla servono HTTPS e un reverse proxy. Mancano
   ordini e posti ATO dal browser. I territori sono celle di Voronoi dei centri
   provincia, quindi sulla costa si estendono in mare: la UI li maschera con la
   costa.

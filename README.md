@@ -12,7 +12,7 @@ tramite **adapter**, DCS World per primo, in modalità live. Si ispira a:
 Il motore espone un'**API HTTP** (FastAPI, con schema OpenAPI completo) e ha
 un'**interfaccia web** React con mappa reale e simbologia NATO.
 
-> Stato: prototipo funzionante, con 92 test automatici (Python e bridge Lua)
+> Stato: prototipo funzionante, con 134 test Python e i test del bridge Lua
 > e verifiche visive della UI. **Non è ancora stato provato in DCS vero**: il
 > bridge Lua è testato contro mock dell'ambiente DCS, e le missioni `.miz` e i
 > nomi delle unità sono verificati con pydcs.
@@ -85,7 +85,43 @@ uv run dynacamp serve scenarios/syria_m5.toml --no-dcs --compression 600
 
 # campagna live con DCS (60x finché nessun giocatore è in gioco, poi 1:1)
 uv run dynacamp serve scenarios/western_georgia.toml --compression 60
+
+# server persistente: salva ogni 10 minuti e all'uscita, al riavvio riprende da lì
+uv run dynacamp serve scenarios/syria_m5.toml --save syria.dcsave
+
+# simula 5 giorni, salva, poi continua per altri 5 dal salvataggio
+uv run dynacamp simulate scenarios/syria_m5.toml --days 5 --save syria.dcsave
+uv run dynacamp simulate syria.dcsave --days 5
 ```
+
+### Salvataggio e ripresa
+
+Al posto dello scenario, `simulate` e `serve` accettano anche un file di
+salvataggio (`.dcsave`). Il file contiene tutta la campagna: mappa e strade,
+forze, ATO, quadro informativo, log degli eventi e generatore casuale. Per
+questo una campagna ripresa prosegue esattamente come quella mai interrotta.
+
+- `serve --save FILE` salva ogni `--autosave-minutes` minuti reali (default
+  10; con 0 salva solo all'uscita). Salva anche quando il server si ferma con
+  Ctrl-C, SIGTERM o `docker stop`. La scrittura è atomica: un crash non
+  lascia mai un salvataggio a metà.
+- Dalla UI si salva subito con il pulsante del dischetto accanto ai controlli
+  del tempo. Serve il token; il tooltip mostra l'ultimo salvataggio. Via API
+  si usa `POST /api/save`. Ogni salvataggio lascia un evento `campaign_saved`
+  nel log.
+- Se `FILE` esiste già, `serve scenario.toml --save FILE` **riprende** da
+  `FILE` invece di ricominciare, così un riavvio non cancella la campagna.
+  `--new` riparte dallo scenario e sovrascrive il file.
+- Alla ripresa vale la compressione temporale salvata, salvo un
+  `--compression` esplicito.
+- Ciò che stava simulando DCS non si salva: alla ripresa le unità tornano al
+  motore con l'ultimo stato noto e i posti dei giocatori si liberano, come
+  quando DCS si disconnette.
+
+Il formato è un pickle Python compresso con gzip. Due conseguenze: carica
+solo salvataggi di cui ti fidi, e dopo grossi cambi al codice un vecchio
+salvataggio può non caricarsi più. In quel caso il comando lo dice e si
+ferma, senza toccare il file.
 
 ## Docker
 
@@ -103,6 +139,9 @@ docker run --rm -p 8080:8080 dynacamp scenarios/western_georgia.toml --no-dcs --
 
 # scenari propri
 docker run --rm -p 8080:8080 -p 50555:50555 -v $PWD/my_scenarios:/app/scenarios:ro dynacamp scenarios/mio.toml
+
+# campagna persistente: il salvataggio vive nel volume e al riavvio si riprende
+docker run -d --name dynacamp -p 8080:8080 -p 50555:50555 -v dynacamp-data:/data dynacamp
 ```
 
 Dopo il nome dell'immagine si passano gli argomenti di `dynacamp serve`
@@ -110,12 +149,16 @@ Dopo il nome dell'immagine si passano gli argomenti di `dynacamp serve`
 container. Nello script Lua della missione l'host va impostato
 sull'indirizzo della macchina che esegue Docker. Il container gira come utente
 non root, ha un healthcheck su `/api/campaign` e si ferma pulito con
-`docker stop`. Le missioni `.miz` restano fuori dall'immagine: servono a DCS,
-non al server.
+`docker stop`, salvando la campagna in `/data/campaign.dcsave`. Senza un
+volume su `/data`, il salvataggio sparisce con il container. Le missioni
+`.miz` restano fuori dall'immagine: servono a DCS, non al server.
 
-> L'API non ha autenticazione e `POST /api/control` può mettere in pausa la
-> campagna. Se esponi la porta 8080 su Internet, mettila dietro un reverse
-> proxy con autenticazione.
+Per un token stabile si passa `-e DYNACAMP_API_TOKEN=...`; senza, il token
+cambia a ogni avvio e si legge con `docker logs`.
+
+> I comandi dell'API vogliono un token, ma la lettura è aperta e il traffico
+> è in chiaro. Se esponi la porta 8080 su Internet, mettila dietro un reverse
+> proxy con HTTPS: senza HTTPS il token viaggia leggibile.
 
 ## Il modello di campagna
 
@@ -341,9 +384,19 @@ React, Vite, TypeScript e MapLibre GL, su mappa OpenFreeMap scura. Dettagli in
 
 ## API HTTP
 
-FastAPI, in sola lettura, documentata in [docs/API.md](docs/API.md) e in modo
-interattivo su `/docs`. Lo schema OpenAPI è su `/openapi.json`;
-`npm run gen:api` ne genera i tipi TypeScript.
+FastAPI, documentata in [docs/API.md](docs/API.md) e in modo interattivo su
+`/docs`. Lo schema OpenAPI è su `/openapi.json`; `npm run gen:api` ne genera i
+tipi TypeScript.
+
+**Token.** La lettura è libera. I comandi (`POST`, per ora solo
+`/api/control`) vogliono `Authorization: Bearer <token>`, altrimenti
+rispondono 401.
+- Il token si fissa con `--api-token` o, meglio perché non compare in `ps`,
+  con la variabile `DYNACAMP_API_TOKEN`.
+- Se non è fissato, `serve` ne genera uno a ogni avvio e stampa il link alla
+  UI `http://localhost:8080/#token=...`. La UI legge il token dal link, lo
+  conserva nel browser e lo toglie dalla barra degli indirizzi.
+- In alternativa si inserisce con il lucchetto accanto ai controlli del tempo.
 
 | Endpoint | Contenuto |
 |---|---|
@@ -358,6 +411,9 @@ interattivo su `/docs`. Lo schema OpenAPI è su `/openapi.json`;
 | `/api/events` | log a pagine |
 | `/api/stream` | eventi e orologio in tempo reale (SSE) |
 | `/api/snapshot` | tutto in un documento |
+| `/api/auth` | se i comandi vogliono un token e se quello inviato è valido |
+| `POST /api/control` | pausa e accelerazione (con token) |
+| `/api/save`, `POST /api/save` | stato del salvataggio; salva subito (con token) |
 
 Ogni posizione ha `pos` ([est, nord] in metri sul piano del teatro) e `ll`
 ([lat, lon] WGS84).
@@ -390,9 +446,9 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 
 | Comando | Cosa fa |
 |---|---|
-| `dynacamp simulate <scenario>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--quiet`/`--verbose`) |
+| `dynacamp simulate <scenario\|salvataggio>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--save FILE`, `--quiet`/`--verbose`) |
 | `dynacamp radio` | rigenera `data/radio.json`, le frequenze ATC degli aeroporti dai dati di DCS (serve pydcs) |
-| `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`) |
+| `dynacamp serve <scenario\|salvataggio>` | tempo reale con DCS, API e UI (`--compression`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`, `--save FILE`, `--autosave-minutes`, `--new`, `--api-token`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
 | `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |
@@ -421,7 +477,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 ## Sviluppo e test
 
 ```bash
-uv run pytest                          # 92 test: motore, ATO, difesa aerea, API, DCS, .miz, bridge Lua
+uv run pytest                          # 134 test: motore, ATO, difesa aerea, API, DCS, .miz, bridge Lua
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 (cd web && npx tsc -b)                 # typecheck della UI
 ```
@@ -448,7 +504,7 @@ src/dynacamp/
     artillery.py control.py                          fuoco d'artiglieria, controllo delle province
   bubble.py engine.py runtime.py                   player bubble, handoff, ciclo a tick fisso, pausa/velocità
   projection.py geometry.py roads.py               lat/lon, territori e fronti, strade reali
-  scenario.py cli.py                               scenari TOML, comandi
+  scenario.py persistence.py cli.py                scenari TOML, salvataggio e ripresa, comandi
   api/                                             FastAPI: views, schemas, app, server
   adapters/base.py adapters/fake.py                porta core <-> gioco, gioco finto per i test
   adapters/dcs/                                    DCS: protocol, adapter TCP, catalog, miz, lua/bridge
@@ -554,13 +610,25 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     almeno 50 kHz da ATC, emergenza e altri voli. I template e gli slot dei
     `.miz` sono spostati fuori dalle frequenze ATC, e il bridge usa la
     frequenza dell'ATO per gli aerei IA.
+18. **Salvataggio e ripresa.** `--save` su `simulate` e `serve`, con
+    salvataggio automatico e all'uscita (anche su SIGTERM), scrittura atomica e
+    ripresa automatica al riavvio. Un test verifica che la campagna ripresa
+    prosegua identica, evento per evento, a quella mai interrotta.
+19. **Token per i comandi.** `POST /api/control` vuole un bearer token
+    (`--api-token`, `DYNACAMP_API_TOKEN`, oppure generato all'avvio e stampato
+    in un link per la UI). Nella UI c'è un lucchetto accanto ai controlli del
+    tempo.
+20. **Salvataggio dalla UI.** `POST /api/save` e pulsante nella UI. Lo stato
+    del salvataggio (file, intervallo, ultimo salvataggio e chi l'ha chiesto)
+    è in `/api/campaign`. Autosave, API e uscita passano tutti da
+    `persistence.Saver`.
 
 ## Limiti noti e prossimi passi
 
 - **DCS vero:** da provare. In particolare i parametri dei task d'attacco
   aereo e la resa dello spawn.
-- **Persistenza:** manca il salvataggio e il caricamento della campagna,
-  indispensabile per un server persistente.
+- **Salvataggi:** il formato pickle non regge i grossi refactoring delle
+  classi di stato. C'è un solo file di salvataggio, senza slot né storico.
 - **Equilibrio:** in alcuni seed una parte conquista tutto in una settimana,
   per una spirale (perde i depositi, quindi non ha più ricomplementi). Possibili
   rimedi: rinforzi da fuori mappa, difesa più forte nelle ultime province,

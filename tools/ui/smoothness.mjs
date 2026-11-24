@@ -6,7 +6,7 @@ import { writeFileSync } from "node:fs";
 const [url, out, waitMs = "12000", click] = process.argv.slice(2);
 const dir = new URL(".", import.meta.url).pathname;
 const port = 9333;
-const chrome = spawn("google-chrome", [
+const chrome = spawn(process.env.CHROME ?? "google-chrome", [
   "--headless=new", "--no-sandbox", `--user-data-dir=${process.env.CHROME_PROFILE ?? "/tmp/dynacamp-chrome-profile"}`, "--no-first-run", "--disable-sync",
   "--enable-unsafe-swiftshader", "--use-angle=swiftshader", "--window-size=1600,950", "--hide-scrollbars",
   `--remote-debugging-port=${port}`, "about:blank",

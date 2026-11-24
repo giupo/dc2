@@ -36,7 +36,7 @@ RUN uv sync --frozen --no-dev --no-editable
 FROM python:3.14-slim
 LABEL org.opencontainers.image.title="DynaCamp" \
       org.opencontainers.image.description="Headless dynamic military campaign engine with a live DCS adapter"
-RUN useradd --create-home --uid 1000 dynacamp
+RUN useradd --create-home --uid 1000 dynacamp && mkdir /data && chown dynacamp /data
 WORKDIR /app
 COPY --from=app /app/.venv /app/.venv
 COPY --from=web /web/dist /app/web/dist
@@ -52,4 +52,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
 STOPSIGNAL SIGINT
 
 ENTRYPOINT ["dynacamp", "serve", "--host", "0.0.0.0", "--api-host", "0.0.0.0", "--web-dir", "/app/web/dist"]
-CMD ["scenarios/syria_m5.toml"]
+# The campaign is saved in /data (mount a volume there) and resumed on restart.
+VOLUME /data
+CMD ["scenarios/syria_m5.toml", "--save", "/data/campaign.dcsave"]

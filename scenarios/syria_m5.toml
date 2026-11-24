@@ -591,48 +591,48 @@ province = "dumayr"
 
 [[squadrons]]
 id = "b_viper"
-name = "1st Fighter Sqn"
+name = '555th FS "Triple Nickel"'
 faction = "blue"
 airbase = "aleppo"
 aircraft = "f16c"
 count = 12
-callsign = "Viper"
+callsign = "Lobo"
 
 [[squadrons]]
 id = "b_hawg"
-name = "Close Support Sqn"
+name = '74th FS "Flying Tigers"'
 faction = "blue"
 airbase = "abu_al_duhur"
 aircraft = "a10c"
 count = 12
-callsign = "Hawg"
+callsign = "Tusk"
 
 [[squadrons]]
 id = "b_eagle"
-name = "Air Superiority Sqn"
+name = '493rd FS "Grim Reapers"'
 faction = "blue"
 airbase = "jirah"
 aircraft = "f15c"
 count = 8
-callsign = "Eagle"
+callsign = "Reaper"
 
 [[squadrons]]
 id = "b_hornet"
-name = "Strike Fighter Sqn"
+name = 'VMFA-232 "Red Devils"'
 faction = "blue"
 airbase = "bassel"
 aircraft = "fa18c"
 count = 12
-callsign = "Hornet"
+callsign = "Devil"
 
 [[squadrons]]
 id = "b_apache"
-name = "Attack Helicopter Coy"
+name = '1-101 ARB "Expect No Mercy"'
 faction = "blue"
 airbase = "kuweires"
 aircraft = "ah64d"
 count = 8
-callsign = "Rogue"
+callsign = "Gunslinger"
 
 [[squadrons]]
 id = "r_grach"
@@ -850,25 +850,25 @@ province = "tartus"
 
 [[squadrons]]
 id = "b_tomcat"
-name = "VF Tomcat Sqn"
+name = 'VF-103 "Jolly Rogers"'
 faction = "blue"
 airbase = "bassel"
 aircraft = "f14b"
 count = 8
-callsign = "Bandit"
+callsign = "Victory"
 
 [[squadrons]]
 id = "b_mudhen"
-name = "Strike Eagle Sqn"
+name = '494th FS "Panthers"'
 faction = "blue"
 airbase = "jirah"
 aircraft = "f15e"
 count = 8
-callsign = "Dude"
+callsign = "Panther"
 
 [[squadrons]]
 id = "b_harrier"
-name = "Harrier Sqn"
+name = 'VMA-542 "Tigers"'
 faction = "blue"
 airbase = "abu_al_duhur"
 aircraft = "av8b"
@@ -877,7 +877,7 @@ callsign = "Tiger"
 
 [[squadrons]]
 id = "b_tornado"
-name = "Tornado GR4 Sqn"
+name = 'No. 31 Sqn RAF "Goldstars"'
 faction = "blue"
 airbase = "kuweires"
 aircraft = "tornado_gr4"
@@ -886,7 +886,7 @@ callsign = "Rapier"
 
 [[squadrons]]
 id = "b_mirage"
-name = "Mirage 2000-5 Sqn"
+name = 'EC 1/2 "Cigognes"'
 faction = "blue"
 airbase = "aleppo"
 aircraft = "m2000_5"
@@ -895,25 +895,25 @@ callsign = "Cigogne"
 
 [[squadrons]]
 id = "b_falcon_a"
-name = "F-16A Sqn"
+name = '322 Sqn RNLAF "Polly Parrot"'
 faction = "blue"
 airbase = "aleppo"
 aircraft = "f16a"
 count = 8
-callsign = "Falcon"
+callsign = "Polly"
 
 [[squadrons]]
 id = "b_phantom"
-name = "Phantom Sqn"
+name = '111 Filo TuAF "Panter"'
 faction = "blue"
 airbase = "tabqa"
 aircraft = "f4e"
 count = 8
-callsign = "Shark"
+callsign = "Panter"
 
 [[squadrons]]
 id = "b_buff"
-name = "Heavy Bomber Sqn"
+name = '20th BS "Buccaneers"'
 faction = "blue"
 airbase = "jirah"
 aircraft = "b52h"
@@ -922,12 +922,12 @@ callsign = "Buff"
 
 [[squadrons]]
 id = "b_cobra"
-name = "Marine Attack Helo Sqn"
+name = 'HMLA-269 "Gunrunners"'
 faction = "blue"
 airbase = "kuweires"
 aircraft = "ah1w"
 count = 6
-callsign = "Cobra"
+callsign = "Gunrunner"
 
 [[squadrons]]
 id = "r_flanker30"
@@ -1040,7 +1040,7 @@ faction = "blue"
 
 [[squadrons]]
 id = "b_awacs"
-name = "AEW Sqn"
+name = "960th AACS"
 faction = "blue"
 airbase = "incirlik"
 aircraft = "e3a"
@@ -1049,39 +1049,39 @@ callsign = "Darkstar"
 
 [[squadrons]]
 id = "b_tanker"
-name = "Air Refueling Sqn"
+name = "351st ARS"
 faction = "blue"
 airbase = "incirlik"
 aircraft = "kc135"
 count = 2
-callsign = "Texaco"
+callsign = "Shell"
 
 [[squadrons]]
 id = "b_airlift"
-name = "Airlift Sqn"
+name = "No. 47 Sqn RAF"
 faction = "blue"
 airbase = "incirlik"
 aircraft = "c130"
 count = 4
-callsign = "Herky"
+callsign = "Ascot"
 
 [[squadrons]]
 id = "b_chinook"
-name = "Heavy Helo Coy"
+name = 'B Co 1-214 GSAB "Big Windy"'
 faction = "blue"
 airbase = "aleppo"
 aircraft = "ch47d"
 count = 4
-callsign = "Hauler"
+callsign = "Big Windy"
 
 [[squadrons]]
 id = "b_blackhawk"
-name = "Utility Helo Coy"
+name = "A Co 1-214 GSAB"
 faction = "blue"
 airbase = "bassel"
 aircraft = "uh60a"
 count = 6
-callsign = "Dustoff"
+callsign = "Pegasus"
 
 [[squadrons]]
 id = "r_awacs"

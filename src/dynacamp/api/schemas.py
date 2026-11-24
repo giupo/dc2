@@ -74,8 +74,24 @@ class PlayerView(Located):
     flight: str | None = Field(description="flight id of the seat the player holds")
 
 
+class SaveRecordView(Model):
+    """A save of the campaign."""
+    saved_at: float = Field(description="wall-clock time, Unix seconds")
+    time: Time = Field(description="campaign time saved")
+    trigger: Literal["auto", "api", "exit"] = Field(description="autosave, request (POST /api/save) or shutdown")
+
+
+class SaveView(Model):
+    """Saving of the campaign by the server (``dynacamp serve --save``)."""
+    enabled: bool = Field(description="the server was started with --save: POST /api/save works")
+    file: str | None = Field(None, description="name of the save file")
+    autosave_minutes: float | None = Field(None, description="real minutes between autosaves (0 = only on request/exit)")
+    last: SaveRecordView | None = Field(None, description="latest save made by this server run")
+
+
 class CampaignView(Model):
     """Campaign overview: clock, factions, players."""
+    save: SaveView | None = Field(None, description="saving (null without a running engine)")
     units: Literal["metric", "imperial"] = Field(description="units of the texts for players (default of the UI)")
     control: ControlView | None = Field(None, description="pause and speed (null without a running engine)")
     api_version: int
@@ -461,6 +477,9 @@ class BriefingView(Model):
 
     flight_id: str
     callsign: str
+    radio_callsign: str = Field(
+        "", description="DCS radio callsign (what the AI calls the flight); differs from `callsign` when "
+        "the squadron's own name is not in DCS' list for the type; empty for eastern sides")
     title: str
     task: Task
     aircraft: str
@@ -574,6 +593,12 @@ class ControlView(Model):
     rate: float = Field(description="effective rate now: 0 paused, 1 live, else the compression")
     min_compression: float
     max_compression: float
+
+
+class AuthView(Model):
+    """Whether commands need a token, and whether the one sent is valid."""
+    required: bool = Field(description="commands (POST) need `Authorization: Bearer <token>`")
+    authenticated: bool = Field(description="the request carried a valid token (always true when none is required)")
 
 
 class ControlRequest(Model):

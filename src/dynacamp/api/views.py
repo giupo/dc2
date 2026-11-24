@@ -719,6 +719,21 @@ def snapshot(
     }
 
 
+def save_view(saver) -> dict[str, Any]:
+    """Saving status of a :class:`~dynacamp.persistence.Saver` (None = saving disabled)."""
+    if saver is None:
+        return {"enabled": False, "file": None, "autosave_minutes": None, "last": None}
+    last = saver.last
+    return {
+        "enabled": True,
+        "file": saver.path.name,
+        "autosave_minutes": saver.autosave_s / 60,
+        "last": None if last is None else {
+            "saved_at": last.saved_at, "time": time_view(last.campaign_time), "trigger": last.trigger,
+        },
+    }
+
+
 def control(engine) -> dict[str, Any]:
     """Pause and speed of an engine's clock."""
     from ..engine import MAX_COMPRESSION, MIN_COMPRESSION

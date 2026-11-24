@@ -435,48 +435,48 @@ faction = "red"
 
 [[squadrons]]
 id = "b_viper"
-name = "1st Fighter Sqn"
+name = '480th FS "Warhawks"'
 faction = "blue"
 airbase = "kutaisi"
 aircraft = "f16c"
 count = 12
-callsign = "Viper"
+callsign = "Venom"
 
 [[squadrons]]
 id = "b_hawg"
-name = "Close Support Sqn"
+name = '75th FS "Tiger Sharks"'
 faction = "blue"
 airbase = "kobuleti"
 aircraft = "a10c"
 count = 12
-callsign = "Hawg"
+callsign = "Boar"
 
 [[squadrons]]
 id = "b_hornet"
-name = "Strike Fighter Sqn"
+name = 'VMFA-312 "Checkerboards"'
 faction = "blue"
 airbase = "batumi"
 aircraft = "fa18c"
 count = 12
-callsign = "Hornet"
+callsign = "Check"
 
 [[squadrons]]
 id = "b_eagle"
-name = "Air Superiority Sqn"
+name = '493rd FS "Grim Reapers"'
 faction = "blue"
 airbase = "vaziani"
 aircraft = "f15c"
 count = 8
-callsign = "Eagle"
+callsign = "Reaper"
 
 [[squadrons]]
 id = "b_apache"
-name = "Attack Helicopter Coy"
+name = "1-3 ARB, 12th CAB"
 faction = "blue"
 airbase = "senaki"
 aircraft = "ah64d"
 count = 8
-callsign = "Rogue"
+callsign = "Carnivore"
 
 [[squadrons]]
 id = "r_grach"
@@ -680,16 +680,16 @@ province = "sukhumi"
 
 [[squadrons]]
 id = "b_tomcat"
-name = "VF Tomcat Sqn"
+name = 'VF-32 "Swordsmen"'
 faction = "blue"
 airbase = "batumi"
 aircraft = "f14b"
 count = 8
-callsign = "Bandit"
+callsign = "Gypsy"
 
 [[squadrons]]
 id = "b_mudhen"
-name = "Strike Eagle Sqn"
+name = '492nd FS "Madhatters"'
 faction = "blue"
 airbase = "vaziani"
 aircraft = "f15e"
@@ -698,70 +698,70 @@ callsign = "Dude"
 
 [[squadrons]]
 id = "b_harrier"
-name = "Harrier Sqn"
+name = 'VMA-223 "Bulldogs"'
 faction = "blue"
 airbase = "kobuleti"
 aircraft = "av8b"
 count = 8
-callsign = "Tiger"
+callsign = "Bulldog"
 
 [[squadrons]]
 id = "b_tornado"
-name = "Tornado GR4 Sqn"
+name = "No. IX(B) Sqn RAF"
 faction = "blue"
 airbase = "vaziani"
 aircraft = "tornado_gr4"
 count = 6
-callsign = "Rapier"
+callsign = "Bat"
 
 [[squadrons]]
 id = "b_mirage"
-name = "Mirage 2000 Sqn"
+name = 'EC 1/12 "Cambresis"'
 faction = "blue"
 airbase = "kutaisi"
 aircraft = "m2000c"
 count = 8
-callsign = "Cigogne"
+callsign = "Cambresis"
 
 [[squadrons]]
 id = "b_phantom"
-name = "Phantom Sqn"
+name = '338 Mira HAF "Ares"'
 faction = "blue"
 airbase = "kutaisi"
 aircraft = "f4e"
 count = 8
-callsign = "Shark"
+callsign = "Ares"
 
 [[squadrons]]
 id = "b_bone"
-name = "Bomber Sqn"
+name = '37th BS "Tigers"'
 faction = "blue"
 airbase = "vaziani"
 aircraft = "b1b"
 count = 4
-callsign = "Bone"
+callsign = "Dark"
 
 [[squadrons]]
 id = "b_nighthawk"
-name = "Stealth Sqn"
+name = '8th FS "Black Sheep"'
 faction = "blue"
 airbase = "vaziani"
 aircraft = "f117"
 count = 4
-callsign = "Ghost"
+callsign = "Vega"
 
 [[squadrons]]
 id = "b_cobra"
-name = "Marine Attack Helo Sqn"
+name = 'HMLA-167 "Warriors"'
 faction = "blue"
 airbase = "senaki"
 aircraft = "ah1w"
 count = 6
-callsign = "Cobra"
+callsign = "Warrior"
 
 [[squadrons]]
 id = "b_kiowa"
-name = "Scout Helo Troop"
+name = "1-17 Cavalry"
 faction = "blue"
 airbase = "kobuleti"
 aircraft = "oh58d"
@@ -853,16 +853,16 @@ callsign = "Havoc"
 
 [[squadrons]]
 id = "b_awacs"
-name = "AEW Sqn"
+name = "NATO E-3A Component"
 faction = "blue"
 airbase = "vaziani"
 aircraft = "e3a"
 count = 2
-callsign = "Darkstar"
+callsign = "Magic"
 
 [[squadrons]]
 id = "b_tanker"
-name = "Air Refueling Sqn"
+name = "351st ARS"
 faction = "blue"
 airbase = "vaziani"
 aircraft = "kc135"
@@ -871,7 +871,7 @@ callsign = "Texaco"
 
 [[squadrons]]
 id = "b_airlift"
-name = "Airlift Sqn"
+name = '37th AS "Bobcats"'
 faction = "blue"
 airbase = "vaziani"
 aircraft = "c130"
@@ -880,21 +880,21 @@ callsign = "Herky"
 
 [[squadrons]]
 id = "b_chinook"
-name = "Heavy Helo Coy"
+name = 'B Co 1-214 GSAB "Big Windy"'
 faction = "blue"
 airbase = "kutaisi"
 aircraft = "ch47d"
 count = 4
-callsign = "Hauler"
+callsign = "Big Windy"
 
 [[squadrons]]
 id = "b_blackhawk"
-name = "Utility Helo Coy"
+name = "A Co 1-214 GSAB"
 faction = "blue"
 airbase = "batumi"
 aircraft = "uh60a"
 count = 6
-callsign = "Dustoff"
+callsign = "Pegasus"
 
 [[squadrons]]
 id = "r_awacs"

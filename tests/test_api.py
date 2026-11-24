@@ -291,3 +291,88 @@ def test_pause_and_fast_forward(demo):
         assert (r["paused"], r["compression"], r["rate"]) == (False, 3600, 3600)
         assert c.get("/api/campaign").json()["control"]["compression"] == 3600
         assert any(e.kind == "time_control" for e in demo.events)
+
+
+def test_commands_need_the_token_reads_do_not(demo):
+    from fastapi.testclient import TestClient
+
+    from dynacamp.api import create_app
+
+    engine = Engine(demo)
+    with TestClient(create_app(engine, token="s3cret")) as c:
+        assert c.get("/api/campaign").status_code == 200
+        assert c.get("/api/auth").json() == {"required": True, "authenticated": False}
+        for headers in ({}, {"Authorization": "Bearer wrong"}, {"Authorization": "Basic s3cret"}):
+            r = c.post("/api/control", json={"paused": True}, headers=headers)
+            assert r.status_code == 401 and r.headers["www-authenticate"] == "Bearer"
+        assert not engine.control.paused and not any(e.kind == "time_control" for e in demo.events)
+        ok = {"Authorization": "Bearer s3cret"}
+        assert c.get("/api/auth", headers=ok).json() == {"required": True, "authenticated": True}
+        assert c.post("/api/control", json={"paused": True}, headers=ok).json()["paused"]
+
+
+def test_without_a_token_commands_are_open(demo):
+    from fastapi.testclient import TestClient
+
+    from dynacamp.api import create_app
+
+    with TestClient(create_app(Engine(demo))) as c:
+        assert c.get("/api/auth").json() == {"required": False, "authenticated": True}
+
+
+def test_openapi_declares_the_bearer_scheme():
+    from dynacamp.api import create_app
+
+    spec = create_app(None, token="x").openapi()
+    assert spec["components"]["securitySchemes"]["HTTPBearer"]["scheme"] == "bearer"
+    assert spec["paths"]["/api/control"]["post"]["security"] == [{"HTTPBearer": []}]
+    assert "security" not in spec["paths"]["/api/campaign"]["get"]
+
+
+def test_save_from_the_api(demo, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from dynacamp import persistence
+    from dynacamp.api import create_app
+
+    engine = Engine(demo)
+    engine.run_for(3600)
+    saver = persistence.Saver(tmp_path / "c.dcsave", autosave_s=600)
+    ok = {"Authorization": "Bearer t"}
+    with TestClient(create_app(engine, token="t", saver=saver)) as c:
+        before = c.get("/api/campaign").json()["save"]
+        assert before == {"enabled": True, "file": "c.dcsave", "autosave_minutes": 10, "last": None}
+        assert c.post("/api/save").status_code == 401
+        assert not saver.path.exists()
+
+        r = c.post("/api/save", headers=ok)
+        assert r.status_code == 200
+        last = r.json()["last"]
+        assert last["trigger"] == "api" and last["time"]["t"] == round(demo.time, 1)
+        assert c.get("/api/campaign").json()["save"]["last"] == last
+        assert c.get("/api/snapshot").json()["campaign"]["save"]["last"] == last
+        assert demo.events.of_kind("campaign_saved")[-1].data["trigger"] == "api"
+        resumed, _ = persistence.load(saver.path)
+        assert resumed.time == demo.time
+
+
+def test_save_disabled_or_failing(demo, tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from dynacamp import persistence
+    from dynacamp.api import create_app
+
+    with TestClient(create_app(Engine(demo))) as c:
+        assert c.get("/api/campaign").json()["save"]["enabled"] is False
+        assert c.post("/api/save").status_code == 409
+
+    saver = persistence.Saver(tmp_path / "c.dcsave")
+
+    def full(*_):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(persistence, "write", full)
+    with TestClient(create_app(Engine(demo), saver=saver)) as c:
+        r = c.post("/api/save")
+        assert r.status_code == 500 and "disk full" in r.json()["detail"]
+        assert saver.last is None
