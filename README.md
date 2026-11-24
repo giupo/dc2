@@ -22,6 +22,7 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 - [Cosa fa](#cosa-fa)
 - [Installazione](#installazione)
 - [Avvio rapido](#avvio-rapido)
+- [Docker](#docker)
 - [Il modello di campagna](#il-modello-di-campagna)
 - [DCS World](#dcs-world)
 - [Interfaccia web](#interfaccia-web)
@@ -84,6 +85,36 @@ uv run dynacamp serve scenarios/syria_m5.toml --no-dcs --compression 600
 # campagna live con DCS (60x finché nessun giocatore è in gioco, poi 1:1)
 uv run dynacamp serve scenarios/western_georgia.toml --compression 60
 ```
+
+## Docker
+
+Il `Dockerfile` costruisce un'immagine unica (~140 MB) con motore, API e UI
+già compilata:
+
+```bash
+docker build -t dynacamp .
+
+# Siria, in attesa di DCS sulla porta 50555; UI su http://localhost:8080/
+docker run --rm -p 8080:8080 -p 50555:50555 dynacamp
+
+# un altro scenario, senza DCS, a 600x
+docker run --rm -p 8080:8080 dynacamp scenarios/western_georgia.toml --no-dcs --compression 600
+
+# scenari propri
+docker run --rm -p 8080:8080 -p 50555:50555 -v $PWD/my_scenarios:/app/scenarios:ro dynacamp scenarios/mio.toml
+```
+
+Dopo il nome dell'immagine si passano gli argomenti di `dynacamp serve`
+(scenario e opzioni). API e adapter DCS ascoltano su tutte le interfacce del
+container. Nello script Lua della missione l'host va impostato
+sull'indirizzo della macchina che esegue Docker. Il container gira come utente
+non root, ha un healthcheck su `/api/campaign` e si ferma pulito con
+`docker stop`. Le missioni `.miz` restano fuori dall'immagine: servono a DCS,
+non al server.
+
+> L'API non ha autenticazione e `POST /api/control` può mettere in pausa la
+> campagna. Se esponi la porta 8080 su Internet, mettila dietro un reverse
+> proxy con autenticazione.
 
 ## Il modello di campagna
 

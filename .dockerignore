@@ -1,0 +1,14 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+*.jsonl
+web/node_modules
+web/dist
+web/tsconfig.tsbuildinfo
+docs/sphinx/_build
+docs/sphinx/_autosummary
+missions
+tests
+tools
