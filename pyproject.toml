@@ -1,0 +1,40 @@
+[project]
+name = "dynacamp"
+version = "0.1.0"
+description = "Headless dynamic military campaign engine with pluggable game adapters (DCS first)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.165.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.optional-dependencies]
+# Only needed to generate DCS .miz files (dynacamp build-miz).
+miz = ["pydcs"]
+
+[project.scripts]
+dynacamp = "dynacamp.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.16.2",
+    "pytest>=8",
+]
+# Sphinx documentation: uv run --group docs sphinx-build -b html docs/sphinx docs/sphinx/_build/html
+docs = [
+    "sphinx>=8",
+    "furo",
+    "myst-parser",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dynacamp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

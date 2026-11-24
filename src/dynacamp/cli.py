@@ -1,0 +1,245 @@
+"""Command line entry point.
+
+    dynacamp simulate scenarios/western_georgia.toml --days 5
+    dynacamp serve scenarios/western_georgia.toml --port 50555 --compression 60
+    dynacamp lua-path
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+from collections import Counter
+from pathlib import Path
+
+from . import scenario
+from .engine import Engine
+from .state import CampaignState
+
+NOTABLE = {
+    "battle_started",
+    "battle_ended",
+    "province_captured",
+    "division_retreated",
+    "division_destroyed",
+    "objective_changed",
+    "player_joined",
+    "player_left",
+    "handoff",
+    "handoff_failed",
+    "handoff_timeout",
+    "game_disconnected",
+    "package_planned",
+    "air_strike",
+    "air_engagement",
+    "aircraft_lost",
+    "flight_aborted",
+    "flight_cancelled",
+    "seat_taken",
+    "seat_released",
+}
+
+
+from .events import clock as _clock
+
+
+def _summary(state: CampaignState) -> str:
+    """Text summary of the campaign: provinces, battles, convoys and every division."""
+    ctrl = Counter(p.controller for p in state.theater.provinces.values())
+    lines = [f"--- {_clock(state.time)}  provinces {dict(ctrl)}  battles {len(state.battles)}  convoys {len(state.convoys)}"]
+
+    for d in sorted(state.divisions.values(), key=lambda d: (d.faction, d.id)):
+        lines.append(
+            f"    {d.faction:5} {d.id:4} {d.name[:28]:28} @{d.location:11} str {d.strength:4.0%} "
+            f"org {d.org:4.0%} sup {d.supply_ratio:4.0%} {d.order.kind.value}"
+            + (f"->{d.order.target}" if d.order.target else "")
+            + (f" [{d.authority.value}]" if d.authority.value != "campaign" else "")
+        )
+
+    return "\n".join(lines)
+
+
+def _print_events(state: CampaignState, verbose: bool) -> None:
+    """Print notable (or all) events as they happen."""
+    def show(e) -> None:
+        """Print one event."""
+        if verbose or e.kind in NOTABLE:
+            print(f"{_clock(e.time)}  {e.kind:20} {e.data}")
+
+    state.events.subscribe(show)
+
+
+def cmd_simulate(args: argparse.Namespace) -> None:
+    """``dynacamp simulate``: run a campaign headless as fast as possible."""
+    state = scenario.load(args.scenario)
+    if args.seed is not None:
+        state.rng.seed(args.seed)
+
+    if not args.quiet:
+        _print_events(state, args.verbose)
+
+    engine = Engine(state)
+
+    for _ in range(int(args.days * 24 / args.report_hours)):
+        engine.run_for(args.report_hours * 3600)
+        print(_summary(state))
+
+    if args.events:
+        state.events.write_jsonl(Path(args.events))
+        print(f"{len(state.events)} events written to {args.events}")
+
+
+def cmd_serve(args: argparse.Namespace) -> None:
+    """``dynacamp serve``: real-time campaign with the DCS adapter, the API and the web UI."""
+    from .adapters.dcs import LUA_BRIDGE, DcsAdapter
+    from .runtime import run_realtime
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    state = scenario.load(args.scenario)
+
+    if not args.quiet:
+        _print_events(state, args.verbose)
+
+    adapter = None
+
+    if not args.no_dcs:
+        adapter = DcsAdapter(args.host, args.port)
+        adapter.start()
+        print(f"Waiting for DCS on {args.host}:{adapter.port}. Bridge script: {LUA_BRIDGE}")
+
+    engine = Engine(state, adapter)
+    api = None
+
+    if args.api_port:
+        from .api import ApiServer
+
+        api = ApiServer(engine, args.api_host, args.api_port, web_dir=args.web_dir)
+        api.start()
+        print(f"API on http://{api.host}:{api.port}/api  (docs /docs)")
+        if Path(args.web_dir).is_dir():
+            print(f"Web UI on http://{api.host}:{api.port}/")
+    last_report = [0.0]
+
+    def on_tick(e: Engine) -> None:
+        """Print a summary every ``--report-hours``."""
+        if e.state.time - last_report[0] >= args.report_hours * 3600:
+            last_report[0] = e.state.time
+            print(_summary(e.state))
+
+    try:
+        run_realtime(engine, compression=args.compression, on_tick=on_tick)
+
+    except KeyboardInterrupt:
+        pass
+
+    finally:
+        if adapter is not None:
+            adapter.close()
+
+        if api is not None:
+            api.close()
+
+        if args.events:
+            state.events.write_jsonl(Path(args.events))
+
+
+def cmd_build_miz(args: argparse.Namespace) -> None:
+    """``dynacamp build-miz``: generate the DCS mission of each scenario."""
+    try:
+        from .adapters.dcs.miz import write_mission
+
+    except ImportError:
+        raise SystemExit("pydcs is required: uv sync --extra miz") from None
+
+    for path in args.scenarios:
+        state = scenario.load(path)
+        out = Path(args.out_dir) / (Path(path).stem + ".miz")
+        notes = write_mission(state, out, port=args.port)
+        print(f"{out}")
+
+        for n in notes:
+            print(f"   note: {n}")
+
+
+def cmd_roads(args: argparse.Namespace) -> None:
+    """``dynacamp roads``: route scenario links on real roads."""
+    from . import roads
+
+    for path in args.scenarios:
+        print(f"Routing links of {path} on OpenStreetMap roads (OSRM)...")
+        out = roads.build(path)
+        print(f"-> {out}")
+
+
+def cmd_openapi(args: argparse.Namespace) -> None:
+    """``dynacamp openapi``: print or save the OpenAPI schema."""
+    import json
+
+    from .api import create_app
+
+    schema = json.dumps(create_app(None).openapi(), indent=2)
+    if args.output:
+        Path(args.output).write_text(schema + "\n", encoding="utf-8")
+        print(f"OpenAPI schema written to {args.output}")
+
+    else:
+        print(schema)
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Entry point of the ``dynacamp`` command.
+
+    Args:
+        argv: Arguments (default: ``sys.argv``).
+    """
+    p = argparse.ArgumentParser(prog="dynacamp", description="Dynamic campaign engine")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    s = sub.add_parser("simulate", help="run a campaign headless, as fast as possible")
+    s.add_argument("scenario")
+    s.add_argument("--days", type=float, default=5)
+    s.add_argument("--report-hours", type=float, default=24)
+    s.add_argument("--seed", type=int)
+    s.add_argument("--events", help="write the event log to this JSONL file")
+    s.add_argument("--quiet", action="store_true", help="only print periodic summaries")
+    s.add_argument("--verbose", action="store_true", help="print every event")
+    s.set_defaults(func=cmd_simulate)
+
+    v = sub.add_parser("serve", help="run in real time with the DCS adapter")
+    v.add_argument("scenario")
+    v.add_argument("--host", default="127.0.0.1")
+    v.add_argument("--port", type=int, default=50555)
+    v.add_argument("--compression", type=float, default=60.0, help="time compression with no players")
+    v.add_argument("--report-hours", type=float, default=1)
+    v.add_argument("--events")
+    v.add_argument("--verbose", action="store_true")
+    v.add_argument("--quiet", action="store_true", help="do not print events")
+    v.add_argument("--no-dcs", action="store_true", help="run without the DCS adapter (e.g. to develop the web UI)")
+    v.add_argument("--api-host", default="127.0.0.1")
+    v.add_argument("--api-port", type=int, default=8080, help="HTTP API port (0 disables it)")
+    v.add_argument("--web-dir", default="web/dist", help="built front-end to serve at / (if it exists)")
+    v.set_defaults(func=cmd_serve)
+
+    b = sub.add_parser("build-miz", help="generate a DCS mission for each scenario (needs pydcs)")
+    b.add_argument("scenarios", nargs="+")
+    b.add_argument("--out-dir", default="missions")
+    b.add_argument("--port", type=int, default=50555)
+    b.set_defaults(func=cmd_build_miz)
+
+    r = sub.add_parser("roads", help="route scenario links on real roads (OSRM, needs network) -> <scenario>.roads.json")
+    r.add_argument("scenarios", nargs="+")
+    r.set_defaults(func=cmd_roads)
+
+    o = sub.add_parser("openapi", help="print the HTTP API OpenAPI schema (for front-end type generation)")
+    o.add_argument("-o", "--output")
+    o.set_defaults(func=cmd_openapi)
+
+    lp = sub.add_parser("lua-path", help="print the path of the DCS Lua bridge script")
+    lp.set_defaults(func=lambda a: print(__import__("dynacamp.adapters.dcs", fromlist=["LUA_BRIDGE"]).LUA_BRIDGE))
+
+    args = p.parse_args(argv)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

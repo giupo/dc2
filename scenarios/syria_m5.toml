@@ -1,0 +1,846 @@
+# Fictional scenario on the DCS Syria map: the fight for the M5 corridor.
+# Blue holds the north (Aleppo, Idlib, Latakia), Red the south (Damascus, Homs,
+# Tartus). The front runs between Khan Shaykhun and Hama; a desert flank opens
+# through Ithriyah and the Euphrates crossing at Tabqa.
+#
+# Coordinates: pos = [east, north] in metres = [DCS z, DCS x], computed from
+# town lat/lon with tools/dcs_ll.py (Syria transverse Mercator, same parameters
+# as pydcs). Town centres are approximate (~1 km).
+
+[campaign]
+name = "Syria - M5 Corridor"
+theater = "syria"
+seed = 11
+
+[[factions]]
+id = "blue"
+name = "Coalition Task Force"
+side = "blue"
+enemies = ["red"]
+objectives = [{ province = "homs", priority = 3 }, { province = "hama", priority = 2 }, { province = "tartus", priority = 2 }]
+
+[[factions]]
+id = "red"
+name = "Southern Army Group"
+side = "red"
+enemies = ["blue"]
+objectives = [{ province = "aleppo", priority = 3 }, { province = "idlib", priority = 2 }, { province = "latakia", priority = 2 }]
+
+# ------------------------------------------------------------------ provinces (blue)
+
+[[provinces]]
+id = "aleppo"
+name = "Aleppo"
+pos = [117377, 127835]
+terrain = "urban"
+controller = "blue"
+infrastructure = 5
+victory_points = 10
+depot = { stock = 8000, capacity = 12000, production_per_hour = 150, trucks = 150 }
+
+[[provinces]]
+id = "al_bab"
+name = "Al-Bab"
+pos = [150034, 146139]
+terrain = "plains"
+controller = "blue"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "khanasir"
+name = "Khanasir"
+pos = [147230, 80719]
+terrain = "plains"
+controller = "blue"
+infrastructure = 2
+
+[[provinces]]
+id = "tabqa"
+name = "Tabqa"
+pos = [242162, 86430]
+terrain = "plains"
+controller = "blue"
+infrastructure = 2
+victory_points = 2
+
+[[provinces]]
+id = "idlib"
+name = "Idlib"
+pos = [68991, 98914]
+terrain = "urban"
+controller = "blue"
+infrastructure = 3
+victory_points = 4
+
+[[provinces]]
+id = "saraqib"
+name = "Saraqib"
+pos = [84155, 90789]
+terrain = "plains"
+controller = "blue"
+infrastructure = 4
+victory_points = 1
+
+[[provinces]]
+id = "jisr_al_shughur"
+name = "Jisr al-Shughur"
+pos = [40653, 86324]
+terrain = "hills"
+controller = "blue"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "latakia"
+name = "Latakia"
+pos = [-8302, 55586]
+terrain = "urban"
+controller = "blue"
+infrastructure = 4
+victory_points = 6
+depot = { stock = 4000, capacity = 8000, production_per_hour = 80, trucks = 80 }
+
+[[provinces]]
+id = "maarat"
+name = "Maarat al-Numan"
+pos = [71835, 66655]
+terrain = "plains"
+controller = "blue"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "khan_shaykhun"
+name = "Khan Shaykhun"
+pos = [69494, 44511]
+terrain = "plains"
+controller = "blue"
+infrastructure = 3
+
+[[provinces]]
+id = "ithriyah"
+name = "Ithriyah"
+pos = [162890, 35010]
+terrain = "plains"
+controller = "blue"
+infrastructure = 1
+
+# ------------------------------------------------------------------ provinces (red)
+
+[[provinces]]
+id = "hama"
+name = "Hama"
+pos = [77792, 9911]
+terrain = "urban"
+controller = "red"
+infrastructure = 4
+victory_points = 5
+
+[[provinces]]
+id = "salamiyah"
+name = "Salamiyah"
+pos = [104870, -3976]
+terrain = "plains"
+controller = "red"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "masyaf"
+name = "Masyaf"
+pos = [40219, 3067]
+terrain = "mountain"
+controller = "red"
+infrastructure = 2
+
+[[provinces]]
+id = "baniyas"
+name = "Baniyas"
+pos = [4139, 17428]
+terrain = "hills"
+controller = "red"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "tartus"
+name = "Tartus"
+pos = [-1420, -14607]
+terrain = "urban"
+controller = "red"
+infrastructure = 4
+victory_points = 5
+depot = { stock = 4000, capacity = 8000, production_per_hour = 80, trucks = 80 }
+
+[[provinces]]
+id = "homs"
+name = "Homs"
+pos = [73131, -34376]
+terrain = "urban"
+controller = "red"
+infrastructure = 5
+victory_points = 8
+depot = { stock = 5000, capacity = 8000, production_per_hour = 100, trucks = 100 }
+
+[[provinces]]
+id = "qusayr"
+name = "Al-Qusayr"
+pos = [60640, -58501]
+terrain = "plains"
+controller = "red"
+infrastructure = 2
+
+[[provinces]]
+id = "tiyas"
+name = "Tiyas (T4)"
+pos = [157056, -59199]
+terrain = "plains"
+controller = "red"
+infrastructure = 2
+victory_points = 2
+
+[[provinces]]
+id = "palmyra"
+name = "Palmyra"
+pos = [216749, -55380]
+terrain = "plains"
+controller = "red"
+infrastructure = 2
+victory_points = 2
+
+[[provinces]]
+id = "nabk"
+name = "An-Nabk"
+pos = [73200, -113169]
+terrain = "hills"
+controller = "red"
+infrastructure = 4
+
+[[provinces]]
+id = "dumayr"
+name = "Dumayr"
+pos = [68559, -155232]
+terrain = "plains"
+controller = "red"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "damascus"
+name = "Damascus"
+pos = [31074, -168750]
+terrain = "urban"
+controller = "red"
+infrastructure = 5
+victory_points = 10
+depot = { stock = 10000, capacity = 15000, production_per_hour = 180, trucks = 180 }
+
+# ------------------------------------------------------------------ links
+# kind: road | track | rail ; river = true penalises attacks across it
+
+# north
+[[links]]
+a = "aleppo"
+b = "al_bab"
+
+[[links]]
+a = "aleppo"
+b = "idlib"
+
+[[links]]
+a = "aleppo"
+b = "saraqib"     # M5
+
+[[links]]
+a = "aleppo"
+b = "khanasir"
+
+[[links]]
+a = "al_bab"
+b = "tabqa"
+river = true      # Euphrates
+
+[[links]]
+a = "khanasir"
+b = "ithriyah"
+kind = "track"
+
+[[links]]
+a = "tabqa"
+b = "ithriyah"
+
+[[links]]
+a = "idlib"
+b = "saraqib"
+
+[[links]]
+a = "idlib"
+b = "jisr_al_shughur"
+
+[[links]]
+a = "jisr_al_shughur"
+b = "latakia"     # M4
+
+[[links]]
+a = "saraqib"
+b = "maarat"      # M5
+
+[[links]]
+a = "jisr_al_shughur"
+b = "maarat"
+kind = "track"
+
+[[links]]
+a = "maarat"
+b = "khan_shaykhun"   # M5
+
+[[links]]
+a = "latakia"
+b = "baniyas"     # coastal highway
+
+# across the front
+[[links]]
+a = "khan_shaykhun"
+b = "hama"        # M5
+
+[[links]]
+a = "jisr_al_shughur"
+b = "masyaf"
+kind = "track"
+river = true      # Orontes / Ghab plain
+
+[[links]]
+a = "ithriyah"
+b = "salamiyah"
+
+[[links]]
+a = "tabqa"
+b = "palmyra"
+kind = "track"    # desert road via Resafa
+
+# south
+[[links]]
+a = "baniyas"
+b = "tartus"
+
+[[links]]
+a = "baniyas"
+b = "masyaf"
+kind = "track"
+
+[[links]]
+a = "masyaf"
+b = "hama"
+
+[[links]]
+a = "hama"
+b = "salamiyah"
+
+[[links]]
+a = "hama"
+b = "homs"        # M5
+
+[[links]]
+a = "salamiyah"
+b = "homs"
+
+[[links]]
+a = "salamiyah"
+b = "tiyas"
+kind = "track"
+
+[[links]]
+a = "tartus"
+b = "homs"        # Homs gap
+
+[[links]]
+a = "homs"
+b = "qusayr"
+
+[[links]]
+a = "homs"
+b = "tiyas"
+
+[[links]]
+a = "tiyas"
+b = "palmyra"
+
+[[links]]
+a = "homs"
+b = "nabk"        # M5
+
+[[links]]
+a = "qusayr"
+b = "nabk"
+kind = "track"
+
+[[links]]
+a = "nabk"
+b = "damascus"    # M5
+
+[[links]]
+a = "nabk"
+b = "dumayr"
+kind = "track"
+
+[[links]]
+a = "dumayr"
+b = "damascus"
+
+[[links]]
+a = "palmyra"
+b = "dumayr"      # desert highway
+
+# ------------------------------------------------------------------ order of battle
+
+[[divisions]]
+id = "b1"
+name = "1st Mechanised Bde"
+faction = "blue"
+template = "mech_brigade"
+province = "khan_shaykhun"
+
+[[divisions]]
+id = "b2"
+name = "2nd Mechanised Bde"
+faction = "blue"
+template = "mech_brigade"
+province = "maarat"
+
+[[divisions]]
+id = "b3"
+name = "3rd Infantry Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "jisr_al_shughur"
+
+[[divisions]]
+id = "b4"
+name = "Coastal Infantry Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "latakia"
+
+[[divisions]]
+id = "b5"
+name = "Desert Task Force"
+faction = "blue"
+template = "infantry_brigade"
+province = "ithriyah"
+
+[[divisions]]
+id = "b6"
+name = "Euphrates Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "tabqa"
+
+[[divisions]]
+id = "b7"
+name = "1st Armoured Bde"
+faction = "blue"
+template = "tank_brigade"
+province = "aleppo"
+
+[[divisions]]
+id = "b8"
+name = "Corps Artillery"
+faction = "blue"
+template = "artillery_group"
+province = "saraqib"
+
+[[divisions]]
+id = "r1"
+name = "5th Mechanised Bde"
+faction = "red"
+template = "mech_brigade"
+province = "hama"
+
+[[divisions]]
+id = "r2"
+name = "11th Infantry Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "hama"
+
+[[divisions]]
+id = "r3"
+name = "Mountain Infantry Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "masyaf"
+
+[[divisions]]
+id = "r4"
+name = "8th Mechanised Bde"
+faction = "red"
+template = "mech_brigade"
+province = "salamiyah"
+
+[[divisions]]
+id = "r5"
+name = "3rd Armoured Bde"
+faction = "red"
+template = "tank_brigade"
+province = "homs"
+
+[[divisions]]
+id = "r6"
+name = "Homs Artillery Group"
+faction = "red"
+template = "artillery_group"
+province = "homs"
+
+[[divisions]]
+id = "r7"
+name = "Desert Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "palmyra"
+
+[[divisions]]
+id = "r8"
+name = "Coastal Defence Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "baniyas"
+
+[[divisions]]
+id = "r9"
+name = "Guards Armoured Bde"
+faction = "red"
+template = "tank_brigade"
+province = "damascus"
+
+# ------------------------------------------------------------------ air
+# name = DCS airdrome name. pos = exact airdrome position from pydcs.
+
+[[airbases]]
+id = "aleppo"
+name = "Aleppo"
+pos = [123125, 125577]
+province = "aleppo"
+
+[[airbases]]
+id = "kuweires"
+name = "Kuweires"
+pos = [155254, 125811]
+province = "al_bab"
+
+[[airbases]]
+id = "jirah"
+name = "Jirah"
+pos = [187069, 115350]
+province = "al_bab"
+
+[[airbases]]
+id = "tabqa"
+name = "Tabqa"
+pos = [243605, 76965]
+province = "tabqa"
+
+[[airbases]]
+id = "abu_al_duhur"
+name = "Abu al-Duhur"
+pos = [111345, 76049]
+province = "saraqib"
+
+[[airbases]]
+id = "bassel"
+name = "Bassel Al-Assad"
+pos = [5836, 42237]
+province = "latakia"
+
+[[airbases]]
+id = "hama"
+name = "Hama"
+pos = [74333, 8663]
+province = "hama"
+
+[[airbases]]
+id = "shayrat"
+name = "Shayrat"
+pos = [90675, -61368]
+province = "homs"
+
+[[airbases]]
+id = "tiyas"
+name = "Tiyas"
+pos = [157071, -58908]
+province = "tiyas"
+
+[[airbases]]
+id = "palmyra"
+name = "Palmyra"
+pos = [220126, -55703]
+province = "palmyra"
+
+[[airbases]]
+id = "damascus"
+name = "Damascus"
+pos = [52081, -178652]
+province = "damascus"
+
+[[airbases]]
+id = "dumayr"
+name = "Al-Dumayr"
+pos = [73972, -158713]
+province = "dumayr"
+
+[[squadrons]]
+id = "b_viper"
+name = "1st Fighter Sqn"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "f16c"
+count = 12
+callsign = "Viper"
+
+[[squadrons]]
+id = "b_hawg"
+name = "Close Support Sqn"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "a10c"
+count = 12
+callsign = "Hawg"
+
+[[squadrons]]
+id = "b_eagle"
+name = "Air Superiority Sqn"
+faction = "blue"
+airbase = "jirah"
+aircraft = "f15c"
+count = 8
+callsign = "Eagle"
+
+[[squadrons]]
+id = "b_hornet"
+name = "Strike Fighter Sqn"
+faction = "blue"
+airbase = "bassel"
+aircraft = "fa18c"
+count = 12
+callsign = "Hornet"
+
+[[squadrons]]
+id = "b_apache"
+name = "Attack Helicopter Coy"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "ah64d"
+count = 8
+callsign = "Rogue"
+
+[[squadrons]]
+id = "r_grach"
+name = "Ground Attack Regt"
+faction = "red"
+airbase = "shayrat"
+aircraft = "su25t"
+count = 12
+callsign = "Grach"
+
+[[squadrons]]
+id = "r_fencer"
+name = "Bomber Regt"
+faction = "red"
+airbase = "tiyas"
+aircraft = "su24m"
+count = 8
+callsign = "Burya"
+
+[[squadrons]]
+id = "r_fulcrum"
+name = "Fighter Regt"
+faction = "red"
+airbase = "damascus"
+aircraft = "mig29s"
+count = 12
+callsign = "Strizh"
+
+[[squadrons]]
+id = "r_flanker"
+name = "Interceptor Regt"
+faction = "red"
+airbase = "dumayr"
+aircraft = "su27"
+count = 8
+callsign = "Sokol"
+
+[[squadrons]]
+id = "r_hind"
+name = "Army Aviation Sqn"
+faction = "red"
+airbase = "hama"
+aircraft = "mi24p"
+count = 8
+callsign = "Kobra"
+
+# ------------------------------------------------------------------ reinforcements
+
+[[divisions]]
+id = "r10"
+name = "17th Mechanised Bde"
+faction = "red"
+template = "mech_brigade"
+province = "homs"
+
+[[divisions]]
+id = "r11"
+name = "Republican Guard Armd Bde"
+faction = "red"
+template = "tank_brigade"
+province = "nabk"
+
+[[divisions]]
+id = "r12"
+name = "Tiyas Infantry Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "tiyas"
+
+[[divisions]]
+id = "b10"
+name = "4th Mechanised Bde"
+faction = "blue"
+template = "mech_brigade"
+province = "idlib"
+
+[[divisions]]
+id = "b11"
+name = "2nd Armoured Bde"
+faction = "blue"
+template = "tank_brigade"
+province = "maarat"
+
+[[divisions]]
+id = "b12"
+name = "Latakia Marine Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "latakia"
+
+# ------------------------------------------------------------------ air defence
+# Long range, medium range and short range SAM systems (mobile, they move on roads)
+# and early-warning radars (EWR) that network the sites into an IADS.
+
+[[air_defense]]
+id = "ad_b1"
+name = "Patriot Bty Aleppo"
+faction = "blue"
+system = "patriot"
+province = "aleppo"
+
+[[air_defense]]
+id = "ad_b2"
+name = "Hawk Bty Idlib"
+faction = "blue"
+system = "hawk"
+province = "idlib"
+
+[[air_defense]]
+id = "ad_b3"
+name = "NASAMS Latakia"
+faction = "blue"
+system = "nasams"
+province = "latakia"
+
+[[air_defense]]
+id = "ad_b4"
+name = "Avenger Plt 1"
+faction = "blue"
+system = "avenger"
+province = "khan_shaykhun"
+
+[[air_defense]]
+id = "ad_b5"
+name = "Avenger Plt 2"
+faction = "blue"
+system = "avenger"
+province = "maarat"
+
+[[air_defense]]
+id = "ad_b6"
+name = "EWR Aleppo"
+faction = "blue"
+system = "ewr_fps117"
+province = "aleppo"
+
+[[air_defense]]
+id = "ad_b7"
+name = "EWR Latakia"
+faction = "blue"
+system = "ewr_fps117"
+province = "latakia"
+
+[[air_defense]]
+id = "ad_r1"
+name = "S-300 Damascus"
+faction = "red"
+system = "s300ps"
+province = "damascus"
+
+[[air_defense]]
+id = "ad_r2"
+name = "S-300 Homs"
+faction = "red"
+system = "s300ps"
+province = "homs"
+
+[[air_defense]]
+id = "ad_r3"
+name = "Buk Bn Hama"
+faction = "red"
+system = "buk"
+province = "hama"
+
+[[air_defense]]
+id = "ad_r4"
+name = "Buk Bn Tartus"
+faction = "red"
+system = "buk"
+province = "tartus"
+
+[[air_defense]]
+id = "ad_r5"
+name = "Kub Bty Masyaf"
+faction = "red"
+system = "kub"
+province = "masyaf"
+
+[[air_defense]]
+id = "ad_r6"
+name = "Tor Bty Salamiyah"
+faction = "red"
+system = "tor"
+province = "salamiyah"
+
+[[air_defense]]
+id = "ad_r7"
+name = "Osa Bty Tiyas"
+faction = "red"
+system = "osa"
+province = "tiyas"
+
+[[air_defense]]
+id = "ad_r8"
+name = "EWR Homs"
+faction = "red"
+system = "ewr_55g6"
+province = "homs"
+
+[[air_defense]]
+id = "ad_r9"
+name = "EWR Palmyra"
+faction = "red"
+system = "ewr_1l13"
+province = "palmyra"
+
+[[air_defense]]
+id = "ad_r10"
+name = "EWR Tartus"
+faction = "red"
+system = "ewr_1l13"
+province = "tartus"

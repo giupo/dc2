@@ -1,0 +1,2589 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DynaCamp",
+    "summary": "Dynamic campaign engine: map, fronts, forces, logistics, ATO, events.",
+    "description": "Positions come as `pos` = [east, north] metres on the theater plane and `ll` = [lat, lon]. Times are `{t, label}` with `t` in campaign seconds. Every response is taken under the engine lock, so it describes a consistent state between two engine steps.",
+    "version": "1"
+  },
+  "paths": {
+    "/api/campaign": {
+      "get": {
+        "tags": [
+          "campaign"
+        ],
+        "summary": "Get Campaign",
+        "description": "Clock, factions and objectives, connected players.",
+        "operationId": "get_campaign_api_campaign_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/map": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Get Map",
+        "description": "Provinces with territory polygons, links, airbases. Geometry never changes: load it once.",
+        "operationId": "get_map_api_map_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fronts": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Get Fronts",
+        "description": "Front lines, front sectors with local force ratios, battles.",
+        "operationId": "get_fronts_api_fronts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FrontsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forces": {
+      "get": {
+        "tags": [
+          "forces"
+        ],
+        "summary": "Get Forces",
+        "description": "Divisions with state and remaining route, battles.",
+        "operationId": "get_forces_api_forces_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForcesView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logistics": {
+      "get": {
+        "tags": [
+          "logistics"
+        ],
+        "summary": "Get Logistics",
+        "description": "Depots, convoys, supply network reach, division supply.",
+        "operationId": "get_logistics_api_logistics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogisticsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ato": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Ato",
+        "description": "Packages and flights, squadrons, sortie budget, in-game join boards.",
+        "operationId": "get_ato_api_ato_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtoView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/airdefense": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Air Defense",
+        "description": "SAM sites and early-warning radars, their state, and the IADS network links.",
+        "operationId": "get_air_defense_api_airdefense_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirDefenseView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get Events",
+        "description": "Campaign events in order, paged: call again with `since=next`.",
+        "operationId": "get_events_api_events_get",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "first event seq to return",
+              "default": 0,
+              "title": "Since"
+            },
+            "description": "first event seq to return"
+          },
+          {
+            "name": "kinds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "comma separated event kinds to keep",
+              "title": "Kinds"
+            },
+            "description": "comma separated event kinds to keep"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshot": {
+      "get": {
+        "tags": [
+          "campaign"
+        ],
+        "summary": "Get Snapshot",
+        "description": "Everything above in one document.",
+        "operationId": "get_snapshot_api_snapshot_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stream": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Stream",
+        "description": "Server-Sent Events: `event` for each campaign event (data = Event, id = seq) and\n`tick` every second (data = Tick). Without `since` only new events are sent.",
+        "operationId": "stream_api_stream_get",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "replay from this seq",
+              "title": "Since"
+            },
+            "description": "replay from this seq"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "tags": [
+          "campaign"
+        ],
+        "summary": "Index",
+        "description": "Entry point: list of endpoints.",
+        "operationId": "index_api_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AirDefenseView": {
+        "properties": {
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SamSiteView"
+            },
+            "type": "array",
+            "title": "Sites"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/IadsLinkView"
+            },
+            "type": "array",
+            "title": "Links"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sites",
+          "links"
+        ],
+        "title": "AirDefenseView"
+      },
+      "AirbaseView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "in-game airdrome name"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "province",
+          "owner"
+        ],
+        "title": "AirbaseView"
+      },
+      "AtoView": {
+        "properties": {
+          "packages": {
+            "items": {
+              "$ref": "#/components/schemas/PackageView"
+            },
+            "type": "array",
+            "title": "Packages"
+          },
+          "squadrons": {
+            "items": {
+              "$ref": "#/components/schemas/SquadronView"
+            },
+            "type": "array",
+            "title": "Squadrons"
+          },
+          "sortie_budget_left": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Sortie Budget Left"
+          },
+          "flights_airborne": {
+            "type": "integer",
+            "title": "Flights Airborne"
+          },
+          "boards": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/BoardPackage"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Boards",
+            "description": "side -> what players see in the in-game menu"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "packages",
+          "squadrons",
+          "sortie_budget_left",
+          "flights_airborne",
+          "boards"
+        ],
+        "title": "AtoView"
+      },
+      "BattleView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "attacker": {
+            "type": "string",
+            "title": "Attacker"
+          },
+          "defender": {
+            "type": "string",
+            "title": "Defender"
+          },
+          "attackers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attackers"
+          },
+          "defenders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Defenders"
+          },
+          "started": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "hours": {
+            "type": "number",
+            "title": "Hours"
+          },
+          "delegated": {
+            "type": "boolean",
+            "title": "Delegated",
+            "description": "fought by the game (inside a player bubble)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "province",
+          "name",
+          "attacker",
+          "defender",
+          "attackers",
+          "defenders",
+          "started",
+          "hours",
+          "delegated"
+        ],
+        "title": "BattleView"
+      },
+      "BoardFlight": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "CAP",
+              "ESCORT",
+              "SEAD",
+              "CAS",
+              "BAI",
+              "STRIKE"
+            ],
+            "title": "Task"
+          },
+          "seats": {
+            "type": "integer",
+            "title": "Seats"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "task",
+          "seats"
+        ],
+        "title": "BoardFlight"
+      },
+      "BoardPackage": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "flights": {
+            "items": {
+              "$ref": "#/components/schemas/BoardFlight"
+            },
+            "type": "array",
+            "title": "Flights"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "flights"
+        ],
+        "title": "BoardPackage"
+      },
+      "CampaignView": {
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "title": "Api Version"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "theater": {
+            "type": "string",
+            "title": "Theater"
+          },
+          "time": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "live": {
+            "type": "boolean",
+            "title": "Live",
+            "description": "a game is simulating part of the campaign: time runs 1:1"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerView"
+            },
+            "type": "array",
+            "title": "Players"
+          },
+          "factions": {
+            "items": {
+              "$ref": "#/components/schemas/FactionView"
+            },
+            "type": "array",
+            "title": "Factions"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events",
+            "description": "number of events so far (next seq)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "api_version",
+          "name",
+          "theater",
+          "time",
+          "live",
+          "players",
+          "factions",
+          "events"
+        ],
+        "title": "CampaignView"
+      },
+      "ConvoyView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "cargo": {
+            "type": "number",
+            "title": "Cargo"
+          },
+          "trucks": {
+            "type": "number",
+            "title": "Trucks"
+          },
+          "home": {
+            "type": "string",
+            "title": "Home"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "returning": {
+            "type": "boolean",
+            "title": "Returning"
+          },
+          "heading_to": {
+            "type": "string",
+            "title": "Heading To"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authority": {
+            "type": "string",
+            "enum": [
+              "campaign",
+              "materializing",
+              "delegated",
+              "dematerializing"
+            ],
+            "title": "Authority"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "faction",
+          "cargo",
+          "trucks",
+          "home",
+          "destination",
+          "returning",
+          "heading_to",
+          "route",
+          "authority"
+        ],
+        "title": "ConvoyView"
+      },
+      "DepotView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "controller": {
+            "type": "string",
+            "title": "Controller"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          },
+          "capacity": {
+            "type": "integer",
+            "title": "Capacity"
+          },
+          "production_per_hour": {
+            "type": "number",
+            "title": "Production Per Hour"
+          },
+          "trucks": {
+            "type": "integer",
+            "title": "Trucks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "province",
+          "name",
+          "controller",
+          "stock",
+          "capacity",
+          "production_per_hour",
+          "trucks"
+        ],
+        "title": "DepotView"
+      },
+      "DivisionSupplyView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "supply": {
+            "type": "number",
+            "title": "Supply"
+          },
+          "out_of_supply": {
+            "type": "boolean",
+            "title": "Out Of Supply"
+          },
+          "direct": {
+            "type": "boolean",
+            "title": "Direct"
+          },
+          "convoy_incoming": {
+            "type": "boolean",
+            "title": "Convoy Incoming"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "faction",
+          "location",
+          "supply",
+          "out_of_supply",
+          "direct",
+          "convoy_incoming"
+        ],
+        "title": "DivisionSupplyView"
+      },
+      "DivisionView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template"
+          },
+          "template_name": {
+            "type": "string",
+            "title": "Template Name"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "strength": {
+            "type": "number",
+            "title": "Strength"
+          },
+          "org": {
+            "type": "number",
+            "title": "Org"
+          },
+          "supply": {
+            "type": "number",
+            "title": "Supply"
+          },
+          "elements": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Elements"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderView"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "battle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battle"
+          },
+          "authority": {
+            "type": "string",
+            "enum": [
+              "campaign",
+              "materializing",
+              "delegated",
+              "dematerializing"
+            ],
+            "title": "Authority"
+          },
+          "moving": {
+            "type": "boolean",
+            "title": "Moving"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "faction",
+          "template",
+          "template_name",
+          "location",
+          "strength",
+          "org",
+          "supply",
+          "elements",
+          "order",
+          "route",
+          "battle",
+          "authority",
+          "moving"
+        ],
+        "title": "DivisionView"
+      },
+      "EventView": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "time": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seq",
+          "time",
+          "kind",
+          "data"
+        ],
+        "title": "EventView"
+      },
+      "EventsPage": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventView"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "next": {
+            "type": "integer",
+            "title": "Next",
+            "description": "pass as `since` to get the following page"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "events",
+          "next"
+        ],
+        "title": "EventsPage"
+      },
+      "FactionView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "enemies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Enemies"
+          },
+          "provinces": {
+            "type": "integer",
+            "title": "Provinces"
+          },
+          "victory_points": {
+            "type": "integer",
+            "title": "Victory Points"
+          },
+          "divisions": {
+            "type": "integer",
+            "title": "Divisions"
+          },
+          "aircraft": {
+            "type": "integer",
+            "title": "Aircraft"
+          },
+          "objectives": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectiveView"
+            },
+            "type": "array",
+            "title": "Objectives"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "side",
+          "enemies",
+          "provinces",
+          "victory_points",
+          "divisions",
+          "aircraft",
+          "objectives"
+        ],
+        "title": "FactionView"
+      },
+      "FireView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          },
+          "shooter": {
+            "type": "string",
+            "title": "Shooter"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "age_s": {
+            "type": "integer",
+            "title": "Age S",
+            "description": "campaign seconds since it was fired"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "shooter",
+          "target",
+          "faction",
+          "age_s"
+        ],
+        "title": "FireView",
+        "description": "A recent artillery fire mission: from the guns to the impact."
+      },
+      "FlightView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "package": {
+            "type": "string",
+            "title": "Package"
+          },
+          "callsign": {
+            "type": "string",
+            "title": "Callsign"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "squadron": {
+            "type": "string",
+            "title": "Squadron"
+          },
+          "squadron_name": {
+            "type": "string",
+            "title": "Squadron Name"
+          },
+          "airbase": {
+            "type": "string",
+            "title": "Airbase"
+          },
+          "aircraft": {
+            "type": "string",
+            "title": "Aircraft"
+          },
+          "aircraft_name": {
+            "type": "string",
+            "title": "Aircraft Name"
+          },
+          "helo": {
+            "type": "boolean",
+            "title": "Helo"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "CAP",
+              "ESCORT",
+              "SEAD",
+              "CAS",
+              "BAI",
+              "STRIKE"
+            ],
+            "title": "Task"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "airborne",
+              "on_station",
+              "rtb",
+              "done",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "ai": {
+            "type": "integer",
+            "title": "Ai"
+          },
+          "seats_free": {
+            "type": "integer",
+            "title": "Seats Free"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/SeatView"
+            },
+            "type": "array",
+            "title": "Players"
+          },
+          "takeoff": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "tot": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "waypoints": {
+            "$ref": "#/components/schemas/Polyline"
+          },
+          "target_index": {
+            "type": "integer",
+            "title": "Target Index"
+          },
+          "next_waypoint": {
+            "type": "integer",
+            "title": "Next Waypoint"
+          },
+          "target": {
+            "$ref": "#/components/schemas/TargetRef"
+          },
+          "authority": {
+            "type": "string",
+            "enum": [
+              "campaign",
+              "materializing",
+              "delegated",
+              "dematerializing"
+            ],
+            "title": "Authority"
+          },
+          "on_station_until": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "package",
+          "callsign",
+          "faction",
+          "squadron",
+          "squadron_name",
+          "airbase",
+          "aircraft",
+          "aircraft_name",
+          "helo",
+          "task",
+          "status",
+          "size",
+          "ai",
+          "seats_free",
+          "players",
+          "takeoff",
+          "tot",
+          "waypoints",
+          "target_index",
+          "next_waypoint",
+          "target",
+          "authority",
+          "on_station_until"
+        ],
+        "title": "FlightView"
+      },
+      "ForcesView": {
+        "properties": {
+          "divisions": {
+            "items": {
+              "$ref": "#/components/schemas/DivisionView"
+            },
+            "type": "array",
+            "title": "Divisions"
+          },
+          "battles": {
+            "items": {
+              "$ref": "#/components/schemas/BattleView"
+            },
+            "type": "array",
+            "title": "Battles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "divisions",
+          "battles"
+        ],
+        "title": "ForcesView"
+      },
+      "FrontLineView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          },
+          "factions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Factions"
+          },
+          "length_km": {
+            "type": "number",
+            "title": "Length Km"
+          },
+          "provinces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Provinces"
+          },
+          "battles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Battles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "factions",
+          "length_km",
+          "provinces",
+          "battles"
+        ],
+        "title": "FrontLineView"
+      },
+      "FrontsView": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/FrontLineView"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "sectors": {
+            "items": {
+              "$ref": "#/components/schemas/SectorView"
+            },
+            "type": "array",
+            "title": "Sectors"
+          },
+          "battles": {
+            "items": {
+              "$ref": "#/components/schemas/BattleView"
+            },
+            "type": "array",
+            "title": "Battles"
+          },
+          "fires": {
+            "items": {
+              "$ref": "#/components/schemas/FireView"
+            },
+            "type": "array",
+            "title": "Fires"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lines",
+          "sectors",
+          "battles",
+          "fires"
+        ],
+        "title": "FrontsView"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IadsLinkView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          },
+          "ewr": {
+            "type": "string",
+            "title": "Ewr"
+          },
+          "site": {
+            "type": "string",
+            "title": "Site"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "ewr",
+          "site",
+          "faction"
+        ],
+        "title": "IadsLinkView"
+      },
+      "LinkView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "road",
+              "track",
+              "rail"
+            ],
+            "title": "Kind"
+          },
+          "river": {
+            "type": "boolean",
+            "title": "River"
+          },
+          "length_km": {
+            "type": "number",
+            "title": "Length Km"
+          },
+          "road": {
+            "type": "boolean",
+            "title": "Road",
+            "description": "geometry follows the real road (else a straight segment)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "a",
+          "b",
+          "kind",
+          "river",
+          "length_km",
+          "road"
+        ],
+        "title": "LinkView"
+      },
+      "LogisticsView": {
+        "properties": {
+          "depots": {
+            "items": {
+              "$ref": "#/components/schemas/DepotView"
+            },
+            "type": "array",
+            "title": "Depots"
+          },
+          "convoys": {
+            "items": {
+              "$ref": "#/components/schemas/ConvoyView"
+            },
+            "type": "array",
+            "title": "Convoys"
+          },
+          "network": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/NetworkEntry"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Network",
+            "description": "faction -> province -> supply reach"
+          },
+          "divisions": {
+            "items": {
+              "$ref": "#/components/schemas/DivisionSupplyView"
+            },
+            "type": "array",
+            "title": "Divisions"
+          },
+          "direct_range_km": {
+            "type": "number",
+            "title": "Direct Range Km"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "depots",
+          "convoys",
+          "network",
+          "divisions",
+          "direct_range_km"
+        ],
+        "title": "LogisticsView"
+      },
+      "MapView": {
+        "properties": {
+          "theater": {
+            "type": "string",
+            "title": "Theater"
+          },
+          "provinces": {
+            "items": {
+              "$ref": "#/components/schemas/ProvinceView"
+            },
+            "type": "array",
+            "title": "Provinces"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkView"
+            },
+            "type": "array",
+            "title": "Links"
+          },
+          "airbases": {
+            "items": {
+              "$ref": "#/components/schemas/AirbaseView"
+            },
+            "type": "array",
+            "title": "Airbases"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "theater",
+          "provinces",
+          "links",
+          "airbases"
+        ],
+        "title": "MapView"
+      },
+      "NetworkEntry": {
+        "properties": {
+          "depot": {
+            "type": "string",
+            "title": "Depot"
+          },
+          "road_km": {
+            "type": "number",
+            "title": "Road Km"
+          },
+          "direct": {
+            "type": "boolean",
+            "title": "Direct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "depot",
+          "road_km",
+          "direct"
+        ],
+        "title": "NetworkEntry"
+      },
+      "ObjectiveView": {
+        "properties": {
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "achieved": {
+            "type": "boolean",
+            "title": "Achieved"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "province",
+          "name",
+          "priority",
+          "achieved"
+        ],
+        "title": "ObjectiveView"
+      },
+      "OrderView": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "hold",
+              "move",
+              "attack"
+            ],
+            "title": "Kind"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "target"
+        ],
+        "title": "OrderView"
+      },
+      "PackageView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "task": {
+            "type": "string",
+            "enum": [
+              "CAP",
+              "ESCORT",
+              "SEAD",
+              "CAS",
+              "BAI",
+              "STRIKE"
+            ],
+            "title": "Task"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "tot": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "created": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "flights": {
+            "items": {
+              "$ref": "#/components/schemas/FlightView"
+            },
+            "type": "array",
+            "title": "Flights"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "faction",
+          "task",
+          "target",
+          "tot",
+          "created",
+          "flights"
+        ],
+        "title": "PackageView"
+      },
+      "PlayerView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "air",
+              "helo",
+              "ground"
+            ],
+            "title": "Kind"
+          },
+          "altitude": {
+            "type": "integer",
+            "title": "Altitude"
+          },
+          "flight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flight",
+            "description": "flight id of the seat the player holds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "side",
+          "kind",
+          "altitude",
+          "flight"
+        ],
+        "title": "PlayerView"
+      },
+      "Polyline": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll"
+        ],
+        "title": "Polyline"
+      },
+      "ProvinceView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "terrain": {
+            "type": "string",
+            "enum": [
+              "plains",
+              "forest",
+              "hills",
+              "mountain",
+              "urban",
+              "marsh"
+            ],
+            "title": "Terrain"
+          },
+          "infrastructure": {
+            "type": "integer",
+            "title": "Infrastructure"
+          },
+          "victory_points": {
+            "type": "integer",
+            "title": "Victory Points"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "controller": {
+            "type": "string",
+            "title": "Controller"
+          },
+          "depot": {
+            "type": "boolean",
+            "title": "Depot"
+          },
+          "neighbors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Neighbors"
+          },
+          "territory": {
+            "$ref": "#/components/schemas/Polyline",
+            "description": "closed polygon (Voronoi cell of the centre, max 60 km)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "terrain",
+          "infrastructure",
+          "victory_points",
+          "owner",
+          "controller",
+          "depot",
+          "neighbors",
+          "territory"
+        ],
+        "title": "ProvinceView"
+      },
+      "RouteView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Pos"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll"
+          },
+          "provinces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Provinces"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "provinces"
+        ],
+        "title": "RouteView"
+      },
+      "SamSiteView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "system": {
+            "type": "string",
+            "title": "System"
+          },
+          "system_name": {
+            "type": "string",
+            "title": "System Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "long",
+              "medium",
+              "short",
+              "ewr"
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "setting_up",
+              "moving",
+              "suppressed"
+            ],
+            "title": "Status"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "range_km": {
+            "type": "number",
+            "title": "Range Km",
+            "description": "engagement range (0 for early-warning radars)"
+          },
+          "detection_km": {
+            "type": "number",
+            "title": "Detection Km"
+          },
+          "ceiling_m": {
+            "type": "integer",
+            "title": "Ceiling M"
+          },
+          "missiles": {
+            "type": "number",
+            "title": "Missiles"
+          },
+          "missiles_max": {
+            "type": "integer",
+            "title": "Missiles Max"
+          },
+          "elements": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Elements",
+            "description": "site components still alive (radar, launcher, cp...)"
+          },
+          "emitting": {
+            "type": "boolean",
+            "title": "Emitting",
+            "description": "radar on: visible to anti-radiation missiles"
+          },
+          "networked_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Networked To",
+            "description": "early-warning radar cueing this site (IADS)"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authority": {
+            "type": "string",
+            "enum": [
+              "campaign",
+              "materializing",
+              "delegated",
+              "dematerializing"
+            ],
+            "title": "Authority"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "faction",
+          "system",
+          "system_name",
+          "role",
+          "status",
+          "location",
+          "range_km",
+          "detection_km",
+          "ceiling_m",
+          "missiles",
+          "missiles_max",
+          "elements",
+          "emitting",
+          "networked_to",
+          "route",
+          "authority"
+        ],
+        "title": "SamSiteView"
+      },
+      "SeatView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "assigned",
+              "airborne",
+              "landed",
+              "lost",
+              "left"
+            ],
+            "title": "State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "state"
+        ],
+        "title": "SeatView"
+      },
+      "SectorView": {
+        "properties": {
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "own_power": {
+            "type": "integer",
+            "title": "Own Power"
+          },
+          "enemy_power": {
+            "type": "integer",
+            "title": "Enemy Power"
+          },
+          "divisions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Divisions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "faction",
+          "province",
+          "name",
+          "own_power",
+          "enemy_power",
+          "divisions"
+        ],
+        "title": "SectorView"
+      },
+      "SnapshotView": {
+        "properties": {
+          "campaign": {
+            "$ref": "#/components/schemas/CampaignView"
+          },
+          "map": {
+            "$ref": "#/components/schemas/MapView"
+          },
+          "fronts": {
+            "$ref": "#/components/schemas/FrontsView"
+          },
+          "forces": {
+            "$ref": "#/components/schemas/ForcesView"
+          },
+          "logistics": {
+            "$ref": "#/components/schemas/LogisticsView"
+          },
+          "ato": {
+            "$ref": "#/components/schemas/AtoView"
+          },
+          "air_defense": {
+            "$ref": "#/components/schemas/AirDefenseView"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "campaign",
+          "map",
+          "fronts",
+          "forces",
+          "logistics",
+          "ato",
+          "air_defense"
+        ],
+        "title": "SnapshotView"
+      },
+      "SquadronView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction"
+          },
+          "airbase": {
+            "type": "string",
+            "title": "Airbase"
+          },
+          "aircraft": {
+            "type": "string",
+            "title": "Aircraft"
+          },
+          "aircraft_name": {
+            "type": "string",
+            "title": "Aircraft Name"
+          },
+          "tasks": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "CAP",
+                "ESCORT",
+                "SEAD",
+                "CAS",
+                "BAI",
+                "STRIKE"
+              ]
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "strength": {
+            "type": "integer",
+            "title": "Strength"
+          },
+          "available": {
+            "type": "integer",
+            "title": "Available"
+          },
+          "committed": {
+            "type": "integer",
+            "title": "Committed"
+          },
+          "servicing": {
+            "type": "integer",
+            "title": "Servicing"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "faction",
+          "airbase",
+          "aircraft",
+          "aircraft_name",
+          "tasks",
+          "strength",
+          "available",
+          "committed",
+          "servicing"
+        ],
+        "title": "SquadronView"
+      },
+      "TargetRef": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "TargetRef"
+      },
+      "Time": {
+        "properties": {
+          "t": {
+            "type": "number",
+            "title": "T",
+            "description": "campaign seconds since day 1 00:00"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "'D<day> HH:MM'"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t",
+          "label"
+        ],
+        "title": "Time"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

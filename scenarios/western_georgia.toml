@@ -1,0 +1,676 @@
+# Demo scenario on the DCS Caucasus map.
+# Red attacks out of Abkhazia toward Kutaisi; Blue defends and wants Sukhumi.
+#
+# Coordinates: pos = [east, north] in metres on the theater plane.
+# For DCS that is [DCS z, DCS x]. Values were drafted with tools/dcs_ll.py
+# (about 1 km accurate here): check them in the mission editor before relying on them.
+
+[campaign]
+name = "Western Georgia"
+theater = "caucasus"
+seed = 7
+
+[[factions]]
+id = "blue"
+name = "Georgian-Coalition Forces"
+side = "blue"
+enemies = ["red"]
+objectives = [{ province = "sukhumi", priority = 3 }, { province = "ochamchire", priority = 1 }]
+
+[[factions]]
+id = "red"
+name = "Northern Expeditionary Group"
+side = "red"
+enemies = ["blue"]
+objectives = [{ province = "kutaisi", priority = 3 }, { province = "senaki", priority = 2 }, { province = "poti", priority = 2 }]
+
+# ------------------------------------------------------------------ provinces
+
+[[provinces]]
+id = "gudauta"
+name = "Gudauta"
+pos = [522263, -196475]
+terrain = "hills"
+controller = "red"
+infrastructure = 3
+victory_points = 2
+depot = { stock = 6000, capacity = 10000, production_per_hour = 120, trucks = 120 }
+
+[[provinces]]
+id = "sukhumi"
+name = "Sukhumi"
+pos = [555505, -205551]
+terrain = "urban"
+controller = "red"
+infrastructure = 4
+victory_points = 5
+depot = { stock = 3000, capacity = 6000, production_per_hour = 60, trucks = 60 }
+
+[[provinces]]
+id = "tkvarcheli"
+name = "Tkvarcheli"
+pos = [610388, -217273]
+terrain = "mountain"
+controller = "red"
+infrastructure = 1
+
+[[provinces]]
+id = "ochamchire"
+name = "Ochamchire"
+pos = [594934, -234381]
+terrain = "plains"
+controller = "red"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "gali"
+name = "Gali"
+pos = [616930, -241180]
+terrain = "forest"
+controller = "red"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "jvari"
+name = "Jvari"
+pos = [641840, -228545]
+terrain = "mountain"
+controller = "blue"
+infrastructure = 1
+
+[[provinces]]
+id = "zugdidi"
+name = "Zugdidi"
+pos = [629690, -253287]
+terrain = "urban"
+controller = "blue"
+infrastructure = 3
+victory_points = 3
+
+[[provinces]]
+id = "martvili"
+name = "Martvili"
+pos = [672458, -259812]
+terrain = "hills"
+controller = "blue"
+infrastructure = 2
+
+[[provinces]]
+id = "senaki"
+name = "Senaki"
+pos = [648830, -278092]
+terrain = "plains"
+controller = "blue"
+infrastructure = 3
+victory_points = 3
+
+[[provinces]]
+id = "poti"
+name = "Poti"
+pos = [617382, -294711]
+terrain = "marsh"
+controller = "blue"
+infrastructure = 4
+victory_points = 4
+
+[[provinces]]
+id = "samtredia"
+name = "Samtredia"
+pos = [672289, -287808]
+terrain = "plains"
+controller = "blue"
+infrastructure = 4
+victory_points = 1
+
+[[provinces]]
+id = "lanchkhuti"
+name = "Lanchkhuti"
+pos = [647663, -298333]
+terrain = "forest"
+controller = "blue"
+infrastructure = 2
+
+[[provinces]]
+id = "kutaisi"
+name = "Kutaisi"
+pos = [700376, -272183]
+terrain = "urban"
+controller = "blue"
+infrastructure = 5
+victory_points = 8
+depot = { stock = 8000, capacity = 12000, production_per_hour = 150, trucks = 150 }
+
+[[provinces]]
+id = "zestafoni"
+name = "Zestafoni"
+pos = [730350, -286353]
+terrain = "hills"
+controller = "blue"
+infrastructure = 3
+
+[[provinces]]
+id = "ambrolauri"
+name = "Ambrolauri"
+pos = [733634, -239882]
+terrain = "mountain"
+controller = "blue"
+infrastructure = 1
+
+[[provinces]]
+id = "ozurgeti"
+name = "Ozurgeti"
+pos = [647163, -317382]
+terrain = "hills"
+controller = "blue"
+infrastructure = 2
+
+[[provinces]]
+id = "kobuleti"
+name = "Kobuleti"
+pos = [630098, -330292]
+terrain = "plains"
+controller = "blue"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "batumi"
+name = "Batumi"
+pos = [620437, -351324]
+terrain = "urban"
+controller = "blue"
+infrastructure = 4
+victory_points = 4
+depot = { stock = 4000, capacity = 8000, production_per_hour = 80, trucks = 80 }
+
+# ------------------------------------------------------------------ links
+# kind: road | track | rail ; river = true penalises attacks across it
+
+[[links]]
+a = "gudauta"
+b = "sukhumi"
+
+[[links]]
+a = "sukhumi"
+b = "ochamchire"
+
+[[links]]
+a = "sukhumi"
+b = "tkvarcheli"
+kind = "track"
+
+[[links]]
+a = "ochamchire"
+b = "tkvarcheli"
+kind = "track"
+
+[[links]]
+a = "ochamchire"
+b = "gali"
+
+[[links]]
+a = "tkvarcheli"
+b = "gali"
+kind = "track"
+
+[[links]]
+a = "gali"
+b = "zugdidi"
+river = true      # the Enguri
+
+[[links]]
+a = "gali"
+b = "jvari"
+kind = "track"
+river = true
+
+[[links]]
+a = "jvari"
+b = "zugdidi"
+
+[[links]]
+a = "jvari"
+b = "martvili"
+kind = "track"
+
+[[links]]
+a = "zugdidi"
+b = "senaki"
+
+[[links]]
+a = "zugdidi"
+b = "poti"
+
+[[links]]
+a = "zugdidi"
+b = "martvili"
+
+[[links]]
+a = "senaki"
+b = "martvili"
+
+[[links]]
+a = "senaki"
+b = "poti"
+
+[[links]]
+a = "senaki"
+b = "samtredia"
+kind = "rail"
+
+[[links]]
+a = "poti"
+b = "lanchkhuti"
+
+[[links]]
+a = "poti"
+b = "kobuleti"
+
+[[links]]
+a = "lanchkhuti"
+b = "samtredia"
+
+[[links]]
+a = "lanchkhuti"
+b = "ozurgeti"
+
+[[links]]
+a = "ozurgeti"
+b = "kobuleti"
+
+[[links]]
+a = "kobuleti"
+b = "batumi"
+
+[[links]]
+a = "samtredia"
+b = "kutaisi"
+kind = "rail"
+
+[[links]]
+a = "martvili"
+b = "kutaisi"
+
+[[links]]
+a = "kutaisi"
+b = "zestafoni"
+kind = "rail"
+
+[[links]]
+a = "kutaisi"
+b = "ambrolauri"
+kind = "track"
+
+[[links]]
+a = "zestafoni"
+b = "ambrolauri"
+kind = "track"
+
+# ------------------------------------------------------------------ order of battle
+
+[[divisions]]
+id = "r1"
+name = "1st Guards Tank Bde"
+faction = "red"
+template = "tank_brigade"
+province = "ochamchire"
+
+[[divisions]]
+id = "r2"
+name = "15th Motor Rifle Bde"
+faction = "red"
+template = "mech_brigade"
+province = "gali"
+
+[[divisions]]
+id = "r3"
+name = "19th Motor Rifle Bde"
+faction = "red"
+template = "mech_brigade"
+province = "gali"
+
+[[divisions]]
+id = "r4"
+name = "7th Air Assault Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "tkvarcheli"
+
+[[divisions]]
+id = "r5"
+name = "291st Artillery Bde"
+faction = "red"
+template = "artillery_group"
+province = "sukhumi"
+
+[[divisions]]
+id = "b1"
+name = "1st Infantry Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "zugdidi"
+
+[[divisions]]
+id = "b2"
+name = "4th Mechanised Bde"
+faction = "blue"
+template = "mech_brigade"
+province = "senaki"
+
+[[divisions]]
+id = "b3"
+name = "2nd Infantry Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "jvari"
+
+[[divisions]]
+id = "b4"
+name = "Armoured Bn Group"
+faction = "blue"
+template = "tank_brigade"
+province = "kutaisi"
+
+[[divisions]]
+id = "b5"
+name = "Artillery Bde"
+faction = "blue"
+template = "artillery_group"
+province = "samtredia"
+
+# ------------------------------------------------------------------ air
+# name = DCS airdrome name. pos = exact airdrome position from pydcs. An airbase with a province
+# belongs to whoever controls it; rear bases outside the map give a faction.
+
+[[airbases]]
+id = "kutaisi"
+name = "Kutaisi"
+pos = [683859, -284887]
+province = "kutaisi"
+
+[[airbases]]
+id = "senaki"
+name = "Senaki-Kolkhi"
+pos = [647279, -281782]
+province = "senaki"
+
+[[airbases]]
+id = "kobuleti"
+name = "Kobuleti"
+pos = [635633, -317962]
+province = "kobuleti"
+
+[[airbases]]
+id = "batumi"
+name = "Batumi"
+pos = [617386, -355811]
+province = "batumi"
+
+[[airbases]]
+id = "vaziani"
+name = "Vaziani"
+pos = [903149, -319065]
+faction = "blue"
+
+[[airbases]]
+id = "sukhumi"
+name = "Sukhumi-Babushara"
+pos = [564392, -220592]
+province = "sukhumi"
+
+[[airbases]]
+id = "gudauta"
+name = "Gudauta"
+pos = [516452, -196710]
+province = "gudauta"
+
+[[airbases]]
+id = "sochi"
+name = "Sochi-Adler"
+pos = [462219, -164496]
+faction = "red"
+
+[[squadrons]]
+id = "b_viper"
+name = "1st Fighter Sqn"
+faction = "blue"
+airbase = "kutaisi"
+aircraft = "f16c"
+count = 12
+callsign = "Viper"
+
+[[squadrons]]
+id = "b_hawg"
+name = "Close Support Sqn"
+faction = "blue"
+airbase = "kobuleti"
+aircraft = "a10c"
+count = 12
+callsign = "Hawg"
+
+[[squadrons]]
+id = "b_hornet"
+name = "Strike Fighter Sqn"
+faction = "blue"
+airbase = "batumi"
+aircraft = "fa18c"
+count = 12
+callsign = "Hornet"
+
+[[squadrons]]
+id = "b_eagle"
+name = "Air Superiority Sqn"
+faction = "blue"
+airbase = "vaziani"
+aircraft = "f15c"
+count = 8
+callsign = "Eagle"
+
+[[squadrons]]
+id = "b_apache"
+name = "Attack Helicopter Coy"
+faction = "blue"
+airbase = "senaki"
+aircraft = "ah64d"
+count = 8
+callsign = "Rogue"
+
+[[squadrons]]
+id = "r_grach"
+name = "368th Assault Regt"
+faction = "red"
+airbase = "gudauta"
+aircraft = "su25t"
+count = 12
+callsign = "Grach"
+
+[[squadrons]]
+id = "r_fulcrum"
+name = "31st Fighter Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "mig29s"
+count = 12
+callsign = "Strizh"
+
+[[squadrons]]
+id = "r_flanker"
+name = "3rd Fighter Regt"
+faction = "red"
+airbase = "sochi"
+aircraft = "su27"
+count = 8
+callsign = "Sokol"
+
+[[squadrons]]
+id = "r_fencer"
+name = "559th Bomber Regt"
+faction = "red"
+airbase = "sukhumi"
+aircraft = "su24m"
+count = 8
+callsign = "Burya"
+
+[[squadrons]]
+id = "r_hind"
+name = "Army Aviation Sqn"
+faction = "red"
+airbase = "sukhumi"
+aircraft = "mi24p"
+count = 8
+callsign = "Kobra"
+
+# ------------------------------------------------------------------ reinforcements
+
+[[divisions]]
+id = "r6"
+name = "4th Guards Tank Bde"
+faction = "red"
+template = "tank_brigade"
+province = "sukhumi"
+
+[[divisions]]
+id = "r7"
+name = "131st Motor Rifle Bde"
+faction = "red"
+template = "mech_brigade"
+province = "ochamchire"
+
+[[divisions]]
+id = "r8"
+name = "56th Air Assault Bde"
+faction = "red"
+template = "infantry_brigade"
+province = "gudauta"
+
+[[divisions]]
+id = "b6"
+name = "3rd Infantry Bde"
+faction = "blue"
+template = "infantry_brigade"
+province = "poti"
+
+[[divisions]]
+id = "b7"
+name = "5th Mechanised Bde"
+faction = "blue"
+template = "mech_brigade"
+province = "samtredia"
+
+[[divisions]]
+id = "b8"
+name = "Coalition Armoured Bde"
+faction = "blue"
+template = "tank_brigade"
+province = "kutaisi"
+
+# ------------------------------------------------------------------ air defence
+# Long range, medium range and short range SAM systems (mobile, they move on roads)
+# and early-warning radars (EWR) that network the sites into an IADS.
+
+[[air_defense]]
+id = "ad_b1"
+name = "Patriot Bty Kutaisi"
+faction = "blue"
+system = "patriot"
+province = "kutaisi"
+
+[[air_defense]]
+id = "ad_b2"
+name = "Hawk Bty Senaki"
+faction = "blue"
+system = "hawk"
+province = "senaki"
+
+[[air_defense]]
+id = "ad_b3"
+name = "NASAMS Batumi"
+faction = "blue"
+system = "nasams"
+province = "batumi"
+
+[[air_defense]]
+id = "ad_b4"
+name = "Avenger Plt 1"
+faction = "blue"
+system = "avenger"
+province = "zugdidi"
+
+[[air_defense]]
+id = "ad_b5"
+name = "Avenger Plt 2"
+faction = "blue"
+system = "avenger"
+province = "senaki"
+
+[[air_defense]]
+id = "ad_b6"
+name = "EWR Kutaisi"
+faction = "blue"
+system = "ewr_fps117"
+province = "kutaisi"
+
+[[air_defense]]
+id = "ad_b7"
+name = "EWR Poti"
+faction = "blue"
+system = "ewr_fps117"
+province = "poti"
+
+[[air_defense]]
+id = "ad_r1"
+name = "S-300 Gudauta"
+faction = "red"
+system = "s300ps"
+province = "gudauta"
+
+[[air_defense]]
+id = "ad_r2"
+name = "Buk Bn Sukhumi"
+faction = "red"
+system = "buk"
+province = "sukhumi"
+
+[[air_defense]]
+id = "ad_r3"
+name = "Buk Bn Ochamchire"
+faction = "red"
+system = "buk"
+province = "ochamchire"
+
+[[air_defense]]
+id = "ad_r4"
+name = "Kub Bty Tkvarcheli"
+faction = "red"
+system = "kub"
+province = "tkvarcheli"
+
+[[air_defense]]
+id = "ad_r5"
+name = "Tor Bty Gali"
+faction = "red"
+system = "tor"
+province = "gali"
+
+[[air_defense]]
+id = "ad_r6"
+name = "Osa Bty"
+faction = "red"
+system = "osa"
+province = "ochamchire"
+
+[[air_defense]]
+id = "ad_r7"
+name = "EWR Gudauta"
+faction = "red"
+system = "ewr_55g6"
+province = "gudauta"
+
+[[air_defense]]
+id = "ad_r8"
+name = "EWR Sukhumi"
+faction = "red"
+system = "ewr_1l13"
+province = "sukhumi"
