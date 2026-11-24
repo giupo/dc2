@@ -113,7 +113,7 @@ questo una campagna ripresa prosegue esattamente come quella mai interrotta.
   `FILE` invece di ricominciare, così un riavvio non cancella la campagna.
   `--new` riparte dallo scenario e sovrascrive il file.
 - Alla ripresa vale la compressione temporale salvata, salvo un
-  `--compression` esplicito.
+  `--compression` esplicito o la variabile `DYNACAMP_COMPRESSION`.
 - Ciò che stava simulando DCS non si salva: alla ripresa le unità tornano al
   motore con l'ultimo stato noto e i posti dei giocatori si liberano, come
   quando DCS si disconnette.
@@ -155,6 +155,16 @@ volume su `/data`, il salvataggio sparisce con il container. Le missioni
 
 Per un token stabile si passa `-e DYNACAMP_API_TOKEN=...`; senza, il token
 cambia a ogni avvio e si legge con `docker logs`.
+
+La compressione temporale iniziale si fissa con `-e DYNACAMP_COMPRESSION=600`,
+senza riscrivere gli argomenti del container. Vale questo ordine: il flag
+`--compression`, poi la variabile, poi la compressione del salvataggio, infine 60.
+Un valore non numerico o fuori da [1, 7200] ferma l'avvio con un messaggio.
+
+```bash
+docker run -d --name dynacamp -p 8080:8080 -p 50555:50555 -v dynacamp-data:/data \
+  -e DYNACAMP_COMPRESSION=600 -e DYNACAMP_API_TOKEN=segreto dynacamp
+```
 
 > I comandi dell'API vogliono un token, ma la lettura è aperta e il traffico
 > è in chiaro. Se esponi la porta 8080 su Internet, mettila dietro un reverse
@@ -364,6 +374,17 @@ React, Vite, TypeScript e MapLibre GL, su mappa OpenFreeMap scura. Dettagli in
   missione, aereo, decollo, TOT e stato. Sono evidenziati i decolli entro 30
   minuti e i voli con giocatori; i voli completati si mostrano a richiesta. La
   vista "Packages" raggruppa i voli per package.
+- **Ordini all'ATO** (con il token, come la fazione di "View as"):
+  - "New package" nel tab ATO: compito, bersaglio fra quelli noti (o un punto
+    sulla mappa per CAP, AWACS e tanker) e squadrone; SEAD e scorta li
+    aggiunge il pianificatore;
+  - dalla scheda di un volo, "Edit route": waypoint trascinabili sulla mappa,
+    "+" su una tratta per aggiungerne uno, doppio clic per toglierlo, e la
+    lunghezza confrontata con il carburante;
+  - dalla scheda di un package: TOT −15/−5/+5/+15/+60 minuti o ASAP, e
+    annullamento dei voli a terra.
+
+  Il server valida ogni ordine e la UI mostra il motivo dei rifiuti.
 - **Movimento fluido:** posizioni in streaming a 5 Hz, interpolate a 60 fps
   come nel netcode dei videogiochi. La mappa è disegnata ~2 campioni (≈400 ms)
   nel passato, così c'è sempre un campione prima e uno dopo. I marker sono
@@ -388,8 +409,8 @@ FastAPI, documentata in [docs/API.md](docs/API.md) e in modo interattivo su
 `/docs`. Lo schema OpenAPI è su `/openapi.json`; `npm run gen:api` ne genera i
 tipi TypeScript.
 
-**Token.** La lettura è libera. I comandi (`POST`, per ora solo
-`/api/control`) vogliono `Authorization: Bearer <token>`, altrimenti
+**Token.** La lettura è libera. I comandi (`POST`: tempo, salvataggio,
+ordini all'ATO) vogliono `Authorization: Bearer <token>`, altrimenti
 rispondono 401.
 - Il token si fissa con `--api-token` o, meglio perché non compare in `ps`,
   con la variabile `DYNACAMP_API_TOKEN`.
@@ -414,6 +435,9 @@ rispondono 401.
 | `/api/auth` | se i comandi vogliono un token e se quello inviato è valido |
 | `POST /api/control` | pausa e accelerazione (con token) |
 | `/api/save`, `POST /api/save` | stato del salvataggio; salva subito (con token) |
+| `POST /api/ato/packages` | ordina un nuovo package (con token) |
+| `POST /api/ato/flights/{id}/route` | nuova rotta di un volo, anche in volo (con token) |
+| `POST /api/ato/packages/{id}/tot`, `.../cancel` | sposta il TOT; annulla i voli a terra (con token) |
 
 Ogni posizione ha `pos` ([est, nord] in metri sul piano del teatro) e `ll`
 ([lat, lon] WGS84).
@@ -448,7 +472,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 |---|---|
 | `dynacamp simulate <scenario\|salvataggio>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--save FILE`, `--quiet`/`--verbose`) |
 | `dynacamp radio` | rigenera `data/radio.json`, le frequenze ATC degli aeroporti dai dati di DCS (serve pydcs) |
-| `dynacamp serve <scenario\|salvataggio>` | tempo reale con DCS, API e UI (`--compression`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`, `--save FILE`, `--autosave-minutes`, `--new`, `--api-token`) |
+| `dynacamp serve <scenario\|salvataggio>` | tempo reale con DCS, API e UI (`--compression` o `DYNACAMP_COMPRESSION`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`, `--save FILE`, `--autosave-minutes`, `--new`, `--api-token`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
 | `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |
@@ -622,6 +646,12 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     del salvataggio (file, intervallo, ultimo salvataggio e chi l'ha chiesto)
     è in `/api/campaign`. Autosave, API e uscita passano tutti da
     `persistence.Saver`.
+21. **Ordini all'ATO dal browser.** Nuovi package contro bersagli noti alla
+    fazione, rotte modificabili sulla mappa prima e durante la missione,
+    spostamento del TOT e annullamento (`systems/orders.py`, quattro `POST`
+    con token). Ogni rifiuto spiega il motivo. Le rotte cambiate arrivano
+    subito ai voli in DCS, con i task al bersaglio, e i giocatori seduti
+    ricevono un nuovo briefing.
 
 ## Limiti noti e prossimi passi
 
@@ -642,5 +672,6 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
   motore.
 - **Ricognizione dedicata:** non ci sono ancora missioni di ricognizione (pod
   e droni) pianificate dall'ATO per rinfrescare il quadro.
-- **Comandi dal web:** la UI è in sola lettura; ordini e posti ATO dal
-  browser sono da fare.
+- **Comandi dal web:** dal browser si danno ordini all'ATO (package, rotte,
+  TOT, annullamenti); non si prendono ancora posti nei voli e non si danno
+  ordini alle forze di terra.

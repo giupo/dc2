@@ -115,6 +115,38 @@ def cmd_simulate(args: argparse.Namespace) -> None:
         print(f"Campaign saved to {args.save} at {_clock(state.time)}")
 
 
+def serve_compression(flag: float | None, saved: float | None) -> float:
+    """Time compression ``serve`` starts with: ``--compression``, else
+    ``$DYNACAMP_COMPRESSION`` (handy in Docker), else the save's, else 60.
+
+    Args:
+        flag: Value of ``--compression`` (None: not given).
+        saved: Compression stored in the save being resumed (None or 0: none).
+
+    Returns:
+        The compression.
+
+    Raises:
+        SystemExit: The value is not a number in the allowed range.
+    """
+    from .engine import MAX_COMPRESSION, MIN_COMPRESSION
+
+    env = os.environ.get("DYNACAMP_COMPRESSION", "").strip()
+    if flag is not None:
+        value, source = flag, "--compression"
+    elif env:
+        try:
+            value = float(env)
+        except ValueError:
+            raise SystemExit(f"DYNACAMP_COMPRESSION must be a number, not {env!r}") from None
+        source = "DYNACAMP_COMPRESSION"
+    else:
+        return saved or 60.0
+    if not MIN_COMPRESSION <= value <= MAX_COMPRESSION:
+        raise SystemExit(f"{source} must be between {MIN_COMPRESSION:g} and {MAX_COMPRESSION:g}, not {value:g}")
+    return value
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     """``dynacamp serve``: real-time campaign with the DCS adapter, the API and the web UI."""
     from .adapters.dcs import LUA_BRIDGE, DcsAdapter
@@ -126,9 +158,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
         # Never overwrite a running campaign with a fresh one by accident.
         source = args.save
     state, info = _load_campaign(source)
-    compression = args.compression
-    if compression is None:
-        compression = info.compression if info and info.compression else 60.0
+    compression = serve_compression(args.compression, info.compression if info else None)
     if args.units:
         state.units = args.units
 
@@ -295,7 +325,7 @@ def main(argv: list[str] | None = None) -> None:
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=50555)
     v.add_argument("--compression", type=float,
-                   help="time compression with no players (default: the save's, else 60)")
+                   help="time compression with no players (default: $DYNACAMP_COMPRESSION, else the save's, else 60)")
     v.add_argument("--tick-hz", type=float, default=10.0,
                    help="engine steps per real second (smoother movement, more CPU)")
     v.add_argument("--units", choices=["imperial", "metric"],

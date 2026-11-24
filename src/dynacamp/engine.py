@@ -352,6 +352,40 @@ class Engine:
 
         self._outbox.append(NotifyPlayer(player_id, text, marks))
 
+    def notify(self, player_id: str, text: str) -> None:
+        """Queue a message for a player in the game (dropped if they are not in it).
+
+        Args:
+            player_id: Player id.
+            text: Message.
+        """
+        with self.lock:
+            if player_id in self.bubbles.players:
+                self._notify(player_id, text)
+
+    def brief_players(self, flight_ids) -> int:
+        """Send the current briefing and waypoint marks to the players seated in
+        flights whose plan changed (see :mod:`dynacamp.systems.orders`).
+
+        Args:
+            flight_ids: The flights.
+
+        Returns:
+            How many players were briefed.
+        """
+        n = 0
+        with self.lock:
+            for fid in flight_ids:
+                f = self.state.flights.get(fid)
+                if f is None:
+                    continue
+                for seat in f.active_seats:
+                    if seat.player_id in self.bubbles.players:
+                        text = "FLIGHT PLAN CHANGED\n\n" + ato.briefing_text(self.state, f)
+                        self._notify(seat.player_id, text, with_marks=True)
+                        n += 1
+        return n
+
     def _observe_flight(self, f: Flight, pos, elements: dict[str, float]) -> None:
         """Apply a game observation to a delegated flight (losses, position, waypoints)."""
         if "aircraft" in elements:
@@ -582,13 +616,23 @@ class Engine:
                 self._outbox.append(Dematerialize(eid))
                 self._in_game.discard(eid)
 
+        pending = set()
         for eid in sorted(state.dirty):
             ent = state.entity(eid)
-            if ent is not None and ent.authority is Authority.DELEGATED:
-                speed = ent.template.speed_kmh if isinstance(ent, Division) else getattr(ent, "speed_kmh", 30.0)
-                self._outbox.append(UpdateRoute(eid, self._waypoints(ent), speed))
+            if ent is None:
+                continue
+            if ent.authority is Authority.MATERIALIZING:
+                pending.add(eid)  # the spawn may carry the old route: resend once the game holds it
+            elif ent.authority is Authority.DELEGATED:
+                if isinstance(ent, Flight):
+                    snap = self._flight_snapshot(ent)
+                    self._outbox.append(UpdateRoute(eid, snap.waypoints, snap.speed_kmh, snapshot=snap))
+                else:
+                    speed = ent.template.speed_kmh if isinstance(ent, Division) else getattr(ent, "speed_kmh", 30.0)
+                    self._outbox.append(UpdateRoute(eid, self._waypoints(ent), speed))
 
         state.dirty.clear()
+        state.dirty |= pending
         self._publish_ato()
 
         if self._outbox and self.adapter.connected:

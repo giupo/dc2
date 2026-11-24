@@ -119,14 +119,13 @@ class DcsTranslator:
                     "text": text,
                     "marks": [{"text": label, "x": to_dcs(p)[0], "z": to_dcs(p)[1]} for label, p in marks],
                 }
-            case UpdateRoute(entity_id=eid, waypoints=wps, speed_kmh=speed):
+            case UpdateRoute(entity_id=eid, waypoints=wps, speed_kmh=speed, snapshot=snap):
                 sp = self.spawned.get(eid)
-                return {
-                    "cmd": "route",
-                    "id": eid,
-                    "groups": sp.groups if sp else [],
-                    "points": [route_point(p, speed) for p in wps],
-                }
+                if snap is not None and snap.kind == "flight":
+                    points = self._flight_route(snap)  # air points, with the tasks at the target
+                else:
+                    points = [route_point(p, speed) for p in wps]
+                return {"cmd": "route", "id": eid, "groups": sp.groups if sp else [], "points": points}
         raise TypeError(cmd)  # pragma: no cover
 
     def _spawn(self, snap: EntitySnapshot) -> dict[str, Any]:
@@ -271,11 +270,7 @@ class DcsTranslator:
                     "payload": {"pylons": {}, "fuel": 3000, "flare": 30, "chaff": 30, "gun": 100},
                 }
             )
-        points = [self._air_point(snap.position, alt, speed, helo, self._enroute_tasks(task))]
-        target_index = int(a.get("target_index", -1))
-        for i, wp in enumerate(snap.waypoints):
-            tasks = self._target_tasks(task, a.get("target"), a.get("on_station_s", 0.0), helo) if i == target_index else []
-            points.append(self._air_point(wp, alt, speed, helo, tasks))
+        points = self._flight_route(snap)
         self.spawned[snap.id] = Spawned(groups=[name], units={"aircraft": count}, represents={"aircraft": float(count)})
         return {
             "cmd": "spawn",
@@ -300,6 +295,19 @@ class DcsTranslator:
                 }
             ],
         }
+
+    def _flight_route(self, snap: EntitySnapshot) -> list[dict[str, Any]]:
+        """DCS route of a flight: from where it is, along its remaining
+        waypoints, with en-route tasks first and the attack/orbit at the target."""
+        a = snap.attrs
+        task, helo = a["task"], bool(a.get("helo"))
+        alt, speed = snap.altitude, snap.speed_kmh / 3.6
+        points = [self._air_point(snap.position, alt, speed, helo, self._enroute_tasks(task))]
+        target_index = int(a.get("target_index", -1))
+        for i, wp in enumerate(snap.waypoints):
+            tasks = self._target_tasks(task, a.get("target"), a.get("on_station_s", 0.0), helo) if i == target_index else []
+            points.append(self._air_point(wp, alt, speed, helo, tasks))
+        return points
 
     @staticmethod
     def _air_point(p: Vec2, alt: float, speed: float, helo: bool, tasks: list[dict[str, Any]]) -> dict[str, Any]:

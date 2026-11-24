@@ -344,6 +344,8 @@ class FlightView(Located):
     target_index: int
     next_waypoint: int
     target: TargetRef
+    locked_waypoints: int = Field(description="leading waypoints that can no longer change (already flown, or the station while on it)")
+    fuel_km: int = Field(description="longest route the flight may plan (twice the combat radius, more with a tanker up)")
     authority: Authority
     on_station_until: Time | None
     intel: ContactInfo | None = Field(None, description="set on enemy radar tracks in a faction's view")
@@ -357,6 +359,7 @@ class PackageView(Located):
     task: Task
     target: str
     tot: Time
+    earliest_tot: Time = Field(description="earliest TOT the package can be moved to (startup lead included)")
     created: Time
     flights: list[FlightView]
 
@@ -599,6 +602,51 @@ class AuthView(Model):
     """Whether commands need a token, and whether the one sent is valid."""
     required: bool = Field(description="commands (POST) need `Authorization: Bearer <token>`")
     authenticated: bool = Field(description="the request carried a valid token (always true when none is required)")
+
+
+class PointIn(Model):
+    """A position: ``ll`` = [lat, lon] or ``pos`` = [east, north] metres (``ll`` wins)."""
+    ll: list[float] | None = Field(None, min_length=2, max_length=2)
+    pos: list[float] | None = Field(None, min_length=2, max_length=2)
+
+
+class RouteRequest(Model):
+    """New route of a flight, takeoff to landing."""
+    waypoints: list[PointIn] = Field(min_length=3, max_length=24)
+    target_index: int = Field(ge=1, description="index of the target / station waypoint in `waypoints`")
+    faction: str | None = Field(None, description="ordering faction (omit: the umpire)")
+
+
+class TargetIn(Model):
+    """What a new package flies against."""
+    kind: Literal["battle", "division", "convoy", "depot", "sam", "point", "airlift", "resupply"]
+    id: str = Field("", description="battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)")
+    point: PointIn | None = Field(None, description="for `point` targets (CAP station, AWACS orbit, tanker track)")
+
+
+class PackageRequest(Model):
+    """Order a new package."""
+    faction: str
+    task: Task
+    target: TargetIn
+    squadron: str | None = Field(None, description="squadron of the main flight (omit: the best available)")
+    tot: float | None = Field(None, description="time on target in campaign seconds (omit: the earliest possible)")
+
+
+class TotRequest(Model):
+    """Move the time on target of a package."""
+    tot: float = Field(description="campaign seconds")
+    faction: str | None = None
+
+
+class CancelRequest(Model):
+    """Cancel a package's flights still on the ground."""
+    faction: str | None = None
+
+
+class CancelView(Model):
+    """Result of a cancellation."""
+    cancelled: list[str] = Field(description="callsigns of the cancelled flights")
 
 
 class ControlRequest(Model):

@@ -112,6 +112,12 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
       return `Convoy ${d.convoy} back at depot`;
     case "package_planned":
       return `${d.number ? `PKG ${d.number} · ` : ""}${d.task}: ${d.target}, TOT ${d.tot} — ${(d.flights as string[]).join(", ")}`;
+    case "package_ordered":
+      return `${fac(d.faction)} planner orders PKG ${d.number} · ${d.task}: ${d.target}`;
+    case "package_retimed":
+      return `PKG ${d.number}: new TOT ${d.tot}`;
+    case "flight_replanned":
+      return `${d.callsign}: new route, ${d.waypoints} waypoints, ${d.length_km} km (takeoff ${d.takeoff})`;
     case "flight_takeoff":
       return `${d.callsign} airborne (${d.task})`;
     case "flight_landed":

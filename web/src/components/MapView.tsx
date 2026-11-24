@@ -4,13 +4,14 @@ import { LngLatBounds, Map as MLMap, Marker, NavigationControl, ScaleControl, se
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection } from "geojson";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Flight } from "../api/client";
 import { ageLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
 import { useLiveFeed, type LiveFeed } from "../lib/livePositions";
 import { affiliation, airbaseSidc, airSidc, convoySidc, designation, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { CampaignData } from "../lib/useCampaign";
 import type { Layers, Selection } from "../lib/selection";
+import { PlannerContext, useRouteEditor } from "./Planner";
 
 setWorkerUrl(workerUrl);
 
@@ -348,6 +349,25 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
       return [{ id: `sam-${u.id}`, at, html: sym.svg, cls, anchor: sym.anchor, title, select: { kind: "sam", id: u.id } as Selection, live: `s:${u.id}` }];
     });
   }, [data.airDefense, campaign, selected, layers.airDefense, viewpoint]);
+
+  // ---- ATO planning: route editor, and clicks that pick a point for an order
+  const planner = useContext(PlannerContext);
+  const noDraft = useRef(() => undefined).current;
+  useRouteEditor(map, planner?.draft ?? null, planner?.setDraft ?? noDraft);
+  const picking = planner?.picking ?? null;
+  const takePick = useRef(planner?.takePick);
+  takePick.current = planner?.takePick;
+  useEffect(() => {
+    if (!map || !picking) return;
+    const canvas = map.getCanvas();
+    canvas.classList.add("picking");
+    const click = (e: { lngLat: { lat: number; lng: number } }) => takePick.current?.([e.lngLat.lat, e.lngLat.lng]);
+    map.once("click", click);
+    return () => {
+      canvas.classList.remove("picking");
+      map.off("click", click);
+    };
+  }, [map, picking]);
 
   // Smooth movement: positions streamed a few times a second, interpolated at 60 fps.
   const feed = useLiveFeed(data.faction);

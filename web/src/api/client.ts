@@ -39,6 +39,8 @@ export type Intel = S["IntelView"];
 export type Contact = S["ContactView"];
 export type ContactInfo = S["ContactInfo"];
 export type Polyline = S["Polyline"];
+export type PackageRequest = S["PackageRequest"];
+export type RouteRequest = S["RouteRequest"];
 
 // Empty = same origin (Vite proxies /api in development, FastAPI serves the build).
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -103,6 +105,14 @@ export const api = {
   control: (change: { paused?: boolean; compression?: number }) => post<Control>("/api/control", change),
   /** Save the campaign now to the server's `--save` file. */
   save: () => post<SaveStatus>("/api/save", {}),
+  /** Order a new package (planned like the AI would: main flight, SEAD and escort when needed). */
+  orderPackage: (body: PackageRequest) => post<Package>("/api/ato/packages", body),
+  /** Replace a flight's route, takeoff to landing; refused with a reason (`Error.message`). */
+  setRoute: (flightId: string, body: RouteRequest) => post<Flight>(`/api/ato/flights/${encodeURIComponent(flightId)}/route`, body),
+  /** Move the TOT of a package whose flights are all on the ground. */
+  setTot: (packageId: string, tot: number) => post<Package>(`/api/ato/packages/${encodeURIComponent(packageId)}/tot`, { tot }),
+  /** Cancel the flights of a package still on the ground. */
+  cancelPackage: (packageId: string) => post<S["CancelView"]>(`/api/ato/packages/${encodeURIComponent(packageId)}/cancel`, {}),
   fronts: (faction?: string | null) => get<Fronts>("/api/fronts" + fq(faction)),
   forces: (faction?: string | null) => get<Forces>("/api/forces" + fq(faction)),
   logistics: (faction?: string | null) => get<Logistics>("/api/logistics" + fq(faction)),

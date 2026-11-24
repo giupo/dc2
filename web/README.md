@@ -44,6 +44,17 @@ intelligence and a live event feed.
     interval. It refreshes with the campaign view.
   - *Disabled:* when the server runs without `--save`, or while commands are
     locked.
+- **ATO orders** (need the token; given as the "View as" side's faction,
+  validated by the server, which explains refusals in red):
+  - *New package* (ATO tab): task, a target the side knows (or a point picked
+    on the map for CAP/AWACS/tanker), squadron; SEAD and escort are added by
+    the planner, TOT is the earliest possible.
+  - *Edit route* (flight details): draggable waypoints on the map, "+" on a
+    leg adds one, double-click removes one. Flown waypoints, landing and
+    attack targets are fixed. The bar over the map shows length against fuel.
+  - *TOT and cancel* (package details): −15/−5/+5/+15/+60 min or ASAP while
+    every flight is on the ground; cancel the grounded flights (two clicks).
+  - Code: `src/components/Planner.tsx` (`PlannerContext` in `App.tsx`).
 - **View as + Fog of war:** "View as" picks the friendly side. With "Fog of
   war" on (the default), every request carries `?faction=`, and the UI shows
   only what that side's sensors found (see *Symbology*). The **Intel** tab

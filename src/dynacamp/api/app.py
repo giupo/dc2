@@ -153,7 +153,121 @@ def create_app(
             b = briefing.briefing(state(), f, units)
             return {**b, "text": briefing.render(b, now=state().time)}
 
-    @app.get("/api/airdefense", response_model=schemas.AirDefenseView, tags=["air"])
+    # ------------------------------------------------------------ ATO orders
+
+    ORDER_RESPONSES = {
+        401: {"description": "missing or wrong API token"},
+        404: {"description": "unknown flight, package or faction"},
+        409: {"description": "order refused: `detail` says why"},
+    }
+
+    def point(p: schemas.PointIn):
+        """Campaign point of a request position (``ll`` preferred)."""
+        from ..geo import Vec2
+        from ..projection import from_latlon
+
+        if p.ll is not None:
+            v = from_latlon(state().theater.name, p.ll[0], p.ll[1])
+            if v is None:
+                raise HTTPException(status_code=422, detail="this theater has no lat/lon projection: send `pos`")
+            return v
+        if p.pos is not None:
+            return Vec2(p.pos[0], p.pos[1])
+        raise HTTPException(status_code=422, detail="a point needs `ll` or `pos`")
+
+    def order(fn, *args, **kwargs):
+        """Run an order under the engine lock, turning a refusal into an HTTP error."""
+        from ..systems.orders import OrderError
+
+        try:
+            return fn(*args, **kwargs)
+        except OrderError as exc:
+            raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/ato/packages",
+        response_model=schemas.PackageView,
+        tags=["air"],
+        dependencies=[Depends(require_token)],
+        responses=ORDER_RESPONSES,
+    )
+    def post_package(body: schemas.PackageRequest):
+        """Order a new package against a target the faction knows (needs the API token).
+        Planned as the AI would: main flight, then SEAD and escort when called for."""
+        from ..air import Task
+        from ..systems import orders
+
+        with engine.lock:
+            viewer(body.faction)
+            target = orders.Target(
+                body.target.kind, body.target.id, point(body.target.point) if body.target.point else None
+            )
+            pkg = order(orders.order_package, state(), body.faction, Task(body.task), target, body.squadron, body.tot)
+            return views.package_view(state(), pkg)
+
+    @app.post(
+        "/api/ato/flights/{flight_id}/route",
+        response_model=schemas.FlightView,
+        tags=["air"],
+        dependencies=[Depends(require_token)],
+        responses=ORDER_RESPONSES,
+    )
+    def post_route(flight_id: str, body: schemas.RouteRequest):
+        """Replace a flight's route, takeoff to landing (needs the API token). Waypoints
+        already flown and the landing cannot move; the target only for CAP/AWACS/tanker.
+        A flight in the game gets the new route at once; seated players get a new briefing."""
+        from ..systems import orders
+
+        with engine.lock:
+            if body.faction is not None:
+                viewer(body.faction)
+            pts = [point(p) for p in body.waypoints]
+            f = order(orders.set_route, state(), flight_id, pts, body.target_index, body.faction)
+            engine.brief_players([f.id])
+            return views.flight_view(state(), f)
+
+    @app.post(
+        "/api/ato/packages/{package_id}/tot",
+        response_model=schemas.PackageView,
+        tags=["air"],
+        dependencies=[Depends(require_token)],
+        responses=ORDER_RESPONSES,
+    )
+    def post_tot(package_id: str, body: schemas.TotRequest):
+        """Move the time on target of a package still on the ground (needs the API token)."""
+        from ..systems import orders
+
+        with engine.lock:
+            pkg = order(orders.set_tot, state(), package_id, body.tot, body.faction)
+            engine.brief_players(pkg.flights)
+            return views.package_view(state(), pkg)
+
+    @app.post(
+        "/api/ato/packages/{package_id}/cancel",
+        response_model=schemas.CancelView,
+        tags=["air"],
+        dependencies=[Depends(require_token)],
+        responses=ORDER_RESPONSES,
+    )
+    def post_cancel(package_id: str, body: schemas.CancelRequest):
+        """Cancel the flights of a package still on the ground (needs the API token);
+        airborne ones carry on."""
+        from ..systems import orders
+
+        with engine.lock:
+            pkg = state().packages.get(package_id)
+            seated = [
+                (s.player_id, state().flights[i].callsign)
+                for i in (pkg.flights if pkg else []) if i in state().flights
+                for s in state().flights[i].active_seats
+            ]
+            cancelled = order(orders.cancel_package, state(), package_id, body.faction)
+            for pid, callsign in seated:
+                if callsign in cancelled:
+                    engine.notify(pid, f"{callsign} has been cancelled. Pick another flight from the ATO menu.")
+            return {"cancelled": cancelled}
+
+    @app.get("/api/airdefense",response_model=schemas.AirDefenseView, tags=["air"])
     def get_air_defense(faction: str | None = FACTION):
         """SAM sites and early-warning radars, their state, and the IADS network links."""
         with engine.lock:

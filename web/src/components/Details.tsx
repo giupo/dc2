@@ -3,6 +3,7 @@ import { factionColor, factionName, fmtAlt, fmtDist, pct, sideOf, intelLabel } f
 import { affiliation, designation, symbol, unitSidc } from "../lib/symbols";
 import type { PanelProps } from "./Panels";
 import { Bar, DivisionRow } from "./Panels";
+import { PackageOrders } from "./Planner";
 
 function KV({ k, children }: { k: string; children: ReactNode }) {
   return (
@@ -92,6 +93,7 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
         <>
           <KV k="Package">#{pkg.number} · {pkg.task} · {pkg.target}</KV>
           <KV k="TOT">{pkg.tot.label}</KV>
+          <PackageOrders pkg={pkg} flight={f} />
           {f && openBriefing && (
             <button className="primary" onClick={() => openBriefing(f.id)}>
               📋 Mission briefing

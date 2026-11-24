@@ -34,7 +34,7 @@ Motore headless di **campagna militare dinamica** ("DynaCamp"):
   simboli NATO APP-6.
 
 Documentazione completa:
-- [README.md](README.md): tutto, compresa la "Storia del progetto" in 17 passi;
+- [README.md](README.md): tutto, compresa la "Storia del progetto" in 21 passi;
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): design;
 - [docs/API.md](docs/API.md): endpoint;
 - [web/README.md](web/README.md): UI;
@@ -135,6 +135,8 @@ vero**. Funzionalità implementate:
 - **Unità e radio:** unità SI o kts/ft/NM; frequenze lontane dalle torri.
 - **Deploy:** Dockerfile in un'immagine unica (~140 MB, utente non-root,
   healthcheck), con la campagna salvata nel volume `/data`.
+  Variabili: `DYNACAMP_COMPRESSION` (compressione iniziale; vince `--compression`)
+  e `DYNACAMP_API_TOKEN`.
 - **Salvataggio e ripresa** (`persistence.py`): pickle gzip dell'intero
   `CampaignState`, con ripresa deterministica.
   - `simulate`/`serve` accettano un `.dcsave` al posto dello scenario.
@@ -144,6 +146,16 @@ vero**. Funzionalità implementate:
   - Al caricamento, ciò che teneva DCS torna al motore.
   - Dalla UI: pulsante del dischetto (`POST /api/save`, con token). Tutto passa
     da `persistence.Saver`. Lo stato del salvataggio è in `/api/campaign.save`.
+- **Ordini all'ATO** (`systems/orders.py`, UI in `web/src/components/Planner.tsx`):
+  - `POST /api/ato/packages` (nuovo package contro un bersaglio noto, pianificato
+    come l'IA), `.../flights/{id}/route` (rotta, anche in volo),
+    `.../packages/{id}/tot` e `.../cancel`. Tutti con token e `faction`
+    facoltativo (assente = arbitro).
+  - I rifiuti sono `OrderError` (409/404) con il motivo per il pianificatore.
+  - Rotta cambiata → `state.dirty` → `UpdateRoute` con lo snapshot del volo
+    (task al bersaglio) verso DCS; se il volo è `MATERIALIZING` si rimanda al
+    tick dopo. I giocatori seduti ricevono il briefing nuovo
+    (`Engine.brief_players`).
 
 ## Prossimi passi / problemi aperti
 
@@ -172,8 +184,11 @@ vero**. Funzionalità implementate:
    - i contatti scoperti in gioco non tornano al quadro informativo;
    - IADS coordinato (Skynet);
    - strutture statiche bersagliabili.
-7. **Web:** mancano ordini e posti ATO dal browser; per ora l'unico comando è
-   il controllo del tempo.
+7. **Web:** fatti gli ordini all'ATO dal browser. Mancano
+   - posti nei voli dal browser (oggi solo dal menu F10);
+   - ordini alle forze di terra;
+   - token per fazione: oggi chi ha il token ordina per qualunque fazione
+     (la UI usa quella di "View as").
 
 ## File da ricordare
 

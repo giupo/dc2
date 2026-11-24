@@ -99,7 +99,8 @@ def client(demo):
 def test_every_endpoint_matches_its_schema(client):
     c, engine = client
     index = c.get("/api").json()
-    paths = [p for p in index["endpoints"] if not p.endswith("/stream") and "{" not in p]
+    readable = {r.path for r in c.app.routes if "GET" in getattr(r, "methods", ())}
+    paths = [p for p in index["endpoints"] if p in readable and not p.endswith("/stream") and "{" not in p]
     assert {"/api/campaign", "/api/map", "/api/fronts", "/api/forces", "/api/logistics", "/api/ato",
             "/api/airdefense", "/api/events", "/api/snapshot"} <= set(paths)
     ad = c.get("/api/airdefense").json()

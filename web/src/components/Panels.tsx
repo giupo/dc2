@@ -19,6 +19,7 @@ import {
 import { affiliation, airSidc, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { Selection } from "../lib/selection";
 import type { CampaignData } from "../lib/useCampaign";
+import { NewPackage } from "./Planner";
 
 export interface PanelProps {
   data: CampaignData;
@@ -321,6 +322,7 @@ export function AtoPanel(props: PanelProps) {
       <h3>
         Packages ({packages.length}) · airborne {ato?.flights_airborne ?? 0}
       </h3>
+      <NewPackage data={data} select={select} />
       {view === "list" && <AtoList {...props} packages={packages} />}
       {view === "packages" && packages.map((p) => (
         <div key={p.id} className={`package ${isSel(selected, "package", p.id) ? "sel" : ""}`}>

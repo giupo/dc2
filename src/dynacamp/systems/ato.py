@@ -401,11 +401,22 @@ def enemy_air_threat(state: CampaignState, fid: str, point: Vec2) -> bool:
     return False
 
 
-def build_package(state: CampaignState, faction: Faction, r: Request) -> Package | None:
+def build_package(
+    state: CampaignState, faction: Faction, r: Request, squadron: str | None = None, tot: float | None = None
+) -> Package | None:
     """Build a package for a request: main flight plus SEAD and escort as needed.
 
+    Args:
+        state: The campaign.
+        faction: The planning faction.
+        r: The mission request.
+        squadron: Squadron of the main flight (None: the best one available).
+        tot: Time on target (None: the earliest possible, rounded to 5 minutes).
+            Earlier than the earliest possible is refused.
+
     Returns:
-        The package, or None if no squadron is available (or SEAD is required and missing).
+        The package, or None if no squadron is available (or SEAD is required
+        and missing, or ``tot`` is too early).
     """
     fid = faction.id
     size = 4 if r.task is Task.STRIKE else (1 if r.task in (Task.AWACS, Task.TANKER) else 2)
@@ -415,19 +426,19 @@ def build_package(state: CampaignState, faction: Faction, r: Request) -> Package
         # Never send strikers under a SAM umbrella without SEAD support.
         if intel.known_covering(state, fid, r.point) and _allocate(state, fid, Task.SEAD, r.point, 2) is None:
             return None
-    require = None
-    if r.target_kind == "resupply":
-        require = lambda sq: sq.aircraft_type.helo  # noqa: E731 - land next to the brigades
-    elif r.target_kind == "airlift":
-        dest = state.airbases[r.target_id]
-        require = lambda sq: sq.airbase != dest.id and not sq.aircraft_type.helo  # noqa: E731
+    require = _target_requirement(state, r)
+    if squadron is not None:
+        base_require = require
+        require = lambda sq: sq.id == squadron and (base_require is None or base_require(sq))  # noqa: E731
     main = _allocate(state, fid, r.task, r.point, size, require=require)
     if main is None:
         return None
     sq, dist = main
-    earliest_takeoff = state.time + STARTUP_LEAD_S
-    tot = earliest_takeoff + dist / (sq.aircraft_type.cruise_kmh / 3.6)
-    tot = math.ceil(tot / 300.0) * 300.0  # round to 5 minutes
+    earliest = earliest_tot(sq, dist, state.time)
+    if tot is None:
+        tot = math.ceil(earliest / 300.0) * 300.0  # round to 5 minutes
+    elif tot < earliest:
+        return None
 
     pkg = Package(
         id=state.new_id("pk"),
@@ -465,6 +476,22 @@ def build_package(state: CampaignState, faction: Faction, r: Request) -> Package
         flights=[state.flights[f].callsign for f in pkg.flights],
     )
     return pkg
+
+
+def _target_requirement(state: CampaignState, r: Request):
+    """Squadron filter a request's target imposes (None: any squadron able to fly the task)."""
+    if r.target_kind == "resupply":
+        return lambda sq: sq.aircraft_type.helo  # land next to the brigades
+    if r.target_kind == "airlift":
+        dest = state.airbases[r.target_id]
+        return lambda sq: sq.airbase != dest.id and not sq.aircraft_type.helo
+    return None
+
+
+def earliest_tot(sq: Squadron, dist: float, now: float) -> float:
+    """Earliest time on target for a squadron ``dist`` metres from the target:
+    startup lead for human pilots, then the transit at cruise speed."""
+    return now + STARTUP_LEAD_S + dist / (sq.aircraft_type.cruise_kmh / 3.6)
 
 
 def _taken_frequencies(state: CampaignState) -> list[float]:

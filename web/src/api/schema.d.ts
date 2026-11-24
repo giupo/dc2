@@ -165,6 +165,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ato/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Package
+         * @description Order a new package against a target the faction knows (needs the API token).
+         *     Planned as the AI would: main flight, then SEAD and escort when called for.
+         */
+        post: operations["post_package_api_ato_packages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ato/flights/{flight_id}/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Route
+         * @description Replace a flight's route, takeoff to landing (needs the API token). Waypoints
+         *     already flown and the landing cannot move; the target only for CAP/AWACS/tanker.
+         *     A flight in the game gets the new route at once; seated players get a new briefing.
+         */
+        post: operations["post_route_api_ato_flights__flight_id__route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ato/packages/{package_id}/tot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Tot
+         * @description Move the time on target of a package still on the ground (needs the API token).
+         */
+        post: operations["post_tot_api_ato_packages__package_id__tot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ato/packages/{package_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Cancel
+         * @description Cancel the flights of a package still on the ground (needs the API token);
+         *     airborne ones carry on.
+         */
+        post: operations["post_cancel_api_ato_packages__package_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/airdefense": {
         parameters: {
             query?: never;
@@ -800,6 +884,25 @@ export interface components {
             events: number;
         };
         /**
+         * CancelRequest
+         * @description Cancel a package's flights still on the ground.
+         */
+        CancelRequest: {
+            /** Faction */
+            faction?: string | null;
+        };
+        /**
+         * CancelView
+         * @description Result of a cancellation.
+         */
+        CancelView: {
+            /**
+             * Cancelled
+             * @description callsigns of the cancelled flights
+             */
+            cancelled: string[];
+        };
+        /**
          * ContactInfo
          * @description How a faction knows about an enemy entity (fog of war views only).
          */
@@ -1178,6 +1281,16 @@ export interface components {
             next_waypoint: number;
             target: components["schemas"]["TargetRef"];
             /**
+             * Locked Waypoints
+             * @description leading waypoints that can no longer change (already flown, or the station while on it)
+             */
+            locked_waypoints: number;
+            /**
+             * Fuel Km
+             * @description longest route the flight may plan (twice the combat radius, more with a tanker up)
+             */
+            fuel_km: number;
+            /**
              * Authority
              * @enum {string}
              */
@@ -1373,6 +1486,30 @@ export interface components {
             target: string | null;
         };
         /**
+         * PackageRequest
+         * @description Order a new package.
+         */
+        PackageRequest: {
+            /** Faction */
+            faction: string;
+            /**
+             * Task
+             * @enum {string}
+             */
+            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            target: components["schemas"]["TargetIn"];
+            /**
+             * Squadron
+             * @description squadron of the main flight (omit: the best available)
+             */
+            squadron?: string | null;
+            /**
+             * Tot
+             * @description time on target in campaign seconds (omit: the earliest possible)
+             */
+            tot?: number | null;
+        };
+        /**
          * PackageView
          * @description An ATO package.
          */
@@ -1404,6 +1541,8 @@ export interface components {
             /** Target */
             target: string;
             tot: components["schemas"]["Time"];
+            /** @description earliest TOT the package can be moved to (startup lead included) */
+            earliest_tot: components["schemas"]["Time"];
             created: components["schemas"]["Time"];
             /** Flights */
             flights: components["schemas"]["FlightView"][];
@@ -1441,6 +1580,16 @@ export interface components {
              * @description flight id of the seat the player holds
              */
             flight: string | null;
+        };
+        /**
+         * PointIn
+         * @description A position: ``ll`` = [lat, lon] or ``pos`` = [east, north] metres (``ll`` wins).
+         */
+        PointIn: {
+            /** Ll */
+            ll?: number[] | null;
+            /** Pos */
+            pos?: number[] | null;
         };
         /**
          * Polyline
@@ -1529,6 +1678,24 @@ export interface components {
             neighbors: string[];
             /** @description closed polygon (Voronoi cell of the centre, max 60 km) */
             territory: components["schemas"]["Polyline"];
+        };
+        /**
+         * RouteRequest
+         * @description New route of a flight, takeoff to landing.
+         */
+        RouteRequest: {
+            /** Waypoints */
+            waypoints: components["schemas"]["PointIn"][];
+            /**
+             * Target Index
+             * @description index of the target / station waypoint in `waypoints`
+             */
+            target_index: number;
+            /**
+             * Faction
+             * @description ordering faction (omit: the umpire)
+             */
+            faction?: string | null;
         };
         /**
          * RouteView
@@ -1759,6 +1926,25 @@ export interface components {
             servicing: number;
         };
         /**
+         * TargetIn
+         * @description What a new package flies against.
+         */
+        TargetIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "battle" | "division" | "convoy" | "depot" | "sam" | "point" | "airlift" | "resupply";
+            /**
+             * Id
+             * @description battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)
+             * @default
+             */
+            id: string;
+            /** @description for `point` targets (CAP station, AWACS orbit, tanker track) */
+            point?: components["schemas"]["PointIn"] | null;
+        };
+        /**
          * TargetRef
          * @description Reference to a flight's target.
          */
@@ -1783,6 +1969,19 @@ export interface components {
              * @description 'D<day> HH:MM'
              */
             label: string;
+        };
+        /**
+         * TotRequest
+         * @description Move the time on target of a package.
+         */
+        TotRequest: {
+            /**
+             * Tot
+             * @description campaign seconds
+             */
+            tot: number;
+            /** Faction */
+            faction?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2018,6 +2217,228 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BriefingView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_package_api_ato_packages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageView"];
+                };
+            };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unknown flight, package or faction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description order refused: `detail` says why */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_route_api_ato_flights__flight_id__route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                flight_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlightView"];
+                };
+            };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unknown flight, package or faction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description order refused: `detail` says why */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_tot_api_ato_packages__package_id__tot_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                package_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageView"];
+                };
+            };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unknown flight, package or faction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description order refused: `detail` says why */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_cancel_api_ato_packages__package_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                package_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelView"];
+                };
+            };
+            /** @description missing or wrong API token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unknown flight, package or faction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description order refused: `detail` says why */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

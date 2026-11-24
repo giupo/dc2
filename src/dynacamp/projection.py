@@ -111,3 +111,12 @@ def to_latlon(theater: str, v: Vec2) -> tuple[float, float] | None:
     if theater.lower() not in THEATERS:
         return None
     return dcs_to_ll(theater.lower(), v.y, v.x)
+
+
+def from_latlon(theater: str, lat: float, lon: float) -> Vec2 | None:
+    """(lat, lon) -> campaign point, or None for theaters without a projection.
+    Inverse of :func:`to_latlon`."""
+    if theater.lower() not in THEATERS:
+        return None
+    x, z = ll_to_dcs(theater.lower(), lat, lon)
+    return Vec2(z, x)

@@ -1,7 +1,7 @@
 # DynaCamp HTTP API (v1)
 
 API per la web app: mappa, fronti, forze, logistica, ATO ed eventi in tempo
-reale, più il controllo del tempo. È un'app **FastAPI** (`src/dynacamp/api/app.py`) servita
+reale, più il controllo del tempo e gli ordini all'ATO. È un'app **FastAPI** (`src/dynacamp/api/app.py`) servita
 da uvicorn nello stesso processo del motore, in un thread a parte.
 
 - **Documentazione interattiva:** `http://localhost:8080/docs`
@@ -194,7 +194,9 @@ org, supply` (0..1), `elements` (mezzi per tipo), `order {kind, target}`,
   (`scheduled | airborne | on_station | rtb | done | cancelled`),
   `size, ai, seats_free, players[]` (con stato del posto), `takeoff, tot`,
   `pos, ll`, `waypoints` (polilinea), `target_index, next_waypoint, target`,
-  `authority`, `on_station_until` (CAP).
+  `authority`, `on_station_until` (CAP), `locked_waypoints` (waypoint iniziali
+  che non si possono più spostare), `fuel_km` (rotta più lunga pianificabile).
+- ogni package ha anche `earliest_tot`, il TOT più presto a cui si può spostare.
 - `squadrons[]`: forza, disponibili, impegnati, in turnaround, compiti.
 - `sortie_budget_left` per fazione, `flights_airborne`.
 - `boards[side]`: esattamente ciò che vedono i giocatori nel menu F10.
@@ -214,6 +216,68 @@ arriva al giocatore in DCS). Risponde 404 se il volo non esiste più.
 Senza parametro valgono le unità della campagna (`units` in `/api/campaign`,
 di default `imperial`). I campi numerici restano sempre in SI (`alt_m`,
 `speed_kmh`, `range_km`).
+
+### Ordini all'ATO (`POST`, con token)
+
+Un pianificatore umano può fare quello che fa un giocatore di Falcon/BMS nella
+schermata ATO. La logica sta in `systems/orders.py`. Ogni comando vuole il
+token e accetta un `faction` facoltativo: se c'è, l'ordine vale solo per i
+package e i voli di quella fazione; se manca, l'ordine è dell'arbitro. Un
+ordine rifiutato non cambia nulla e risponde 409 con il motivo in `detail`
+(per esempio `route too long: 950 km, fuel for 800 km`); un volo, package o
+fazione sconosciuti danno 404.
+
+Le posizioni (`PointIn`) sono `{"ll": [lat, lon]}` oppure
+`{"pos": [est, nord]}` in metri; se ci sono entrambi vale `ll`.
+
+- **`POST /api/ato/packages`** ordina un nuovo package:
+  `{"faction", "task", "target": {"kind", "id", "point"}, "squadron"?, "tot"?}`.
+  Viene pianificato come lo farebbe l'IA: volo principale, poi SEAD e scorta
+  quando servono. Il bersaglio deve essere noto alla fazione (nebbia di
+  guerra). Abbinamenti ammessi:
+
+  | task | `target.kind` | `target.id` |
+  |---|---|---|
+  | CAS | `battle` | battaglia che coinvolge la fazione |
+  | BAI | `division`, `convoy` | contatto nel quadro informativo |
+  | STRIKE | `depot` | provincia nemica con deposito |
+  | SEAD | `sam` | contatto SAM |
+  | CAP, AWACS, TANKER | `point` | — (serve `point`) |
+  | TRANSPORT | `airlift`, `resupply` | base amica con deposito / brigata amica (elicotteri) |
+
+  Senza `squadron` sceglie il migliore disponibile; senza `tot` il più presto
+  possibile. Rifiuta se il budget di sortite è esaurito, se il bersaglio è
+  sotto un SAM noto e nessuno può fare SEAD, se è fuori portata o se `tot` è
+  troppo presto. Risponde con il package (come in `/api/ato`) ed emette
+  `package_ordered`.
+- **`POST /api/ato/flights/{flight_id}/route`** sostituisce la rotta di un
+  volo, dal decollo all'atterraggio:
+  `{"waypoints": [PointIn, ...], "target_index", "faction"?}` (da 3 a 24
+  punti). Vale prima e durante la missione. Regole:
+  - i waypoint già volati (`locked_waypoints`) e l'atterraggio non si spostano;
+  - il bersaglio si sposta solo per CAP, AWACS e tanker (il package lo
+    segue); per un altro bersaglio serve un nuovo package;
+  - la lunghezza non supera `fuel_km` (due volte il raggio d'azione, di più
+    con un tanker in stazione), a meno che la rotta attuale sia già più lunga;
+  - per un volo a terra il decollo si ricalcola dal TOT e non può cadere nel
+    passato.
+
+  Un volo in DCS riceve subito la nuova rotta (con i task al bersaglio); i
+  giocatori seduti ricevono un nuovo briefing. Emette `flight_replanned`.
+- **`POST /api/ato/packages/{package_id}/tot`** `{"tot": secondi, "faction"?}`
+  sposta il TOT di un package con tutti i voli ancora a terra; decolli e fine
+  stazione si spostano dello stesso tempo. Più tardi si può sempre (fino a 24
+  ore avanti), prima solo fino a `earliest_tot`. Emette `package_retimed`.
+- **`POST /api/ato/packages/{package_id}/cancel`** `{"faction"?}` annulla i
+  voli del package ancora a terra (gli aerei tornano allo squadrone); quelli in
+  volo proseguono. Risponde `{"cancelled": [callsign, ...]}`; i giocatori
+  seduti nei voli annullati ricevono un messaggio in gioco.
+
+```bash
+curl -X POST -H "Authorization: Bearer $DYNACAMP_API_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"faction": "blue", "task": "CAP", "target": {"kind": "point", "point": {"ll": [35.0, 37.0]}}}' \
+  http://localhost:8080/api/ato/packages
+```
 
 ### `GET /api/airdefense`
 - `sites[]`: `id, name, faction, system, system_name, role` (`long | medium |

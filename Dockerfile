@@ -3,6 +3,10 @@
 #   docker build -t dynacamp .
 #   docker run --rm -p 8080:8080 -p 50555:50555 dynacamp                       # Syria, waits for DCS
 #   docker run --rm -p 8080:8080 dynacamp scenarios/western_georgia.toml --no-dcs --compression 600
+#   docker run --rm -p 8080:8080 -e DYNACAMP_COMPRESSION=600 dynacamp       # same speed, default args
+#
+# Environment: DYNACAMP_COMPRESSION (starting time compression, 1-7200; the
+# --compression flag wins), DYNACAMP_API_TOKEN (fixed token for API commands).
 #
 # UI on http://localhost:8080/, API on /api, docs on /docs. Port 50555 is the
 # DCS bridge (the mission's Lua script connects to it: set its host to this

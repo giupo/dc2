@@ -72,6 +72,9 @@ class UpdateRoute:
     entity_id: str
     waypoints: tuple[Vec2, ...]
     speed_kmh: float
+    # Flights: the whole snapshot (altitude, task, target...), since an air
+    # route carries tasks; None for ground units.
+    snapshot: EntitySnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)

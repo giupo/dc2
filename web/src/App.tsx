@@ -3,6 +3,7 @@ import { BriefingCard, useBriefing } from "./components/BriefingCard";
 import { Details } from "./components/Details";
 import { Header } from "./components/Header";
 import { MapView } from "./components/MapView";
+import { PickHint, PlannerContext, RouteBar, usePlannerState } from "./components/Planner";
 import { AirDefensePanel, AtoPanel, EventsPanel, ForcesPanel, FrontPanel, IntelPanel, LogisticsPanel, type PanelProps } from "./components/Panels";
 import { factionColor, type Units } from "./lib/format";
 import { DEFAULT_LAYERS, type Layers, type Selection } from "./lib/selection";
@@ -62,10 +63,14 @@ export default function App() {
     if (at) setFocus((f) => ({ lngLat: [at[1], at[0]], seq: (f?.seq ?? 0) + 1 }));
   }, []);
 
+  // ATO orders are given as the viewpoint side's faction.
+  const planner = usePlannerState(factions.find((f) => f.side === viewpoint)?.id ?? null);
+
   const panelProps: PanelProps = { data, selected, select, viewpoint, units };
   const Active = TABS.find((t) => t.id === tab)!.Panel;
 
   return (
+    <PlannerContext.Provider value={planner}>
     <div className="app">
       <Header data={data} />
       <main className="main">
@@ -96,6 +101,8 @@ export default function App() {
               <button className={units === "imperial" ? "on" : ""} onClick={() => chooseUnits("imperial")}>kts/ft/NM</button>
             </div>
           </div>
+          <RouteBar units={units} />
+          <PickHint />
           <Details {...panelProps} close={() => setSelected(null)} openBriefing={() => setBriefingOpen(true)} />
           {briefingOpen && briefing && <BriefingCard b={briefing} close={() => setBriefingOpen(false)} />}
           {!data.connected && !data.campaign && (
@@ -122,5 +129,6 @@ export default function App() {
         </aside>
       </main>
     </div>
+    </PlannerContext.Provider>
   );
 }

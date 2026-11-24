@@ -494,6 +494,8 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
         "target_index": 0,
         "next_waypoint": 0,
         "target": {"kind": "unknown", "id": ""},
+        "locked_waypoints": 0,
+        "fuel_km": 0,
         "authority": f.authority.value,
         "on_station_until": None,
         "intel": _intel(state, c),
@@ -502,6 +504,8 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
 
 def flight_view(state: CampaignState, f) -> dict[str, Any]:
     """JSON view of a flight."""
+    from ..systems import orders
+
     sq = state.squadrons[f.squadron]
     return {
         "id": f.id,
@@ -528,8 +532,28 @@ def flight_view(state: CampaignState, f) -> dict[str, Any]:
         "target_index": f.target_index,
         "next_waypoint": f.wp_index,
         "target": {"kind": f.target_kind, "id": f.target_id},
+        "locked_waypoints": orders.locked_waypoints(f),
+        "fuel_km": round(orders.fuel_limit_m(state, f) / 1000),
         "authority": f.authority.value,
         "on_station_until": _time(f.station_until) if f.task.orbits else None,
+    }
+
+
+def package_view(state: CampaignState, p) -> dict[str, Any]:
+    """JSON view of a package and its flights."""
+    from ..systems import orders
+
+    return {
+        "id": p.id,
+        "number": p.number,
+        "faction": p.faction,
+        "task": p.task.value,
+        "target": p.target_label,
+        **_pt(state, p.target_point),
+        "tot": _time(p.tot),
+        "earliest_tot": _time(orders.earliest_tot(state, p)),
+        "created": _time(p.created),
+        "flights": [flight_view(state, state.flights[i]) for i in p.flights if i in state.flights],
     }
 
 
@@ -539,19 +563,7 @@ def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     flights it has detected as ``tracks``."""
     mine = lambda fid: not _enemy(state, viewer, fid)  # noqa: E731
     packages = [
-        {
-            "id": p.id,
-            "number": p.number,
-            "faction": p.faction,
-            "task": p.task.value,
-            "target": p.target_label,
-            **_pt(state, p.target_point),
-            "tot": _time(p.tot),
-            "created": _time(p.created),
-            "flights": [flight_view(state, state.flights[i]) for i in p.flights if i in state.flights],
-        }
-        for p in sorted(state.packages.values(), key=lambda p: (p.tot, p.id))
-        if mine(p.faction)
+        package_view(state, p) for p in sorted(state.packages.values(), key=lambda p: (p.tot, p.id)) if mine(p.faction)
     ]
     squadrons = [
         {
