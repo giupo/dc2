@@ -163,6 +163,15 @@ def cmd_build_miz(args: argparse.Namespace) -> None:
             print(f"   note: {n}")
 
 
+def cmd_radio(args: argparse.Namespace) -> None:
+    """``dynacamp radio``: regenerate the airfields' ATC frequencies from DCS' data."""
+    try:
+        from .adapters.dcs.miz import generate_radio_data
+    except ImportError as exc:
+        raise SystemExit(f"needs pydcs (uv sync --extra miz): {exc}") from exc
+    print(f"Airfield frequencies written to {generate_radio_data()}")
+
+
 def cmd_loadouts(args: argparse.Namespace) -> None:
     """``dynacamp loadouts``: regenerate the aircraft loadouts from DCS' pylon tables."""
     try:
@@ -243,6 +252,8 @@ def main(argv: list[str] | None = None) -> None:
 
     lo = sub.add_parser("loadouts", help="regenerate aircraft loadouts from DCS pylon tables (needs pydcs)")
     lo.set_defaults(func=cmd_loadouts)
+    ra = sub.add_parser("radio", help="regenerate the airfields' ATC frequencies from DCS data (needs pydcs)")
+    ra.set_defaults(func=cmd_radio)
 
     r = sub.add_parser("roads", help="route scenario links on real roads (OSRM, needs network) -> <scenario>.roads.json")
     r.add_argument("scenarios", nargs="+")

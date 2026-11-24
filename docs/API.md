@@ -148,7 +148,9 @@ Mission package di un volo: `units`, `package_number`, `title`, `mission`, `situ
 (descrizione, composizione, coordinate, rilevamento dalla base), `threats[]`
 (SAM lungo la rotta, SHORAD, caccia nemici, ciascuno con `severity`),
 `waypoints[]` (`index, name, eta, alt_m, speed_kmh, note, pos, ll`),
-`loadout[]` (`store, count`), `comms`, `package[]` e `text` (il briefing come
+`loadout[]` (`store, count`), `comms` (UHF di package e VHF del volo, assegnate
+dall'ATO lontano dalle frequenze ATC degli aeroporti del teatro), `support[]`
+(AWACS e tanker disponibili), `package[]` e `text` (il briefing come
 arriva al giocatore in DCS). Risponde 404 se il volo non esiste più.
 
 `?units=imperial|metric` sceglie le unità dei **testi** (descrizioni, minacce,

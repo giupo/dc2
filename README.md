@@ -49,6 +49,7 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 | **Nebbia di guerra** | Ogni fazione vede solo quello che i suoi sensori hanno trovato: radar e occhi degli aerei, AWACS, radar a terra, ricognizione, ELINT, lanci SAM. Contatti con età, fonte e identificazione. **Anche IA, ATO, artiglieria e briefing decidono sul quadro informativo**, non sulla verità. |
 | **ATO stile BMS** | Ogni package ha un **numero a 4 cifre**, come in Falcon/BMS. La UI mostra l'ATO come lista di voli ordinata per decollo: package, volo, missione, aereo, T/O, TOT, stato. |
 | **Animazione e tempo** | Il motore gira a tick fisso (10 Hz) con un budget per frame; la mappa riceve le posizioni 5 volte al secondo e le **interpola a 60 fps**, senza scatti. **Pausa, play e accelerazione** da 1× a 3600× dall'intestazione della UI (non mentre un giocatore è in DCS, dove il tempo è 1:1). |
+| **Frequenze radio** | Ogni package ha una UHF comune e ogni volo una VHF interna, assegnate dall'ATO **lontane dalle frequenze ATC di tutti gli aeroporti della mappa** (dati di DCS), dalle frequenze di emergenza 121.5/243.0 e dagli altri voli attivi. Gli aerei IA in DCS usano la frequenza del package. |
 | **Unità di misura** | Briefing e marcatori in DCS in **nodi, piedi e miglia nautiche** (di default) o nel sistema internazionale; nella UI si sceglie con un clic. |
 | **Missioni** | Ogni volo ha un **mission package**: briefing (missione, situazione, bersaglio con coordinate, minacce lungo la rotta), waypoint con nome, orario, quota e velocità, **armamento** da usare, pacchetto e frequenze. Gli aerei IA volano con lo stesso armamento descritto nel briefing. |
 | **Difesa aerea / IADS** | Patriot, S-300, Hawk, NASAMS, Buk, Kub, Tor, Osa, Avenger e radar di scoperta in rete. I sistemi mobili **si spostano sulle strade**; c'è la guerra SEAD. |
@@ -390,6 +391,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 | Comando | Cosa fa |
 |---|---|
 | `dynacamp simulate <scenario>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--quiet`/`--verbose`) |
+| `dynacamp radio` | rigenera `data/radio.json`, le frequenze ATC degli aeroporti dai dati di DCS (serve pydcs) |
 | `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
@@ -434,13 +436,17 @@ un test controlla che le missioni lo contengano aggiornato.
 src/dynacamp/
   geo.py world.py forces.py state.py events.py     modello: geometria, mappa, forze, stato, log
   air.py air_defense.py                            aviazione e difesa aerea (modello)
+  loadouts.py radio.py units.py                    armamento, frequenze radio, unità di misura
+  data/                                            loadouts.json, radio.json (generati dai dati di DCS)
   systems/                                         simulazione:
     ai.py                                            IA di teatro (retrovie, fronte, offensive, riserve)
-    ato.py air.py                                    ATO, voli, combattimento aereo
+    ato.py air.py                                    ATO, voli, supporto aereo, combattimento aereo
+    briefing.py                                      mission package: briefing, waypoint, minacce
+    intel.py                                         nebbia di guerra: sensori e quadro informativo
     air_defense.py                                   SAM, IADS, SEAD, comando di difesa aerea
     supply.py movement.py combat.py contact.py       logistica, movimento, battaglie, contatto
     artillery.py control.py                          fuoco d'artiglieria, controllo delle province
-  bubble.py engine.py runtime.py                   player bubble, handoff, loop in tempo reale
+  bubble.py engine.py runtime.py                   player bubble, handoff, ciclo a tick fisso, pausa/velocità
   projection.py geometry.py roads.py               lat/lon, territori e fronti, strade reali
   scenario.py cli.py                               scenari TOML, comandi
   api/                                             FastAPI: views, schemas, app, server
@@ -449,6 +455,8 @@ src/dynacamp/
 scenarios/                                         scenari TOML + geometria stradale (.roads.json)
 missions/                                          missioni DCS generate
 web/                                               interfaccia web React + Vite + MapLibre
+  src/lib/livePositions.ts                           animazione a 60 fps (interpolazione delle entità)
+Dockerfile .dockerignore                           immagine unica: motore + API + UI
 docs/                                              architettura, API, sito Sphinx (docs/sphinx)
 tests/                                             test Python e Lua
 tools/                                             conversione di coordinate
@@ -539,6 +547,13 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     guerra, interpolazione delle entità a 60 fps sul client con marker
     sub-pixel, controllo del tempo via `POST /api/control` e pulsanti nella UI.
     Il server a 3600× usa circa il 5% di una CPU.
+17. **Frequenze radio pulite.** Le frequenze di package e voli non cadono più
+    sulle torri: lo schema precedente (UHF 250 + 0,5·n, VHF 130 + 0,25·n)
+    coincideva per esempio con Anapa (250.0), Krasnodar (251.0) e Abu
+    al-Duhur (250.5). Ora vengono assegnate alla pianificazione, separate di
+    almeno 50 kHz da ATC, emergenza e altri voli. I template e gli slot dei
+    `.miz` sono spostati fuori dalle frequenze ATC, e il bridge usa la
+    frequenza dell'ATO per gli aerei IA.
 
 ## Limiti noti e prossimi passi
 

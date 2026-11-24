@@ -124,15 +124,31 @@ un volo IA dentro una bolla lo fa volare DCS.
 **Pianificazione** (`systems/ato.py`, ogni ora):
 
 1. Richieste per priorità: CAS sulle nostre battaglie, CAP sulle province di
-   fronte più minacciate (2 stazioni), BAI su convogli e colonne nemiche in
-   movimento o a ridosso del fronte, STRIKE sui depositi.
-2. Per ogni richiesta, lo squadrone migliore in raggio con aerei disponibili.
-   Si aggiungono un volo SEAD se c'è difesa aerea a corto raggio sul bersaglio
-   e una scorta se i caccia nemici possono arrivarci.
+   fronte più minacciate (3 stazioni, tirate fuori dalla copertura SAM nota),
+   BAI su convogli e colonne nemiche *localizzati* in movimento o a ridosso del
+   fronte, STRIKE sui depositi, SEAD/DEAD sui SAM noti che coprono il fronte,
+   più le missioni di supporto (AWACS, tanker, trasporti: vedi sotto).
+2. Per ogni richiesta, lo squadrone migliore in raggio con aerei disponibili
+   (raggio +40% se un tanker è in stazione). Si aggiungono un volo SEAD se c'è
+   difesa aerea sul bersaglio o un SAM noto lo copre (niente attacco se il SEAD
+   non è disponibile) e una scorta se i caccia nemici possono arrivarci.
 3. **Decollo almeno 30 minuti dopo la pianificazione**, così i giocatori hanno
    il tempo di scegliere un volo e avviare l'aereo.
-4. Limiti: budget di 1.5 sortite per aereo al giorno, al massimo 4 pacchetti
-   offensivi attivi per fazione, turnaround di 4 ore dopo ogni missione.
+4. Limiti: budget di 2,5 sortite per aereo al giorno (a token bucket, così non
+   si esaurisce al mattino), al massimo 6 pacchetti offensivi attivi e 3 nuovi
+   per ciclo per fazione, più 2 di supporto per ciclo con un'allocazione a
+   parte; turnaround di 3 ore dopo ogni missione, un aereo di rimpiazzo ogni
+   8 ore per squadrone fino all'organico.
+5. **Identità e radio del pacchetto.** Ogni package ha un numero a 4 cifre
+   (`air.package_number`: deterministico, unico per i primi 9000 package),
+   condiviso dai suoi voli come nell'ATO di Falcon/BMS. Alla pianificazione
+   riceve una frequenza UHF comune, e ogni volo una VHF interna
+   (`dynacamp.radio.allocate`), in bande compatibili con le radio occidentali
+   e russe (UHF 260–389,975, VHF 128–139,975). Ogni frequenza dista almeno
+   50 kHz dalle frequenze ATC di **tutti gli aeroporti del teatro**
+   (`data/radio.json`, generato dai dati di DCS con `dynacamp radio`), dalle
+   frequenze di emergenza (121.5/243.0) e dagli altri package e voli attivi.
+   Gli aerei IA in DCS parlano sulla UHF del package.
 
 **Risoluzione astratta** (fuori dalle bolle): perdite contro la difesa aerea
 (SHORAD/AAA delle divisioni entro 15 km, ridotte se il SEAD del pacchetto è
@@ -157,6 +173,16 @@ Si può entrare fino a 10 minuti dopo il decollo. Se un giocatore si disconnette
 un posto non ancora volato si libera, uno in volo si considera rientrato. Se un
 volo è tutto di giocatori, il motore non lo simula: i suoi effetti arrivano da
 DCS come perdite sui bersagli, che sono comunque nella bolla del giocatore.
+
+**Mission package** (`systems/briefing.py`). `briefing(state, flight, units)`
+restituisce dati: missione, situazione, bersaglio con coordinate DDM,
+minacce *note* lungo la rotta (campionata ogni 5 km), waypoint con nome, ETA
+calcolati a ritroso dal TOT, quote e velocità, armamento da
+`data/loadouts.json`, package, frequenze e supporti (AWACS e tanker). I numeri
+restano in SI; i testi sono scritti nelle unità richieste
+(`dynacamp/units.py`: `imperial` = kts/ft/NM, il default dei briefing, o
+`metric`). `render()` ne fa il testo per DCS. Le unità della campagna vengono
+dallo scenario (`[campaign] units`) o da `serve --units`.
 
 ## Difesa aerea e IADS
 
@@ -244,6 +270,41 @@ Consumatori del quadro:
 La simulazione fisica (combattimenti, ingaggi SAM, duelli) usa sempre la
 verità.
 
+## Tempo reale, animazione e controllo del tempo
+
+**Ciclo di gioco** (`runtime.run_realtime`). È un ciclo a tick fisso (default
+10 Hz, `serve --tick-hz`). A ogni tick:
+- il motore avanza del tempo reale trascorso moltiplicato per
+  `Engine.time_rate`;
+- poi dorme per il resto del budget del frame, sempre almeno 2 ms, così CPU,
+  API e adapter respirano.
+
+Un tick in ritardo non viene recuperato con passi extra: il successivo copre
+l'intervallo più lungo, con un tetto di 1 s, così uno stallo non diventa un
+salto di tempo.
+
+**Controllo del tempo** (`engine.TimeControl`). `Engine.control` ha `paused` e
+`compression` (1–7200×), cambiabili a ogni tick con `POST /api/control`.
+`time_rate` vale:
+- 1 se un gioco simula parte della campagna (`Engine.live`): DCS non si può
+  né fermare né accelerare, e l'API rifiuta con 409;
+- 0 in pausa: il motore continua a girare con `dt = 0`, quindi i messaggi del
+  gioco e gli handoff vengono ancora gestiti;
+- altrimenti la compressione.
+
+Ogni cambio emette un evento `time_control`.
+
+**Animazione della mappa**:
+- *server:* `api/views.positions` produce un campione compatto
+  (`id -> [lat, lon]`) di ciò che si muove, con la nebbia di guerra se c'è una
+  fazione, e `GET /api/positions/stream` lo invia via SSE a 5 Hz;
+- *client* (`web/src/lib/livePositions.ts`): fa interpolazione delle entità
+  come nel netcode dei giochi. Disegna circa 2 periodi nel passato, interpola
+  linearmente tra i campioni a ogni `requestAnimationFrame`, ed estrapola per
+  al massimo 300 ms se i campioni ritardano;
+- *marker:* MapLibre con `subpixelPositioning`, senza passare da React. Le
+  viste complete (stato, statistiche) restano ogni 3 s.
+
 ## Player bubble e handoff
 
 Ogni giocatore umano proietta una bolla (raggio per tipo: aereo 60 km,
@@ -317,25 +378,31 @@ gruppi DCS l'est si chiama `y`.
 
 ## Limiti noti / prossimi passi
 
-* **Persistenza:** manca il salvataggio/caricamento dello stato (fondamentale
-  per un server persistente). Lo snapshot JSON esiste già.
-* **Aria, da fare:** SAM a lungo raggio come entità, AWACS/tanker, OCA sulle
-  basi, ricostituzione degli squadroni. Il decollo dei voli IA nelle bolle
-  avviene in volo vicino alla base: lo spawn a terra/al parcheggio non c'è.
-* **Da verificare in DCS:** i parametri dei task (soprattutto `weaponType` del
-  Bombing) e i nomi dei tipi di aereo in `catalog.py`.
-* **Bilanciamento IA/combattimento:** l'IA è volutamente semplice (niente
-  battle plan, niente gestione delle retrovie). I parametri sono in testa ai
-  moduli dei sistemi.
-* **Spawn in DCS:** il bridge non è ancora stato provato in un DCS vero. Prima
-  di farlo vanno verificati i nomi dei tipi di unità (`catalog.py`) e le
-  coordinate dello scenario.
-* **Strutture statiche:** depositi, ponti e SAM come oggetti DCS bersagliabili
+* **DCS vero:** il bridge non è ancora stato provato in un DCS reale. Da
+  verificare: parametri dei task (soprattutto `weaponType` del Bombing e i task
+  AWACS/Tanker), resa dello spawn su strada, frequenze dei gruppi.
+* **Persistenza:** manca il salvataggio e il caricamento dello stato,
+  fondamentale per un server persistente. Lo snapshot JSON esiste già.
+* **Aria:** mancano:
+  - OCA sulle basi e la ricostituzione completa degli squadroni (oggi c'è solo
+    il rimpiazzo graduale);
+  - il decollo dal parcheggio dei voli IA nelle bolle: oggi partono in volo
+    vicino alla base;
+  - le rotte attorno ai SAM;
+  - le missioni di ricognizione per rinfrescare il quadro informativo.
+* **Nebbia di guerra in DCS:** vale per motore, UI e briefing. Quello che i
+  giocatori scoprono in DCS non torna ancora al quadro informativo.
+* **Equilibrio:** in alcuni seed una parte conquista tutto in pochi giorni, per
+  una spirale (perde i depositi, quindi non ha più ricomplementi). Non dipende
+  dalla nebbia di guerra: è stato verificato con un'IA onnisciente.
+* **IADS in DCS:** dentro DCS ogni sito combatte da solo. L'EMCON coordinato
+  richiederebbe uno script come Skynet.
+* **Strutture statiche:** depositi, ponti e siti come oggetti DCS bersagliabili
   non ci sono ancora.
-* **API web:** c'è, in sola lettura (`docs/API.md`): viste pure in
-  `api/views.py`, modelli Pydantic in `api/schemas.py` (OpenAPI completo),
-  app FastAPI con SSE in `api/app.py`, uvicorn in un thread in `api/server.py`. Le posizioni sono
-  convertite in lat/lon con la proiezione del teatro (`projection.py`).
-  I territori sono celle di Voronoi dei centri provincia (`geometry.py`), quindi
-  sulla costa si estendono in mare: la UI li maschera con la costa. Mancano i
-  comandi (ordini, posti ATO dal web).
+* **Radio:** le frequenze evitano le torri, ma non radiofari e TACAN, perché
+  pydcs non le espone. Stanno comunque in bande diverse.
+* **API web:** l'unico comando è il controllo del tempo (`POST /api/control`),
+  senza autenticazione: per esporla serve un reverse proxy con login. Mancano
+  ordini e posti ATO dal browser. I territori sono celle di Voronoi dei centri
+  provincia, quindi sulla costa si estendono in mare: la UI li maschera con la
+  costa.

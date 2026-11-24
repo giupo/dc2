@@ -289,6 +289,10 @@ class DcsTranslator:
                         "task": catalog.DCS_MAIN_TASK.get(task, "Nothing"),
                         "units": units,
                         "route": {"points": points},
+                        # package frequency from the ATO (clear of the airfields);
+                        # null keeps the template's
+                        "frequency": a.get("frequency_mhz") or None,
+                        "modulation": 0,  # AM
                     },
                 }
             ],

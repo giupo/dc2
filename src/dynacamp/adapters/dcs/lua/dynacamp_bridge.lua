@@ -284,7 +284,8 @@ function DC.apply_template(g)
         u.callsign = deepcopy(tu.callsign)
         u.onboard_num = tu.onboard_num
       end
-      g.data.frequency = tpl.frequency
+      -- the ATO's frequency wins: it is clear of the airfields' ATC
+      g.data.frequency = g.data.frequency or tpl.frequency
       return tname
     end
   end

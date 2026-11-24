@@ -146,6 +146,52 @@ def apply_loadout(fg, unit_type, task: Task, helo: bool, aircraft: str = "") -> 
     return len(picks)
 
 
+def generate_radio_data(path: Path | None = None) -> Path:
+    """Write the ATC frequencies of every airfield of every theatre used by the
+    scenarios, read by :mod:`dynacamp.radio`.
+
+    Args:
+        path: Output file (default: the package's ``data/radio.json``).
+
+    Returns:
+        The written path.
+    """
+    import json
+
+    from ... import radio
+
+    out: dict[str, list[dict]] = {}
+    for name, terrain_cls in THEATERS.items():
+        terrain = terrain_cls()
+        bases = []
+        for ap in sorted(terrain.airports.values(), key=lambda a: a.name):
+            r = ap.atc_radio
+            if r is None:
+                continue
+            mhz = sorted({round(hz / 1e6, 3) for hz in (r.hf_hz, r.vhf_low_hz, r.vhf_high_hz, r.uhf_hz) if hz})
+            bases.append({"name": ap.name, "mhz": mhz})
+        out[name] = bases
+    path = path or radio.DATA
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"source": "pydcs airport atc_radio", "theaters": out}, indent=1) + "\n", encoding="utf-8")
+    return path
+
+
+def safe_group_frequency(theater: str, mhz: float) -> float:
+    """A group radio frequency near ``mhz`` (same band) clear of the theatre's
+    airfields and guard: ``mhz`` itself if already clear, else the next clear
+    channel above it."""
+    from ... import radio
+
+    taken = radio.reserved(theater)
+    f = round(mhz, 3)
+    for _ in range(400):
+        if radio.clear(f, taken):
+            return f
+        f = round(f + radio.STEP_MHZ, 3)
+    return mhz
+
+
 def generate_loadouts(path: Path | None = None) -> Path:
     """Compose every aircraft/task loadout from DCS' pylon tables and write the
     loadouts file read by :mod:`dynacamp.loadouts`.
@@ -253,6 +299,8 @@ def build_mission(
                 maintask=main, group_size=4,
             )
             fg.late_activation = True
+            # pydcs' default group frequency can sit on an airfield's ATC
+            fg.frequency = safe_group_frequency(state.theater.name, fg.frequency)
             if not (task or tasks[0]).support and not apply_loadout(fg, unit_type, task or tasks[0], ac.helo, ac.id):
                 notes.append(f"{name}: could not compose a loadout, set one in the mission editor")
 
@@ -285,6 +333,7 @@ def build_mission(
             notes.append(f"{sq.name}: only {size} client slots fit at {base.name}")
         for u in fg.units:
             u.set_client()
+        fg.frequency = safe_group_frequency(state.theater.name, fg.frequency)
         first = sorted(sq.tasks, key=lambda t: t.value)[0]
         if not first.support:
             apply_loadout(fg, unit_type, first, sq.aircraft_type.helo, sq.aircraft_type.id)

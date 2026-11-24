@@ -537,6 +537,8 @@ class Engine:
                 "target": f.target_point,
                 "target_index": f.target_index - f.wp_index,  # index within the waypoints sent
                 "on_station_s": max(0.0, f.station_until - self.state.time) if f.task.orbits else 0.0,
+                # AI talk on the package frequency: the one in the players' briefing
+                "frequency_mhz": self.state.packages[f.package].uhf_mhz if f.package in self.state.packages else 0.0,
             },
         )
 

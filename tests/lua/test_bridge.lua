@@ -244,5 +244,14 @@ check(#sent == 1 and last_sent().event == "lost", "reports loss once")
 DC.event_handler:onEvent({ id = 3, initiator = pu })
 check(last_sent().event == "takeoff", "reports takeoff")
 
+-- templates: payload/livery from the template, but the ATO's frequency wins
+DC.templates = { DC_TPL_f16c_CAS = { frequency = 251, units = { { type = "F-16C_50", payload = { pylons = {} } } } } }
+local g1 = { templates = { "DC_TPL_f16c_CAS" }, data = { name = "x", units = { {} }, frequency = 305.25 } }
+check(DC.apply_template(g1) == "DC_TPL_f16c_CAS" and g1.data.frequency == 305.25, "keeps the ATO frequency")
+local g2 = { templates = { "DC_TPL_f16c_CAS" }, data = { name = "y", units = { {} } } }
+DC.apply_template(g2)
+check(g2.data.frequency == 251 and g2.data.units[1].type == "F-16C_50", "template frequency when none given")
+DC.templates = nil
+
 if failures > 0 then print(failures .. " failure(s)"); os.exit(1) end
 print("all bridge tests passed")

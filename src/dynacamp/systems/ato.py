@@ -17,6 +17,7 @@ from ..air import FlightStatus, Flight, Package, Seat, SeatState, Squadron, Task
 from ..events import clock
 from ..geo import Vec2
 from ..state import CampaignState, Faction
+from .. import radio
 from . import air, intel
 
 ATO_INTERVAL_S = 3600.0
@@ -437,6 +438,7 @@ def build_package(state: CampaignState, faction: Faction, r: Request) -> Package
         tot=tot,
         created=state.time,
     )
+    pkg.uhf_mhz = radio.allocate(pkg.id, radio.PACKAGE_BAND, _taken_frequencies(state))
     state.packages[pkg.id] = pkg
     _add_flight(state, pkg, sq, r.task, size, tot, r)
 
@@ -463,6 +465,18 @@ def build_package(state: CampaignState, faction: Faction, r: Request) -> Package
         flights=[state.flights[f].callsign for f in pkg.flights],
     )
     return pkg
+
+
+def _taken_frequencies(state: CampaignState) -> list[float]:
+    """Frequencies a new package/flight must keep clear of: the theatre's
+    airfields and guard, and every live package and flight."""
+    taken = list(radio.reserved(state.theater.name))
+    taken += [p.uhf_mhz for p in state.packages.values() if not p.done and p.uhf_mhz]
+    taken += [
+        f.vhf_mhz for f in state.flights.values()
+        if f.vhf_mhz and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
+    ]
+    return taken
 
 
 def _station_until(state: CampaignState, fid: str, task: Task, tot: float) -> float:
@@ -522,6 +536,7 @@ def _add_flight(state: CampaignState, pkg: Package, sq: Squadron, task: Task, si
         target_id=r.target_id,
         station_until=_station_until(state, sq.faction, task, tot),
     )
+    flight.vhf_mhz = radio.allocate(flight.id, radio.FLIGHT_BAND, _taken_frequencies(state))
     sq.committed += size
     state.sortie_log.setdefault(sq.faction, []).append((state.time, size))
     state.sortie_tokens[sq.faction] = state.sortie_tokens.get(sq.faction, 0.0) - size

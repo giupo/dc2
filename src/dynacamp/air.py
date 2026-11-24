@@ -336,6 +336,7 @@ class Flight(MobileEntity):
         players: Seats by player id.
         joinable: Players may still take seats.
         orbit_angle: Position on the CAP orbit.
+        vhf_mhz: Intra-flight frequency, clear of the airfields (see :mod:`dynacamp.radio`).
     """
     package: str
     squadron: str
@@ -358,6 +359,7 @@ class Flight(MobileEntity):
     players: dict[str, Seat] = field(default_factory=dict)
     joinable: bool = True  # players may still take seats (until shortly after takeoff)
     cargo: float = 0.0  # supply carried (transports), for the whole flight
+    vhf_mhz: float = 0.0  # intra-flight frequency (see dynacamp.radio), 0 = not assigned
     orbit_angle: float = 0.0  # position on the CAP orbit, radians
     kind: str = "flight"
 
@@ -444,6 +446,8 @@ class Package:
         done: All flights complete.
         number: Four-digit package number, as in Falcon's ATO (see
             :func:`package_number`).
+        uhf_mhz: Package common frequency, clear of the airfields (see
+            :mod:`dynacamp.radio`).
     """
     id: str
     faction: str
@@ -455,6 +459,7 @@ class Package:
     created: float = 0.0
     done: bool = False
     number: str = ""
+    uhf_mhz: float = 0.0  # package common frequency (see dynacamp.radio), 0 = not assigned
 
     def __post_init__(self) -> None:
         """Derive the package number from the id when not given."""

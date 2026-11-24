@@ -94,3 +94,16 @@ assert(u.type == "A-10C_2" and n > 0, "template not applied")
     )
     res = subprocess.run(["lua5.1", str(script), str(tmp_path), str(LUA_BRIDGE)], capture_output=True, text=True)
     assert res.returncode == 0, res.stdout + res.stderr
+
+
+@pytest.mark.parametrize("path", SCENARIOS, ids=lambda p: p.stem)
+def test_mission_groups_avoid_airfield_frequencies(path):
+    from dynacamp import radio
+    from dynacamp.adapters.dcs.miz import build_mission
+
+    state = scenario.load(path)
+    m, _notes = build_mission(state)
+    reserved = radio.reserved(state.theater.name)
+    groups = [g for c in m.coalition.values() for co in c.countries.values() for g in co.plane_group + co.helicopter_group]
+    bad = [(g.name, g.frequency) for g in groups if not radio.clear(float(g.frequency), reserved)]
+    assert groups and not bad

@@ -93,11 +93,18 @@ def _route_samples(points: list[Vec2]) -> list[Vec2]:
     return out + points[-1:]
 
 
-def frequencies(f: Flight) -> dict[str, str]:
-    """Package (UHF) and flight (VHF) frequencies, stable for the package/flight."""
-    pkg_n = int("".join(c for c in f.package if c.isdigit()) or 0)
-    fl_n = int("".join(c for c in f.id if c.isdigit()) or 0)
-    return {"package": f"UHF {250.0 + (pkg_n % 40) * 0.5:.3f} AM", "flight": f"VHF {130.0 + (fl_n % 60) * 0.25:.3f} AM"}
+def frequencies(f: Flight, state: CampaignState | None = None) -> dict[str, str]:
+    """Package (UHF) and flight (VHF) frequencies, as assigned by the ATO (clear
+    of the theatre's airfields, see :mod:`dynacamp.radio`)."""
+    from .. import radio
+
+    pkg = state.packages.get(f.package) if state is not None else None
+    uhf = pkg.uhf_mhz if pkg is not None and pkg.uhf_mhz else None
+    taken = radio.reserved(state.theater.name) if state is not None else radio.GUARD_MHZ
+    if uhf is None:  # not planned by the ATO (e.g. built by hand): derive one
+        uhf = radio.allocate(f.package, radio.PACKAGE_BAND, taken)
+    vhf = f.vhf_mhz or radio.allocate(f.id, radio.FLIGHT_BAND, taken)
+    return {"package": radio.fmt(uhf, "UHF"), "flight": radio.fmt(vhf, "VHF")}
 
 
 # ---------------------------------------------------------------- waypoints
@@ -379,7 +386,7 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
         "loadout_note": "" if stores else (
             "Unarmed." if f.task.support else "Ordnance as set in the aircraft template (mission editor)."
         ),
-        "comms": frequencies(f),
+        "comms": frequencies(f, state),
         "waypoints": waypoint_plan(state, f),
         "package": [
             {
@@ -413,7 +420,7 @@ def support(state: CampaignState, f: Flight, units: Units = "metric") -> list[di
                 "status": o.status.value,
                 "position": ddm(to_latlon(state.theater.name, p)),
                 "from_target": bearing_range(f.target_point, p, units),
-                "frequency": frequencies(o)["flight"],
+                "frequency": frequencies(o, state)["flight"],
                 "until": {"t": round(o.station_until, 1), "label": clock(o.station_until)},
                 "pos": [round(p.x), round(p.y)],
                 "ll": _ll(state, p),
