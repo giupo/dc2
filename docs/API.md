@@ -69,6 +69,25 @@ Il quadro informativo di una fazione:
 
 Il parametro `faction` è obbligatorio.
 
+### `GET /api/control`, `POST /api/control`
+
+Pausa e velocità dell'orologio di campagna. `POST` con
+`{"paused": true|false, "compression": 3600}`; i campi omessi restano invariati.
+La risposta (`paused`, `compression`, `rate`, `min_compression`,
+`max_compression`) è anche in `/api/campaign` (`control`) e in ogni `tick` dello
+stream. `rate` è la velocità effettiva: 0 in pausa, 1 se un gioco è live,
+altrimenti la compressione. Mentre un gioco è live il tempo deve scorrere 1:1:
+pausa e accelerazione rispondono 409. Una compressione fuori da
+[1, 7200] risponde 422.
+
+### `GET /api/positions/stream?hz=5&faction=<id>`
+
+Server-Sent Events `positions` a `hz` campioni al secondo (0,5–20), solo con
+ciò che si muove: `{"t", "d": {id: [lat, lon]}, "c": {...}, "f": {...}, "s": {...}}`
+(brigate, convogli, voli in aria, siti SAM). Con `faction` vale la nebbia di
+guerra. Serve ad animare la mappa: il client interpola tra i campioni.
+`GET /api/positions` restituisce un campione singolo.
+
 ### `GET /api/campaign`
 Nome, teatro, orologio, `live` (true quando DCS sta simulando qualcosa: tempo
 1:1), giocatori connessi (posizione, lato, volo assegnato) e per fazione:

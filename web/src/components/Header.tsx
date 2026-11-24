@@ -17,7 +17,9 @@ function TimeControls({ data }: { data: CampaignData }) {
   return (
     <div className="time-controls" title={error ?? title}>
       <button className={`play ${c.paused ? "" : "on"}`} disabled={live} onClick={() => change({ paused: !c.paused })} title={c.paused ? "Resume" : "Pause"}>
-        {c.paused ? "▶" : "⏸"}
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          {c.paused ? <path d="M2 1 L9 5 L2 9 Z" fill="currentColor" /> : <path d="M2 1 H4 V9 H2 Z M6 1 H8 V9 H6 Z" fill="currentColor" />}
+        </svg>
       </button>
       {SPEEDS.map((s) => (
         <button key={s} className={!c.paused && c.compression === s ? "on" : ""} disabled={live} onClick={() => change({ paused: false, compression: s })} title={`${s} s of campaign per second`}>

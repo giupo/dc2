@@ -47,6 +47,7 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 | **Supporto aereo** | **AWACS** in orbita dietro il fronte (sensore principale, controllo dei caccia), **tanker** che allungano raggio d'azione e permanenza delle CAP, **trasporti** con ponte aereo verso i depositi avanzati e rifornimento in elicottero delle brigate isolate. |
 | **Nebbia di guerra** | Ogni fazione vede solo quello che i suoi sensori hanno trovato: radar e occhi degli aerei, AWACS, radar a terra, ricognizione, ELINT, lanci SAM. Contatti con età, fonte e identificazione. **Anche IA, ATO, artiglieria e briefing decidono sul quadro informativo**, non sulla verità. |
 | **ATO stile BMS** | Ogni package ha un **numero a 4 cifre**, come in Falcon/BMS. La UI mostra l'ATO come lista di voli ordinata per decollo: package, volo, missione, aereo, T/O, TOT, stato. |
+| **Animazione e tempo** | Il motore gira a tick fisso (10 Hz) con un budget per frame; la mappa riceve le posizioni 5 volte al secondo e le **interpola a 60 fps**, senza scatti. **Pausa, play e accelerazione** da 1× a 3600× dall'intestazione della UI (non mentre un giocatore è in DCS, dove il tempo è 1:1). |
 | **Unità di misura** | Briefing e marcatori in DCS in **nodi, piedi e miglia nautiche** (di default) o nel sistema internazionale; nella UI si sceglie con un clic. |
 | **Missioni** | Ogni volo ha un **mission package**: briefing (missione, situazione, bersaglio con coordinate, minacce lungo la rotta), waypoint con nome, orario, quota e velocità, **armamento** da usare, pacchetto e frequenze. Gli aerei IA volano con lo stesso armamento descritto nel briefing. |
 | **Difesa aerea / IADS** | Patriot, S-300, Hawk, NASAMS, Buk, Kub, Tor, Osa, Avenger e radar di scoperta in rete. I sistemi mobili **si spostano sulle strade**; c'è la guerra SEAD. |
@@ -288,6 +289,12 @@ React, Vite, TypeScript e MapLibre GL, su mappa OpenFreeMap scura. Dettagli in
   missione, aereo, decollo, TOT e stato. Sono evidenziati i decolli entro 30
   minuti e i voli con giocatori; i voli completati si mostrano a richiesta. La
   vista "Packages" raggruppa i voli per package.
+- **Movimento fluido:** posizioni in streaming a 5 Hz, interpolate a 60 fps
+  come nel netcode dei videogiochi. La mappa è disegnata ~2 campioni (≈400 ms)
+  nel passato, così c'è sempre un campione prima e uno dopo. I marker sono
+  posizionati al sub-pixel e l'animazione non passa da React.
+- **Tempo:** nell'intestazione ci sono pausa/play e le velocità 1×, 10×, 60×,
+  300×, 900× e 3600×. Sono disabilitati quando un gioco è live.
 - **Unità:** "Units" passa da SI a kts/ft/NM (la scelta resta memorizzata nel
   browser). Valgono per briefing, portate dei SAM, quote dei waypoint e scala
   della mappa. Il default è quello della campagna.
@@ -352,7 +359,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 | Comando | Cosa fa |
 |---|---|
 | `dynacamp simulate <scenario>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--quiet`/`--verbose`) |
-| `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`) |
+| `dynacamp serve <scenario>` | tempo reale con DCS, API e UI (`--compression`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
 | `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |
@@ -496,6 +503,11 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
 15. **ATO stile BMS e unità di misura.** Numeri di package a 4 cifre, lista
     dei voli per orario di decollo, briefing in nodi, piedi e miglia nautiche o
     in SI (scenario, `--units`, `?units=`, interruttore nella UI).
+16. **Movimento fluido, pausa e accelerazione.** Ciclo di gioco a tick fisso
+    (10 Hz) con sleep per frame, stream delle posizioni a 5 Hz con nebbia di
+    guerra, interpolazione delle entità a 60 fps sul client con marker
+    sub-pixel, controllo del tempo via `POST /api/control` e pulsanti nella UI.
+    Il server a 3600× usa circa il 5% di una CPU.
 
 ## Limiti noti e prossimi passi
 
