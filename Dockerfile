@@ -6,7 +6,9 @@
 #   docker run --rm -p 8080:8080 -e DYNACAMP_COMPRESSION=600 dynacamp       # same speed, default args
 #
 # Environment: DYNACAMP_COMPRESSION (starting time compression, 1-7200; the
-# --compression flag wins), DYNACAMP_API_TOKEN (fixed token for API commands).
+# --compression flag wins), DYNACAMP_API_TOKEN (fixed token for API commands),
+# DYNACAMP_SEED (random seed; it wins over --seed and the scenario's, and on a
+# resumed save it restarts the random sequence at every start).
 #
 # UI on http://localhost:8080/, API on /api, docs on /docs. Port 50555 is the
 # DCS bridge (the mission's Lua script connects to it: set its host to this

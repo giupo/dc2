@@ -192,8 +192,9 @@ vero**. Funzionalità implementate:
 - **Unità e radio:** unità SI o kts/ft/NM; frequenze lontane dalle torri.
 - **Deploy:** Dockerfile in un'immagine unica (~140 MB, utente non-root,
   healthcheck), con la campagna salvata nel volume `/data`.
-  Variabili: `DYNACAMP_COMPRESSION` (compressione iniziale; vince `--compression`)
-  e `DYNACAMP_API_TOKEN`.
+  Variabili: `DYNACAMP_COMPRESSION` (compressione iniziale; vince `--compression`),
+  `DYNACAMP_API_TOKEN` e `DYNACAMP_SEED` (seed casuale; **vince su tutto**:
+  `--seed`, poi il seed dello scenario; richiesta esplicita dell'utente).
 - **Salvataggio e ripresa** (`persistence.py`): pickle gzip dell'intero
   `CampaignState`, con ripresa deterministica.
   - `simulate`/`serve` accettano un `.dcsave` al posto dello scenario.

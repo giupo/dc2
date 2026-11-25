@@ -169,6 +169,14 @@ senza riscrivere gli argomenti del container. Vale questo ordine: il flag
 `--compression`, poi la variabile, poi la compressione del salvataggio, infine 60.
 Un valore non numerico o fuori da [1, 7200] ferma l'avvio con un messaggio.
 
+Il **seed** casuale si cambia con `--seed N` (in `simulate` e `serve`) o con
+`-e DYNACAMP_SEED=N`. Qui **la variabile vince su tutto**: prima viene
+`DYNACAMP_SEED`, poi `--seed`, poi il `seed` dello scenario. Su uno scenario
+nuovo è lo stesso che scrivere `seed = N` nel `[campaign]`. Su un salvataggio
+ripreso la sequenza casuale riparte da `N`, quindi la campagna prende
+un'altra strada. Se la variabile resta impostata nel container, questo
+succede a ogni riavvio. Un valore non intero ferma l'avvio.
+
 ```bash
 docker run -d --name dynacamp -p 8080:8080 -p 50555:50555 -v dynacamp-data:/data \
   -e DYNACAMP_COMPRESSION=600 -e DYNACAMP_API_TOKEN=segreto dynacamp
@@ -490,6 +498,7 @@ un teatro senza proiezione, come le mappe finte dei test, accetta
 `pos = [est, nord]` in metri. `python tools/dcs_ll.py <teatro> <lat> <lon>`
 mostra le coordinate DCS di un punto, utile per un confronto nel mission
 editor.
+
 Dopo aver modificato i collegamenti, ricalcola le strade con
 `uv run dynacamp roads scenarios/<nome>.toml`.
 
@@ -497,9 +506,9 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 
 | Comando | Cosa fa |
 |---|---|
-| `dynacamp simulate <scenario\|salvataggio>` | campagna headless (`--days`, `--seed`, `--events out.jsonl`, `--save FILE`, `--quiet`/`--verbose`) |
+| `dynacamp simulate <scenario\|salvataggio>` | campagna headless (`--days`, `--seed` o `DYNACAMP_SEED`, `--events out.jsonl`, `--save FILE`, `--quiet`/`--verbose`) |
 | `dynacamp radio` | rigenera `data/radio.json`, le frequenze ATC degli aeroporti dai dati di DCS (serve pydcs) |
-| `dynacamp serve <scenario\|salvataggio>` | tempo reale con DCS, API e UI (`--compression` o `DYNACAMP_COMPRESSION`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`, `--save FILE`, `--autosave-minutes`, `--new`, `--api-token`) |
+| `dynacamp serve <scenario\|salvataggio>` | tempo reale con DCS, API e UI (`--compression` o `DYNACAMP_COMPRESSION`, `--seed` o `DYNACAMP_SEED`, `--tick-hz`, `--no-dcs`, `--port`, `--api-port`, `--web-dir`, `--units imperial\|metric`, `--save FILE`, `--autosave-minutes`, `--new`, `--api-token`) |
 | `dynacamp roads <scenario>...` | geometria stradale dei collegamenti, da OSRM; serve la rete |
 | `dynacamp build-miz <scenario>...` | missioni DCS (`--out-dir`, `--port`); serve l'extra `miz` |
 | `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |

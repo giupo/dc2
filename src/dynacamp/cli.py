@@ -98,11 +98,57 @@ def _load_campaign(path: str) -> tuple[CampaignState, persistence.SaveInfo | Non
     return scenario.load(path), None
 
 
+def campaign_seed(flag: int | None) -> tuple[int, str] | None:
+    """Random seed asked for: ``$DYNACAMP_SEED`` first (it wins over everything),
+    else ``--seed``; None keeps the scenario's (or the save's random state).
+
+    Args:
+        flag: Value of ``--seed`` (None: not given).
+
+    Returns:
+        (seed, where it came from), or None.
+
+    Raises:
+        SystemExit: ``$DYNACAMP_SEED`` is not an integer.
+    """
+    env = os.environ.get("DYNACAMP_SEED", "").strip()
+    if env:
+        try:
+            return int(env), "DYNACAMP_SEED"
+        except ValueError:
+            raise SystemExit(f"DYNACAMP_SEED must be an integer, not {env!r}") from None
+    if flag is not None:
+        return flag, "--seed"
+    return None
+
+
+def apply_seed(state: CampaignState, flag: int | None, resumed: bool) -> None:
+    """Re-seed the campaign's random generator if a seed is asked for (see
+    :func:`campaign_seed`), and record it in ``state.seed``.
+
+    On a fresh scenario this is the same as writing ``seed`` in its
+    ``[campaign]`` (loading draws no random numbers). On a resumed save the
+    campaign goes on with the new random sequence instead of the saved one.
+
+    Args:
+        state: The campaign just loaded.
+        flag: Value of ``--seed``.
+        resumed: The campaign comes from a save file.
+    """
+    asked = campaign_seed(flag)
+    if asked is None:
+        return
+    seed, source = asked
+    state.seed = seed
+    state.rng.seed(seed)
+    note = " (resumed save: the random sequence restarts from it)" if resumed else ""
+    print(f"Seed {seed} from {source}{note}", flush=True)
+
+
 def cmd_simulate(args: argparse.Namespace) -> None:
     """``dynacamp simulate``: run a campaign headless as fast as possible."""
-    state, _ = _load_campaign(args.scenario)
-    if args.seed is not None:
-        state.rng.seed(args.seed)
+    state, info = _load_campaign(args.scenario)
+    apply_seed(state, args.seed, resumed=info is not None)
 
     if not args.quiet:
         _print_events(state, args.verbose)
@@ -165,6 +211,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
         # Never overwrite a running campaign with a fresh one by accident.
         source = args.save
     state, info = _load_campaign(source)
+    apply_seed(state, args.seed, resumed=info is not None)
     compression = serve_compression(args.compression, info.compression if info else None)
     if args.units:
         state.units = args.units
@@ -325,7 +372,8 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("scenario", help="scenario (.toml) or save file to resume")
     s.add_argument("--days", type=float, default=5)
     s.add_argument("--report-hours", type=float, default=24)
-    s.add_argument("--seed", type=int)
+    s.add_argument("--seed", type=int,
+                   help="random seed (default: the scenario's; $DYNACAMP_SEED wins over this flag)")
     s.add_argument("--events", help="write the event log to this JSONL file")
     s.add_argument("--quiet", action="store_true", help="only print periodic summaries")
     s.add_argument("--verbose", action="store_true", help="print every event")
@@ -338,6 +386,8 @@ def main(argv: list[str] | None = None) -> None:
     v.add_argument("--port", type=int, default=50555)
     v.add_argument("--compression", type=float,
                    help="time compression with no players (default: $DYNACAMP_COMPRESSION, else the save's, else 60)")
+    v.add_argument("--seed", type=int,
+                   help="random seed (default: the scenario's; $DYNACAMP_SEED wins over this flag)")
     v.add_argument("--tick-hz", type=float, default=10.0,
                    help="engine steps per real second (smoother movement, more CPU)")
     v.add_argument("--units", choices=[UnitDomain.IMPERIAL, UnitDomain.METRIC],
