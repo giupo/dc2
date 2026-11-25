@@ -69,6 +69,14 @@ uv sync --group docs          # + Sphinx, per la documentazione
 (cd web && npm install && npm run build)   # interfaccia web
 ```
 
+Attenzione: `uv sync` porta l'ambiente esattamente al set richiesto e rimuove
+il resto. Le righe qui sopra non si sommano: l'ultima `uv sync` lanciata vince.
+Per avere tutto (motore, pydcs, test e documentazione):
+
+```bash
+uv sync --extra miz --group dev --group docs
+```
+
 Il motore di simulazione usa solo la libreria standard. L'API usa FastAPI e
 uvicorn.
 
@@ -489,10 +497,16 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
   funzioni sono documentati con docstring in stile Google:
 
   ```bash
-  uv sync --group docs
-  uv run --group docs sphinx-build -b html docs/sphinx docs/sphinx/_build/html
+  uv run --group docs sphinx-build -q -b html docs/sphinx docs/sphinx/_build/html
   # apri docs/sphinx/_build/html/index.html
   ```
+
+  `uv run --group docs` installa Sphinx se manca e non rimuove gli altri
+  pacchetti, al contrario di `uv sync --group docs` (vedi
+  [Installazione](#installazione)). Con `-q` si vedono solo gli avvisi.
+  La build deve uscire **senza avvisi**: di solito un avviso indica una
+  docstring mancante o non in stile Google. Per ricostruire da zero,
+  cancellare prima `docs/sphinx/_build`.
 
   Il sito include questa guida, l'architettura, l'API HTTP e un riferimento
   generato per ogni modulo, con link al sorgente. Si pubblica come qualsiasi
