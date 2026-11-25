@@ -12,6 +12,7 @@ gioco** (player bubble, stile *Falcon 4 / BMS*); altrove la porta avanti il moto
 
 ```
             ┌───────────────────── CORE (puro Python, deterministico) ─────────────────────┐
+            │ catalog.py   catalogo dei mezzi: data/catalog/*.toml → dataclass frozen       │
             │ world.py     province, link, terreno, pathfinding                             │
             │ forces.py    elementi, template, Division, Convoy, Authority                  │
             │ state.py     CampaignState: mondo + forze + battaglie + event log + RNG       │
@@ -31,6 +32,24 @@ gioco** (player bubble, stile *Falcon 4 / BMS*); altrove la porta avanti il moto
 Il core non importa nulla da `adapters/dcs`. Tutto ciò che sa di DCS (nomi dei
 tipi di unità, sistemi di coordinate, country id, rapporti di rappresentazione)
 sta nell'adapter.
+
+
+**Catalogo** (`catalog.py`, `data/catalog/`). Ciò che il motore sa dei *tipi*
+di cose, indipendente dallo scenario, sta in tre file TOML scritti a mano:
+`aircraft.toml` (64 aerei), `air_defense.toml` (12 sistemi) e `ground.toml`
+(`[elements.*]` e `[templates.*]`). Ogni voce ha una sottotabella `dcs` con
+i dati per DCS (tipo d'unità, call sign, rapporto di rappresentanza), che il
+motore ignora: la legge solo l'adapter (`adapters/dcs/catalog.py`) e
+`callsigns.py`. `catalog.py` non conosce le classi del dominio: ogni modulo
+costruisce i suoi oggetti con `catalog.build(file, Classe, convert=...)`
+(`air.AIRCRAFT`, `air_defense.SYSTEMS`, `forces.ELEMENTS`,
+`forces.DEFAULT_TEMPLATES`), quindi niente cicli d'import. Il caricamento è
+stretto: campi sconosciuti o mancanti e tipi sbagliati danno `CatalogError`
+con file e voce. Restano nel codice gli Enum, il comportamento (proprietà
+derivate) e le costanti di calibrazione delle regole (`combat.py`,
+`sensors.py`, `TERRAIN`). `tests/test_catalog.py` controlla la coerenza:
+ogni aereo ha un tipo DCS e, se armato, una voce in `loadouts.json`; ogni
+elemento di un sito o di una brigata ha la sua unità DCS per entrambe le parti.
 
 ## Modello di simulazione
 
@@ -123,8 +142,19 @@ tenere Tabqa protegge Al-Bab e Aleppo. Lo stesso calcolo impedisce di mandare
 al fronte una riserva la cui partenza scoprirebbe qualcosa.
 
 Tutto ciò che cambia finisce nell'**event log** (`events.py`), la base per la
-futura UI web (timeline, replay, storia del fronte). `CampaignState.snapshot()`
+UI web (timeline, replay, storia del fronte). `CampaignState.snapshot()`
 dà una vista JSON dello stato corrente.
+
+I tipi di evento sono un solo catalogo, `events.EventKind` (`StrEnum`):
+`state.emit(EventKind.X, ...)`, e `emit` rifiuta le stringhe che non sono un
+membro. Accanto all'Enum ci sono le classificazioni: `NOTABLE` (cosa stampa
+`simulate` senza `--verbose`) e `PUBLIC` (cosa vede ogni fazione nella nebbia
+di guerra). L'API esporta `EventKind` nello schema OpenAPI, così la UI ha il
+tipo unione e `tsc` controlla le sue tabelle (`EVENT_CATEGORY` in
+`web/src/lib/format.ts`, `RELEVANT` in `useCampaign.ts`).
+`tests/test_event_kinds.py` verifica che ogni `emit` usi un membro e che ogni
+membro sia emesso da qualche parte. Gli eventi del bridge DCS
+(`PlayerEventKind` ecc.) sono un protocollo a parte e restano fuori.
 
 **Salvataggio** (`persistence.py`). Si salva l'intero `CampaignState` come
 pickle compresso con gzip, dentro un involucro con versione del formato,
@@ -380,7 +410,8 @@ e volano 2.5 sortite per aereo al giorno.
 
 **DCS.** Un sito si materializza quando un giocatore entra nella sua *portata*
 (`bubble_reach`), non solo nella bolla: entrare nella copertura di un S-300 fa
-comparire l'S-300. È un gruppo con i tipi DCS veri (`catalog.SAM_TYPES`,
+comparire l'S-300. È un gruppo con i tipi DCS veri (`[<id>.dcs]` in
+`data/catalog/air_defense.toml`, esposti come `catalog.SAM_TYPES`,
 verificati contro pydcs), schierato sulla strada, in allerta rossa e con
 fuoco libero. L'IADS dentro DCS (EMCON coordinato) richiederebbe uno script
 dedicato, per esempio Skynet: in gioco ogni sito combatte da solo.

@@ -36,6 +36,7 @@ from ..air import ACTIVE_STATUSES, Flight, FlightStatus, SeatState, Task
 from ..forces import Authority, Convoy, Division
 from ..geo import Vec2
 from ..state import CampaignState
+from ..events import EventKind
 
 LATE_JOIN_S = 10 * 60.0
 AD_RADIUS_M = 15_000.0
@@ -87,6 +88,7 @@ def run(state: CampaignState, dt: float) -> None:
             else:
                 f.ai_done = True
         _check_complete(state, f)
+
     _air_combat(state)
     _cleanup(state)
     _replacements(state)
@@ -104,7 +106,7 @@ def _replacements(state: CampaignState) -> None:
         base = state.airbases[sq.airbase]
         if sq.aircraft < sq.establishment and base.owner(state.theater) == sq.faction:
             sq.aircraft += 1
-            state.emit("aircraft_delivered", squadron=sq.id, faction=sq.faction, aircraft=sq.aircraft)
+            state.emit(EventKind.AIRCRAFT_DELIVERED, squadron=sq.id, faction=sq.faction, aircraft=sq.aircraft)
 
 
 # ---------------------------------------------------------------- helpers
@@ -140,7 +142,7 @@ def lose_aircraft(state: CampaignState, f: Flight, n: int, cause: str) -> None:
     sq = state.squadrons[f.squadron]
     sq.aircraft -= n
     sq.committed -= n
-    state.emit("aircraft_lost", flight=f.id, faction=f.faction, count=n, cause=cause)
+    state.emit(EventKind.AIRCRAFT_LOST, flight=f.id, faction=f.faction, count=n, cause=cause)
     if f.ai_count == 0:
         f.ai_done = True
 
@@ -160,7 +162,7 @@ def _takeoff(state: CampaignState, f: Flight) -> None:
         _load_cargo(state, f, base)
     if f.ai_count == 0:
         f.ai_done = True  # flown entirely by players
-    state.emit("flight_takeoff", flight=f.id, callsign=f.callsign, faction=f.faction, task=f.task.value, ai=f.ai_count, players=len(f.active_seats))
+    state.emit(EventKind.FLIGHT_TAKEOFF, flight=f.id, callsign=f.callsign, faction=f.faction, task=f.task.value, ai=f.ai_count, players=len(f.active_seats))
 
 
 def _load_cargo(state: CampaignState, f: Flight, base) -> None:
@@ -185,7 +187,7 @@ def _cancel(state: CampaignState, f: Flight, reason: str) -> None:
         if seat.state in (SeatState.ASSIGNED, SeatState.AIRBORNE):
             seat.state = SeatState.LEFT
             state.player_flights.pop(pid, None)
-    state.emit("flight_cancelled", flight=f.id, callsign=f.callsign, reason=reason)
+    state.emit(EventKind.FLIGHT_CANCELLED, flight=f.id, callsign=f.callsign, reason=reason)
 
 
 def _target_entity(state: CampaignState, f: Flight) -> Division | Convoy | None:
@@ -237,7 +239,7 @@ def go_home(state: CampaignState, f: Flight, reason: str) -> None:
     f.engaging = ""
     if f.task.orbits:
         f.station_until = min(f.station_until, state.time)
-    state.emit("flight_rtb", flight=f.id, callsign=f.callsign, faction=f.faction, reason=reason)
+    state.emit(EventKind.FLIGHT_RTB, flight=f.id, callsign=f.callsign, faction=f.faction, reason=reason)
 
 
 def _burn(f: Flight, metres: float) -> None:
@@ -340,7 +342,7 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
     _burn(f, f.speed_ms * dt - remaining)
     if f.wp_index >= len(f.waypoints):
         f.ai_done = True
-        state.emit("flight_landed", flight=f.id, callsign=f.callsign, aircraft=f.ai_count)
+        state.emit(EventKind.FLIGHT_LANDED, flight=f.id, callsign=f.callsign, aircraft=f.ai_count)
     else:
         _bingo(state, f)
 
@@ -361,7 +363,7 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
         return
     f.status = FlightStatus.DONE
     state.squadrons[f.squadron].release(f.size, state.time + TURNAROUND_S)
-    state.emit("flight_complete", flight=f.id, callsign=f.callsign, faction=f.faction, survivors=f.size)
+    state.emit(EventKind.FLIGHT_COMPLETE, flight=f.id, callsign=f.callsign, faction=f.faction, survivors=f.size)
 
 
 # ---------------------------------------------------------------- attacks
@@ -389,7 +391,7 @@ def deliver(state: CampaignState, f: Flight) -> None:
             for d in divs:
                 d.supply += needs[d.id] * share
             delivered = min(cargo, total)
-    state.emit("airlift_delivered", flight=f.id, callsign=f.callsign, faction=f.faction, delivery=f.target_kind, target=f.target_id, amount=round(delivered, 1))
+    state.emit(EventKind.AIRLIFT_DELIVERED, flight=f.id, callsign=f.callsign, faction=f.faction, delivery=f.target_kind, target=f.target_id, amount=round(delivered, 1))
 
 
 def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = None, reach: float = AWACS_SUPPORT_RANGE_M) -> Flight | None:
@@ -433,7 +435,7 @@ def attack(state: CampaignState, f: Flight) -> None:
     eff = f.ai_count * f.aircraft_type.a2g
     result: dict[str, object] = {"lost": lost}
     if eff <= 0:
-        state.emit("air_strike", flight=f.id, faction=f.faction, task=f.task.value, **result)
+        state.emit(EventKind.AIR_STRIKE, flight=f.id, faction=f.faction, task=f.task.value, **result)
         return
 
     def campaign_owned(e) -> bool:
@@ -487,7 +489,7 @@ def attack(state: CampaignState, f: Flight) -> None:
             result["trucks_destroyed"] = round(killed, 1)
             if convoy.trucks < 0.5:
                 del state.convoys[convoy.id]
-                state.emit("convoy_destroyed", convoy=convoy.id, faction=convoy.faction, reason="air")
+                state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason="air")
     else:
         if f.target_kind == "battle" and f.target_id in state.battles:
             b = state.battles[f.target_id]
@@ -502,7 +504,7 @@ def attack(state: CampaignState, f: Flight) -> None:
             d.take_losses(GROUND_STRENGTH_PER_EFF * share)
             d.org = max(0.0, d.org - GROUND_ORG_PER_EFF * share)
         result["divisions"] = [d.id for d in targets]
-    state.emit("air_strike", flight=f.id, faction=f.faction, task=f.task.value, **result)
+    state.emit(EventKind.AIR_STRIKE, flight=f.id, faction=f.faction, task=f.task.value, **result)
 
 
 def _nearest_enemy(state: CampaignState, f: Flight, pool, preferred: str):
@@ -636,7 +638,7 @@ def _salvo(state: CampaignState, f: Flight, tgt: Flight, d: float) -> None:
     if not shots and not back_shots:
         return
     state.emit(
-        "air_engagement", flights=[f.id, tgt.id], callsigns=[f.callsign, tgt.callsign],
+        EventKind.AIR_ENGAGEMENT, flights=[f.id, tgt.id], callsigns=[f.callsign, tgt.callsign],
         losses=[back_kills, kills], phase=phase, shots=[shots, back_shots],
     )
     lose_aircraft(state, tgt, kills, f"air combat with {f.callsign}")
@@ -650,10 +652,10 @@ def _salvo(state: CampaignState, f: Flight, tgt: Flight, d: float) -> None:
         if not x.task.air_to_air and not x.attacked and (lost or other > own):
             x.status = FlightStatus.RTB
             x.wp_index = len(x.waypoints) - 1
-            state.emit("flight_aborted", flight=x.id, callsign=x.callsign, reason="intercepted")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=x.id, callsign=x.callsign, reason="intercepted")
         elif x.task.air_to_air and lost * 2 >= lost + x.ai_count:
             go_home(state, x, "losses")
-            state.emit("flight_aborted", flight=x.id, callsign=x.callsign, reason="losses")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=x.id, callsign=x.callsign, reason="losses")
     if tgt.ai_count <= 0 or not f.engaging:
         disengage(state, f)
 
@@ -699,4 +701,11 @@ def _cleanup(state: CampaignState) -> None:
                     old = state.archive.pop(next(iter(state.archive)))
                     for fid in old.flights:
                         state.archived_flights.pop(fid, None)
-                state.emit("package_complete", package=pkg.id, number=pkg.number, faction=pkg.faction, task=pkg.task.value, target=pkg.target_label)
+                state.emit(
+                    EventKind.PACKAGE_COMPLETE,
+                    package=pkg.id,
+                    number=pkg.number,
+                    faction=pkg.faction,
+                    task=pkg.task.value,
+                    target=pkg.target_label
+                )

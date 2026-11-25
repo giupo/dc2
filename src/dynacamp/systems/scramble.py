@@ -32,6 +32,7 @@ from ..geo import Vec2
 from ..state import CampaignState
 from ..units import M_PER_NM as NM
 from . import ato, intel, routing
+from ..events import EventKind
 
 CHECK_INTERVAL_S = 60.0
 SCRAMBLE_RADIUS_M = 30 * NM  # alarm distance from a base or a protected asset
@@ -158,7 +159,7 @@ def launch(state: CampaignState, fid: str, c: intel.Contact, base_id: str, label
     f = ato._add_flight(state, pkg, sq, Task.CAP, SIZE, tot, r, ([home, c.position, home], 1))
     f.station_until = tot + STATION_S
     state.emit(
-        "scramble",
+        EventKind.SCRAMBLE,
         flight=f.id,
         callsign=f.callsign,
         faction=fid,

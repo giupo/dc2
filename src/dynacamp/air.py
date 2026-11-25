@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from . import catalog
 from .forces import MobileEntity
 from .geo import Vec2
 from .world import Theater
@@ -110,84 +111,23 @@ class AircraftType:
         return 20_000.0 if self.a2g >= 1.0 else 10_000.0
 
 
-def _t(*names: str) -> frozenset[Task]:
-    """Frozen set of tasks from their names."""
-    return frozenset(Task(n) for n in names)
+def _tasks(value: object) -> frozenset[Task]:
+    """Catalogue converter: a list of task names to a frozen set of :class:`Task`.
+
+    Args:
+        value: The TOML list, e.g. ``["CAP", "ESCORT"]``.
+
+    Raises:
+        TypeError: If it is not a list of strings.
+        ValueError: On an unknown task name.
+    """
+    if not isinstance(value, list) or not all(isinstance(n, str) for n in value):
+        raise TypeError(f"expected a list of task names, got {value!r}")
+    return frozenset(Task(n) for n in value)
 
 
-AIRCRAFT: dict[str, AircraftType] = {
-    a.id: a
-    for a in (
-        AircraftType("f16c", "F-16C", 800, 550, 1.0, 1.0, _t("CAP", "ESCORT", "SEAD", "STRIKE", "BAI", "CAS")),
-        AircraftType("fa18c", "F/A-18C", 800, 550, 0.9, 1.0, _t("CAP", "ESCORT", "SEAD", "STRIKE", "BAI", "CAS")),
-        AircraftType("f15c", "F-15C", 850, 700, 1.3, 0.0, _t("CAP", "ESCORT")),
-        AircraftType("a10c", "A-10C", 550, 450, 0.2, 1.4, _t("CAS", "BAI")),
-        AircraftType("ah64d", "AH-64D", 250, 150, 0.05, 1.2, _t("CAS", "BAI"), helo=True),
-        AircraftType("su27", "Su-27", 850, 700, 1.2, 0.0, _t("CAP", "ESCORT")),
-        AircraftType("mig29s", "MiG-29S", 850, 450, 1.0, 0.2, _t("CAP", "ESCORT")),
-        AircraftType("su25t", "Su-25T", 650, 400, 0.2, 1.2, _t("CAS", "BAI", "SEAD")),
-        AircraftType("su24m", "Su-24M", 800, 600, 0.1, 1.1, _t("STRIKE", "BAI")),
-        AircraftType("mi24p", "Mi-24P", 250, 160, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
-        # ---- 1980s-2000s, western / blue
-        AircraftType("f14a", "F-14A", 850, 700, 1.1, 0.3, _t("CAP", "ESCORT")),
-        AircraftType("f14b", "F-14B", 850, 750, 1.2, 0.6, _t("CAP", "ESCORT", "STRIKE", "BAI")),
-        AircraftType("f15e", "F-15E", 850, 900, 1.1, 1.3, _t("CAP", "ESCORT", "STRIKE", "BAI", "CAS")),
-        AircraftType("f16a", "F-16A", 800, 500, 0.9, 0.8, _t("CAP", "ESCORT", "BAI", "CAS")),
-        AircraftType("f4e", "F-4E", 800, 500, 0.7, 0.8, _t("CAP", "ESCORT", "STRIKE", "BAI", "CAS")),
-        AircraftType("a10a", "A-10A", 550, 400, 0.2, 1.2, _t("CAS", "BAI")),
-        AircraftType("av8b", "AV-8B", 650, 350, 0.4, 1.1, _t("CAS", "BAI", "STRIKE")),
-        AircraftType("f117", "F-117A", 800, 1000, 0.0, 1.3, _t("STRIKE")),
-        AircraftType("b1b", "B-1B", 900, 3000, 0.0, 3.0, _t("STRIKE", "BAI")),
-        AircraftType("b52h", "B-52H", 800, 3500, 0.0, 3.0, _t("STRIKE")),
-        AircraftType("tornado_gr4", "Tornado GR4", 800, 700, 0.2, 1.2, _t("STRIKE", "BAI", "SEAD")),
-        AircraftType("tornado_ids", "Tornado IDS", 800, 700, 0.2, 1.1, _t("STRIKE", "BAI", "SEAD")),
-        AircraftType("m2000c", "Mirage 2000C", 850, 450, 1.1, 0.5, _t("CAP", "ESCORT", "BAI")),
-        AircraftType("m2000_5", "Mirage 2000-5", 850, 500, 1.2, 0.2, _t("CAP", "ESCORT")),
-        AircraftType("f5e", "F-5E", 750, 300, 0.6, 0.5, _t("CAP", "ESCORT", "CAS")),
-        AircraftType("jf17", "JF-17", 800, 500, 0.9, 1.0, _t("CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE")),
-        AircraftType("mirage_f1", "Mirage F1EE", 800, 400, 0.7, 0.6, _t("CAP", "ESCORT", "CAS", "BAI")),
-        AircraftType("ajs37", "AJS-37 Viggen", 800, 400, 0.4, 1.0, _t("BAI", "STRIKE", "CAS")),
-        AircraftType("ah1w", "AH-1W", 230, 150, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
-        AircraftType("oh58d", "OH-58D", 200, 120, 0.0, 0.6, _t("CAS", "BAI"), helo=True),
-        AircraftType("sa342", "SA342 Gazelle", 250, 140, 0.0, 0.6, _t("CAS", "BAI"), helo=True),
-        # ---- 1980s-2000s, eastern / red
-        AircraftType("mig29a", "MiG-29A", 850, 400, 0.9, 0.2, _t("CAP", "ESCORT")),
-        AircraftType("mig29g", "MiG-29G", 850, 400, 0.9, 0.2, _t("CAP", "ESCORT")),
-        AircraftType("mig31", "MiG-31", 1000, 700, 1.1, 0.0, _t("CAP", "ESCORT")),
-        AircraftType("mig25pd", "MiG-25PD", 1000, 600, 0.8, 0.0, _t("CAP")),
-        AircraftType("mig23mld", "MiG-23MLD", 850, 450, 0.7, 0.5, _t("CAP", "ESCORT", "CAS", "BAI")),
-        AircraftType("mig27k", "MiG-27K", 800, 450, 0.2, 1.0, _t("CAS", "BAI", "STRIKE", "SEAD")),
-        AircraftType("su33", "Su-33", 850, 700, 1.2, 0.4, _t("CAP", "ESCORT")),
-        AircraftType("su30", "Su-30", 850, 800, 1.3, 1.0, _t("CAP", "ESCORT", "SEAD", "STRIKE", "BAI")),
-        AircraftType("su34", "Su-34", 850, 900, 0.6, 1.4, _t("STRIKE", "BAI", "CAS", "SEAD")),
-        AircraftType("su25", "Su-25", 650, 400, 0.2, 1.1, _t("CAS", "BAI")),
-        AircraftType("su25tm", "Su-25TM", 650, 400, 0.2, 1.3, _t("CAS", "BAI", "SEAD")),
-        AircraftType("su17m4", "Su-17M4", 800, 400, 0.2, 0.9, _t("CAS", "BAI", "STRIKE")),
-        AircraftType("tu22m3", "Tu-22M3", 900, 2000, 0.0, 2.5, _t("STRIKE")),
-        AircraftType("tu95ms", "Tu-95MS", 750, 4000, 0.0, 2.5, _t("STRIKE")),
-        # (Tu-160 left out: DCS' data has no weapons for its internal bays.)
-        # ---- support: AWACS, tankers, transports
-        AircraftType("e3a", "E-3A Sentry", 750, 1500, 0.0, 0.0, _t("AWACS"), alt_m=9000, radar_km=400, ground_km=0),
-        AircraftType("e2c", "E-2C Hawkeye", 550, 1200, 0.0, 0.0, _t("AWACS"), alt_m=8000, radar_km=350, ground_km=0),
-        AircraftType("a50", "A-50 Mainstay", 750, 1500, 0.0, 0.0, _t("AWACS"), alt_m=9000, radar_km=300, ground_km=0),
-        AircraftType("kc135", "KC-135", 800, 2500, 0.0, 0.0, _t("TANKER"), alt_m=7000, radar_km=0, ground_km=0),
-        AircraftType("kc130", "KC-130", 550, 2000, 0.0, 0.0, _t("TANKER"), alt_m=5500, radar_km=0, ground_km=0),
-        AircraftType("il78m", "IL-78M", 750, 2500, 0.0, 0.0, _t("TANKER"), alt_m=7000, radar_km=0, ground_km=0),
-        AircraftType("c130", "C-130", 550, 2000, 0.0, 0.0, _t("TRANSPORT"), cargo=150, alt_m=6000, radar_km=0, ground_km=0),
-        AircraftType("c17", "C-17A", 750, 3000, 0.0, 0.0, _t("TRANSPORT"), cargo=400, alt_m=8000, radar_km=0, ground_km=0),
-        AircraftType("il76", "IL-76MD", 750, 2500, 0.0, 0.0, _t("TRANSPORT"), cargo=300, alt_m=8000, radar_km=0, ground_km=0),
-        AircraftType("an26", "An-26B", 430, 1000, 0.0, 0.0, _t("TRANSPORT"), cargo=60, alt_m=5000, radar_km=0, ground_km=0),
-        AircraftType("uh60a", "UH-60A", 250, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=25, radar_km=0),
-        AircraftType("ch47d", "CH-47D", 250, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=60, radar_km=0),
-        AircraftType("mi8mt", "Mi-8MT", 230, 400, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=30, radar_km=0),
-        AircraftType("mi26", "Mi-26", 250, 500, 0.0, 0.0, _t("TRANSPORT"), helo=True, cargo=100, radar_km=0),
-        AircraftType("j11a", "J-11A", 850, 700, 1.2, 0.3, _t("CAP", "ESCORT")),
-        AircraftType("mig21bis", "MiG-21bis", 800, 300, 0.6, 0.4, _t("CAP", "ESCORT", "CAS")),
-        AircraftType("ka50", "Ka-50", 270, 160, 0.05, 1.2, _t("CAS", "BAI"), helo=True),
-        AircraftType("mi28n", "Mi-28N", 260, 160, 0.05, 1.2, _t("CAS", "BAI"), helo=True),
-        AircraftType("mi24v", "Mi-24V", 250, 160, 0.05, 1.0, _t("CAS", "BAI"), helo=True),
-    )
-}
+AIRCRAFT: dict[str, AircraftType] = catalog.build("aircraft", AircraftType, convert={"tasks": _tasks})
+"""Every aircraft type, from ``data/catalog/aircraft.toml``."""
 
 
 @dataclass

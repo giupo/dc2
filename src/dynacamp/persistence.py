@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from .forces import Authority
 from .state import CampaignState
+from .events import EventKind
 
 if TYPE_CHECKING:  # pragma: no cover
     from .engine import Engine
@@ -229,7 +230,7 @@ def load(path: str | Path) -> tuple[CampaignState, SaveInfo]:
     _add_missing_fields(state)
     _detach_from_game(state)
     info = _info(envelope)
-    state.emit("campaign_resumed", saved_by=info.version, saved_at=info.saved_at)
+    state.emit(EventKind.CAMPAIGN_RESUMED, saved_by=info.version, saved_at=info.saved_at)
     return state, info
 
 
@@ -309,7 +310,7 @@ class Saver:
             record = SaveRecord(saved_at=time.time(), campaign_time=when, trigger=trigger)
             self.last = record
         with engine.lock:
-            engine.state.emit("campaign_saved", file=self.path.name, trigger=trigger, campaign_time=when)
+            engine.state.emit(EventKind.CAMPAIGN_SAVED, file=self.path.name, trigger=trigger, campaign_time=when)
         return record
 
     def due(self) -> bool:

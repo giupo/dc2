@@ -74,9 +74,13 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   lua5.1, come DCS. I commenti lunghi si scrivono con `--[==[ ... ]==]`.
 - **API:** se cambia, `npm run gen:api`. TypeScript resta fissato a ~5.9,
   perché la versione 7 non funziona con openapi-typescript.
-- **`state.emit(kind, **data)`:** non usare chiavi chiamate `kind`, perché
-  collidono con il primo argomento. Si usano per esempio `player_kind` e
-  `delivery`.
+- **`state.emit(EventKind.X, **data)`:** i tipi di evento sono solo i membri
+  di `events.EventKind`, con le classificazioni `NOTABLE`/`PUBLIC` accanto.
+  Un tipo nuovo: aggiungerlo all'Enum, poi `npm run gen:api` e dargli una
+  categoria in `EVENT_CATEGORY` (`web/src/lib/format.ts`, altrimenti `tsc`
+  fallisce). Niente elenchi di tipi altrove. Non usare chiavi chiamate `kind`
+  nel payload, perché collidono con il primo argomento: si usano per esempio
+  `player_kind` e `delivery`.
 - **Quote:** solo da `air.waypoint_altitudes` / `air.flight_altitude`
   (briefing, rotta DCS, SAM, sensori). Non usare `cruise_alt_m` direttamente
   per la quota di un volo.
@@ -92,9 +96,16 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Nebbia di guerra:** le *decisioni* (ATO, IA, artiglieria, briefing) usano
   `systems/intel.py`, mai la verità. La *fisica* (combattimenti, ingaggi) usa
   la verità. Le viste API con `?faction=` mostrano solo i contatti.
+- **Catalogo** (`src/dynacamp/data/catalog/*.toml`, caricato da `catalog.py`):
+  aerei, sistemi di difesa aerea, elementi e template di brigata, ciascuno in
+  **una sola voce** con la sottotabella `[<id>.dcs]` per i dati DCS (tipo,
+  call sign, rapporto). Niente tabelle di dati nel codice: un aereo nuovo si
+  aggiunge solo in `aircraft.toml`, poi `dynacamp loadouts`. Le costanti di
+  calibrazione delle regole restano nel codice. Se una dataclass del catalogo
+  prende un campo non scalare, serve un converter in `catalog.build`.
 - **Call sign DCS:** si calcolano solo con `dynacamp.callsigns`. Gli elenchi
-  per tipo sono copiati da pydcs e verificati da `tests/test_callsigns.py`;
-  se si aggiunge un aereo con nomi propri, aggiornare `TYPE_NAMES`.
+  per tipo sono in `callsigns` di `[<id>.dcs]` in `aircraft.toml`, copiati da
+  pydcs e verificati da `tests/test_callsigns.py`.
 - **Frequenze radio:** si assegnano solo con `dynacamp.radio.allocate`, lontano
   dalle ATC degli aeroporti della zona (`data/radio.json`), dalle frequenze di
   emergenza e dagli altri voli. Requisito esplicito dell'utente.
@@ -277,6 +288,7 @@ vero**. Funzionalità implementate:
 
 - `src/dynacamp/data/loadouts.json`, `src/dynacamp/data/radio.json`: generati
   dai dati di DCS. Vanno versionati, perché il runtime non richiede pydcs.
+- `src/dynacamp/data/catalog/*.toml`: il catalogo, scritto a mano (non generato).
 - `missions/*.miz`: generati. Vanno versionati e copiati in DCS.
 - `tools/ui/`: script di verifica della UI in Chrome headless. Su questo PC
   serve `CHROME=chromium`. Fanno screenshot, stampa PDF e misura della

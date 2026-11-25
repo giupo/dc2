@@ -30,6 +30,7 @@ from ..forces import Authority
 from ..geo import Vec2
 from ..state import CampaignState
 from . import air, supply
+from ..events import EventKind
 
 SALVO = 2
 ENGAGE_COOLDOWN_S = 3 * 60.0
@@ -184,7 +185,7 @@ def _engage(state: CampaignState) -> None:
         kills = min(f.ai_count, sum(1 for _ in range(fired) if state.rng.random() < pk))
         u.missiles -= fired
         u.engage_ready = state.time + ENGAGE_COOLDOWN_S
-        state.emit("sam_engagement", sam=u.id, system=u.system.name, faction=u.faction, flight=f.id,
+        state.emit(EventKind.SAM_ENGAGEMENT, sam=u.id, system=u.system.name, faction=u.faction, flight=f.id,
                    callsign=f.callsign, fired=fired, kills=kills, networked=networked)
         # The launch gives the site away to the target's side (fog of war).
         from . import intel
@@ -194,7 +195,7 @@ def _engage(state: CampaignState) -> None:
         if kills and not f.task.air_to_air and f.task is not Task.SEAD and not f.attacked and f.status is FlightStatus.AIRBORNE:
             f.status = FlightStatus.RTB
             f.wp_index = len(f.waypoints) - 1
-            state.emit("flight_aborted", flight=f.id, callsign=f.callsign, reason="SAM threat")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason="SAM threat")
         if f.ai_count > 0 and f.status in ACTIVE_STATUSES:
             evade(state, f, u)
 
@@ -225,7 +226,7 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
         if station is None:
             f.status = FlightStatus.RTB
             f.wp_index = f.target_index + 1
-            state.emit("flight_aborted", flight=f.id, callsign=f.callsign, reason="SAM threat")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason="SAM threat")
             return
         if station.distance_to(anchor) < 1.0:
             return
@@ -233,7 +234,7 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
         if f.status is FlightStatus.ON_STATION:
             f.status = FlightStatus.AIRBORNE
             f.wp_index = f.target_index
-        state.emit("flight_rerouted", flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
+        state.emit(EventKind.FLIGHT_REROUTED, flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
         return
     if f.wp_index >= len(f.waypoints):
         return
@@ -243,7 +244,7 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
     f.waypoints[f.wp_index:f.wp_index] = detour
     if f.target_index >= f.wp_index:
         f.target_index += len(detour)
-    state.emit("flight_rerouted", flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
+    state.emit(EventKind.FLIGHT_REROUTED, flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
 
 
 def _sead(state: CampaignState) -> None:
@@ -271,7 +272,7 @@ def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str
     """Anti-radiation attack on an emitting site."""
     if network_node(state, u) is not None and state.rng.random() < GO_DARK_CHANCE:
         _suppress(state, u, SUPPRESS_S / 2)
-        state.emit("harm_strike", sam=u.id, system=u.system.name, faction=u.faction, by=by, result="went dark")
+        state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="went dark")
         return
     roll = state.rng.random()
     if roll < min(0.6, 0.12 * effort):
@@ -284,7 +285,7 @@ def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str
         result = "suppressed"
     else:
         result = "missed"
-    state.emit("harm_strike", sam=u.id, system=u.system.name, faction=u.faction, by=by, result=result)
+    state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result=result)
 
 
 def strike_site(state: CampaignState, u: AirDefenseUnit, effort: float, by: str) -> None:
@@ -293,10 +294,10 @@ def strike_site(state: CampaignState, u: AirDefenseUnit, effort: float, by: str)
     if state.rng.random() < min(0.85, 0.2 * effort * exposed):
         for k in u.elements:
             u.elements[k] *= 0.3 if k == "launcher" else 0.0
-        state.emit("sam_struck", sam=u.id, system=u.system.name, faction=u.faction, by=by, result="destroyed")
+        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="destroyed")
     else:
         _suppress(state, u, SUPPRESS_S)
-        state.emit("sam_struck", sam=u.id, system=u.system.name, faction=u.faction, by=by, result="suppressed")
+        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="suppressed")
 
 
 def _suppress(state: CampaignState, u: AirDefenseUnit, seconds: float) -> None:
@@ -312,7 +313,7 @@ def _remove_destroyed(state: CampaignState) -> None:
     for u in list(state.air_defense.values()):
         if not u.operational and u.authority is Authority.CAMPAIGN:
             del state.air_defense[u.id]
-            state.emit("sam_destroyed", sam=u.id, system=u.system.name, faction=u.faction, province=u.location)
+            state.emit(EventKind.SAM_DESTROYED, sam=u.id, system=u.system.name, faction=u.faction, province=u.location)
             schedule_replacement(state, u)
 
 
@@ -333,7 +334,7 @@ def _reform(state: CampaignState) -> None:
         u = AirDefenseUnit(id=state.new_id("ad"), name=name, faction=faction, location=home.id, system=system,
                            status=SamStatus.SETTING_UP, ready_at=state.time + system.setup_s)
         state.air_defense[u.id] = u
-        state.emit("sam_replaced", sam=u.id, system=system.name, faction=faction, province=home.id)
+        state.emit(EventKind.SAM_REPLACED, sam=u.id, system=system.name, faction=faction, province=home.id)
     state.reforming_ad[:] = pending
 
 
@@ -437,7 +438,7 @@ def plan(state: CampaignState, fid: str) -> None:
                 best, best_pid = v, pid
         if best_pid != u.location and not busy_role and state.route_entity(u, best_pid):
             u.status = SamStatus.MOVING
-            state.emit("sam_relocating", sam=u.id, system=u.system.name, faction=fid, origin=u.location, destination=best_pid)
+            state.emit(EventKind.SAM_RELOCATING, sam=u.id, system=u.system.name, faction=fid, origin=u.location, destination=best_pid)
             target_pid = best_pid
         else:
             target_pid = u.location

@@ -27,8 +27,30 @@ from ..engine import Engine
 from ..units import Units
 from ..persistence import Saver
 from . import schemas, views
+from ..events import EventKind
 
 STREAM_TICK_S = 1.0
+
+
+def _event_kinds(kinds: str | None) -> set[EventKind] | None:
+    """Parse the ``kinds`` query parameter of ``/api/events``.
+
+    Args:
+        kinds: Comma separated event kinds, or None for all of them.
+
+    Returns:
+        The kinds to keep, or None to keep every kind.
+
+    Raises:
+        HTTPException: 422 if a kind is not an :class:`EventKind`.
+    """
+    if not kinds:
+        return None
+    wanted = {k.strip() for k in kinds.split(",") if k.strip()}
+    unknown = sorted(wanted - set(EventKind))
+    if unknown:
+        raise HTTPException(422, f"unknown event kinds: {', '.join(unknown)}")
+    return {EventKind(k) for k in wanted}
 
 
 def create_app(
@@ -309,8 +331,9 @@ def create_app(
         faction: str | None = FACTION,
     ):
         """Campaign events in order, paged: call again with `since=next`."""
+        wanted = _event_kinds(kinds)
         with engine.lock:
-            return views.events(state(), since, set(kinds.split(",")) if kinds else None, limit, viewer(faction))
+            return views.events(state(), since, wanted, limit, viewer(faction))
 
     @app.get("/api/snapshot", response_model=schemas.SnapshotView, tags=["campaign"])
     def get_snapshot(faction: str | None = FACTION):
@@ -424,7 +447,7 @@ def create_app(
                 engine.control.set(body.paused, body.compression)
             except ValueError as exc:
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
-            engine.state.emit("time_control", paused=engine.control.paused, compression=engine.control.compression)
+            engine.state.emit(EventKind.TIME_CONTROL, paused=engine.control.paused, compression=engine.control.compression)
             return views.control(engine)
 
     @app.get("/api/save", response_model=schemas.SaveView, tags=["campaign"])

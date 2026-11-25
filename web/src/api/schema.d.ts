@@ -1241,6 +1241,15 @@ export interface components {
             intel?: components["schemas"]["ContactInfo"] | null;
         };
         /**
+         * EventKind
+         * @description Every type of campaign event.
+         *
+         *     A ``StrEnum``: members compare equal to their string value and serialise
+         *     to it, so the JSON log, the API and old saves see plain strings.
+         * @enum {string}
+         */
+        EventKind: "ai_order" | "artillery_fire" | "attack_halted" | "battle_started" | "battle_ended" | "contact_broken" | "division_destroyed" | "division_reformed" | "division_reforming" | "division_removed" | "division_retreated" | "objective_changed" | "order_cancelled" | "order_completed" | "province_captured" | "withdrawal_completed" | "convoy_delivered" | "convoy_destroyed" | "convoy_dispatched" | "convoy_returned" | "air_engagement" | "air_strike" | "aircraft_delivered" | "aircraft_lost" | "airlift_delivered" | "flight_aborted" | "flight_cancelled" | "flight_complete" | "flight_landed" | "flight_replanned" | "flight_rerouted" | "flight_rtb" | "flight_takeoff" | "package_complete" | "package_ordered" | "package_planned" | "package_retimed" | "scramble" | "harm_strike" | "sam_destroyed" | "sam_engagement" | "sam_relocating" | "sam_replaced" | "sam_struck" | "game_disconnected" | "game_losses" | "handoff" | "handoff_failed" | "handoff_timeout" | "player_joined" | "player_landed" | "player_left" | "player_takeoff" | "seat_released" | "seat_taken" | "campaign_resumed" | "campaign_saved" | "time_control";
+        /**
          * EventView
          * @description A campaign event.
          */
@@ -1248,8 +1257,7 @@ export interface components {
             /** Seq */
             seq: number;
             time: components["schemas"]["Time"];
-            /** Kind */
-            kind: string;
+            kind: components["schemas"]["EventKind"];
             /** Data */
             data: {
                 [key: string]: unknown;

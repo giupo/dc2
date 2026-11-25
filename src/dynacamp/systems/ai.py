@@ -24,6 +24,7 @@ from ..forces import Authority, Division, Order, OrderKind
 from ..state import CampaignState, Faction
 from ..world import TERRAIN
 from . import intel
+from ..events import EventKind
 
 AI_INTERVAL_S = 3600.0
 ATTACK_RATIO = 1.1
@@ -193,7 +194,7 @@ def _secure(state: CampaignState, faction: Faction, divs: list[Division], busy: 
             del counts[here]
         counts[hole] = counts.get(hole, 0) + 1
         moved.add(d.id)
-        state.emit("ai_order", faction=fid, division=d.id, order="secure", target=hole)
+        state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="secure", target=hole)
     return moved
 
 
@@ -271,7 +272,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
         for d in group:
             if state.set_order(d, Order(OrderKind.ATTACK, target)):
                 committed.add(d.id)
-                state.emit("ai_order", faction=fid, division=d.id, order="attack", target=target)
+                state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="attack", target=target)
 
     # ---- 3. reserves to the front
     threat = {
@@ -308,7 +309,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
             continue
         if state.set_order(d, Order(OrderKind.MOVE, best[1])):
             assigned[best[1]] += d.combat_power()
-            state.emit("ai_order", faction=fid, division=d.id, order="move", target=best[1])
+            state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="move", target=best[1])
 
 
 def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts: set[str], busy: set[str]) -> None:

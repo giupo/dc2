@@ -24,6 +24,7 @@ from ..events import clock
 from ..geo import Vec2
 from ..state import CampaignState
 from . import air, ato, intel
+from ..events import EventKind
 
 MAX_WAYPOINTS = 24
 MAX_TOT_AHEAD_S = 24 * 3600.0
@@ -211,7 +212,7 @@ def set_route(
         pkg.target_point = f.target_point
     state.dirty.add(f.id)
     state.emit(
-        "flight_replanned", flight=f.id, callsign=f.callsign, faction=f.faction, package=f.package,
+        EventKind.FLIGHT_REPLANNED, flight=f.id, callsign=f.callsign, faction=f.faction, package=f.package,
         waypoints=len(new), length_km=round(length / 1000), takeoff=clock(takeoff),
     )
     return f
@@ -272,7 +273,7 @@ def set_tot(state: CampaignState, package_id: str, tot: float, faction: str | No
         if f.station_until:
             f.station_until += shift
     pkg.tot = tot
-    state.emit("package_retimed", package=pkg.id, number=pkg.number, faction=pkg.faction, tot=clock(tot))
+    state.emit(EventKind.PACKAGE_RETIMED, package=pkg.id, number=pkg.number, faction=pkg.faction, tot=clock(tot))
     return pkg
 
 
@@ -378,7 +379,7 @@ def order_package(
     pkg = ato.build_package(state, fac, r, squadron=squadron, tot=tot)
     if pkg is None:
         raise OrderError(_why_no_package(state, faction, task, r, squadron, tot))
-    state.emit("package_ordered", package=pkg.id, number=pkg.number, faction=faction, task=task.value, target=r.label)
+    state.emit(EventKind.PACKAGE_ORDERED, package=pkg.id, number=pkg.number, faction=faction, task=task.value, target=r.label)
     return pkg
 
 

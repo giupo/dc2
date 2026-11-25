@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from ..forces import Authority, Division
 from ..state import CampaignState
 from . import intel
+from ..events import EventKind
 
 ORGANIC_RANGE_M = 24_000.0  # brigade artillery battalion (M109, 2S19: 24-29 km)
 GROUP_RANGE_M = 40_000.0  # dedicated artillery groups with MLRS (BM-21, M270: 20-70 km)
@@ -104,4 +105,4 @@ def run(state: CampaignState, dt: float) -> None:
             target.scoot = True
         to = target.position(t)
         state.fires.append(FireMission(state.time, shooter.id, target.id, shooter.faction, (here.x, here.y), (to.x, to.y)))
-        state.emit("artillery_fire", shooter=shooter.id, target=target.id, faction=shooter.faction, km=round(to.distance_to(here) / 1000, 1))
+        state.emit(EventKind.ARTILLERY_FIRE, shooter=shooter.id, target=target.id, faction=shooter.faction, km=round(to.distance_to(here) / 1000, 1))

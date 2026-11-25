@@ -8,6 +8,7 @@ import pytest
 from dynacamp import persistence
 from dynacamp.cli import main
 from dynacamp.engine import Engine
+from dynacamp.events import EventKind
 from dynacamp.forces import Authority
 from dynacamp.systems.ato import SeatState
 
@@ -34,10 +35,10 @@ def test_saving_leaves_subscribers_behind(line, tmp_path):
     seen = []
     line.events.subscribe(seen.append)
     resumed, _ = persistence.load(persistence.save(line, tmp_path / "c.dcsave"))
-    resumed.emit("ping")
-    assert not [e for e in seen if e.kind == "ping"]
-    line.emit("pong")
-    assert seen[-1].kind == "pong"
+    resumed.emit(EventKind.TIME_CONTROL)
+    assert not [e for e in seen if e.kind == EventKind.TIME_CONTROL]
+    line.emit(EventKind.CAMPAIGN_SAVED)
+    assert seen[-1].kind == EventKind.CAMPAIGN_SAVED
 
 
 def test_what_the_game_held_comes_back_to_the_campaign(tmp_path):

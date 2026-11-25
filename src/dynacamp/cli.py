@@ -23,36 +23,7 @@ from . import persistence, scenario
 from .engine import Engine
 from .state import CampaignState
 from .units import UnitDomain
-
-
-NOTABLE = {
-    "battle_started",
-    "battle_ended",
-    "contact_broken",
-    "province_captured",
-    "division_retreated",
-    "division_destroyed",
-    "objective_changed",
-    "player_joined",
-    "player_left",
-    "handoff",
-    "handoff_failed",
-    "handoff_timeout",
-    "game_disconnected",
-    "package_planned",
-    "air_strike",
-    "air_engagement",
-    "aircraft_lost",
-    "flight_aborted",
-    "flight_rtb",
-    "flight_rerouted",
-    "scramble",
-    "flight_cancelled",
-    "seat_taken",
-    "seat_released",
-}
-
-
+from .events import NOTABLE
 from .events import clock as _clock
 
 

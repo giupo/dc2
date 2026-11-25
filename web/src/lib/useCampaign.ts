@@ -6,6 +6,7 @@ import {
   type Ato,
   type Campaign,
   type CampaignEvent,
+  type EventKind,
   type Forces,
   type Fronts,
   type Intel,
@@ -135,7 +136,7 @@ export function useCampaign(faction: string | null = null): CampaignData {
   return data;
 }
 
-const RELEVANT = new Set([
+const RELEVANT = new Set<EventKind>([
   "province_captured",
   "battle_started",
   "battle_ended",

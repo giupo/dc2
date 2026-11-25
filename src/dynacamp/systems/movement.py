@@ -6,6 +6,7 @@ from ..forces import Convoy, Division, MobileEntity, OrderKind
 from ..state import CampaignState
 from ..world import LINK_SPEED, TERRAIN, infra_factor
 from . import contact, control, supply
+from ..events import EventKind
 
 
 def run(state: CampaignState, dt: float) -> None:
@@ -40,7 +41,7 @@ def _advance(state: CampaignState, ent: MobileEntity, dt: float) -> None:
             # Withdrawing along the road to the province it came from.
             if mv.progress <= speed * remaining:
                 ent.movement = None
-                state.emit("withdrawal_completed", entity=ent.id, province=ent.location)
+                state.emit(EventKind.WITHDRAWAL_COMPLETED, entity=ent.id, province=ent.location)
             else:
                 mv.progress -= speed * remaining
             return
@@ -80,7 +81,7 @@ def arrive(state: CampaignState, ent: MobileEntity) -> None:
         if state.hostile_province(ent.faction, nxt) and not state.hostile_divisions_in(ent.faction, nxt):
             control.capture(state, nxt, ent.faction, by=ent.id)
         if ent.movement is None and ent.order.kind is not OrderKind.HOLD:
-            state.emit("order_completed", division=ent.id, order=ent.order.kind.value, province=nxt)
+            state.emit(EventKind.ORDER_COMPLETED, division=ent.id, order=ent.order.kind.value, province=nxt)
             ent.order.kind, ent.order.target = OrderKind.HOLD, None
     elif isinstance(ent, Convoy) and ent.movement is None:
         supply.on_convoy_arrived(state, ent)
@@ -101,4 +102,4 @@ def _blocked(state: CampaignState, ent: MobileEntity) -> None:
     # No way forward: turn back to the province it left (approximated as a snap back).
     ent.movement = None
     state.set_order(ent, type(ent.order)())
-    state.emit("order_cancelled", division=ent.id, reason="route blocked")
+    state.emit(EventKind.ORDER_CANCELLED, division=ent.id, reason="route blocked")

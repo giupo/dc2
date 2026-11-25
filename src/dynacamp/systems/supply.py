@@ -13,6 +13,7 @@ import math
 
 from ..forces import Authority, Convoy, Division, Movement
 from ..state import CampaignState
+from ..events import EventKind
 
 DIRECT_RANGE_M = 40_000.0
 DIRECT_RATE_PER_HOUR = 10.0
@@ -121,7 +122,7 @@ def _reinforce(state: CampaignState, div: Division, hours: float, direct: bool, 
 def schedule_reform(state: CampaignState, div: Division) -> None:
     """Queue a destroyed brigade for re-forming."""
     state.reforming.append((state.time + REFORM_DELAY_S, div.faction, div.template, div.name))
-    state.emit("division_reforming", division=div.id, faction=div.faction, name=div.name, hours=REFORM_DELAY_S / 3600)
+    state.emit(EventKind.DIVISION_REFORMING, division=div.id, faction=div.faction, name=div.name, hours=REFORM_DELAY_S / 3600)
 
 
 def _reform(state: CampaignState) -> None:
@@ -140,7 +141,7 @@ def _reform(state: CampaignState) -> None:
         for k in div.elements:
             div.elements[k] *= REFORM_STRENGTH
         state.divisions[div.id] = div
-        state.emit("division_reformed", division=div.id, faction=faction, name=div.name, province=home.id)
+        state.emit(EventKind.DIVISION_REFORMED, division=div.id, faction=faction, name=div.name, province=home.id)
     state.reforming[:] = pending
 
 
@@ -190,7 +191,7 @@ def _dispatch_convoys(state: CampaignState, faction: str, network: dict[str, tup
             movement=Movement(path),
         )
         state.convoys[convoy.id] = convoy
-        state.emit("convoy_dispatched", convoy=convoy.id, faction=faction, origin=dep_id, destination=pid, cargo=round(cargo, 1))
+        state.emit(EventKind.CONVOY_DISPATCHED, convoy=convoy.id, faction=faction, origin=dep_id, destination=pid, cargo=round(cargo, 1))
 
 
 def on_convoy_arrived(state: CampaignState, convoy: Convoy) -> None:
@@ -202,7 +203,7 @@ def on_convoy_arrived(state: CampaignState, convoy: Convoy) -> None:
             depot.trucks += round(convoy.trucks)
             depot.stock = min(depot.capacity, depot.stock + convoy.cargo)
         del state.convoys[convoy.id]
-        state.emit("convoy_returned", convoy=convoy.id, faction=convoy.faction, trucks=round(convoy.trucks, 1))
+        state.emit(EventKind.CONVOY_RETURNED, convoy=convoy.id, faction=convoy.faction, trucks=round(convoy.trucks, 1))
         return
 
     divs = [d for d in state.divisions_in(convoy.location, convoy.faction) if d.authority in ACTIVE]
@@ -216,7 +217,7 @@ def on_convoy_arrived(state: CampaignState, convoy: Convoy) -> None:
             d.supply += amount
             delivered += amount
     convoy.cargo -= delivered
-    state.emit("convoy_delivered", convoy=convoy.id, faction=convoy.faction, province=convoy.location, amount=round(delivered, 1))
+    state.emit(EventKind.CONVOY_DELIVERED, convoy=convoy.id, faction=convoy.faction, province=convoy.location, amount=round(delivered, 1))
     convoy.returning = True
     if not state.route_entity(convoy, convoy.home):
         on_convoy_blocked(state, convoy)
@@ -233,4 +234,4 @@ def on_convoy_blocked(state: CampaignState, convoy: Convoy) -> None:
             return
     # Cut off: the column is lost.
     state.convoys.pop(convoy.id, None)
-    state.emit("convoy_destroyed", convoy=convoy.id, faction=convoy.faction, reason="cut off")
+    state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason="cut off")

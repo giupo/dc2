@@ -10,6 +10,7 @@ Conventions: ``pos`` = [east, north] metres on the theater plane, ``ll`` =
 
 from __future__ import annotations
 
+from ..events import EventKind
 from ..units import Units
 
 from typing import Any, Literal
@@ -571,7 +572,7 @@ class EventView(Model):
     """A campaign event."""
     seq: int
     time: Time
-    kind: str
+    kind: EventKind
     data: dict[str, Any]
 
 

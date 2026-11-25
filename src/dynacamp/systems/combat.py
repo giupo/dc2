@@ -26,6 +26,7 @@ from ..sensors import EYEBALL_M
 from ..state import Battle, CampaignState
 from ..world import TERRAIN
 from . import contact
+from ..events import EventKind
 
 ORG_PER_HIT = 0.9
 STRENGTH_PER_HIT = 0.2
@@ -52,15 +53,20 @@ def run(state: CampaignState, dt: float) -> None:
         if not battle.attackers or not battle.defenders:
             _end(state, battle)
             continue
+
         if is_delegated(state, battle):
             pass  # the game decides the losses
+
         elif any(state.divisions[i].authority in FROZEN for i in battle.attackers + battle.defenders):
             continue
+
         else:
             _fight(state, battle, dt / 3600.0)
+
         _check_breaks(state, battle)
         if not battle.attackers or not battle.defenders:
             _end(state, battle)
+
     _meeting_engagements(state)
     _overrun(state)
     _remove_destroyed(state)
@@ -105,7 +111,7 @@ def _open_battles(state: CampaignState) -> None:
                 started=state.time,
             )
             state.battles[battle.id] = battle
-            state.emit("battle_started", battle=battle.id, province=target, attacker=div.faction, defender=battle.defender_faction)
+            state.emit(EventKind.BATTLE_STARTED, battle=battle.id, province=target, attacker=div.faction, defender=battle.defender_faction)
         elif battle.attacker_faction != div.faction:
             continue
         battle.attackers.append(div.id)
@@ -151,9 +157,12 @@ def _deploy_defenders(state: CampaignState, battle: Battle) -> None:
     t = state.theater
     for n, i in enumerate(battle.defenders):
         d = state.divisions[i]
+
         if d.movement:
             continue
+
         axis = axes[n % len(axes)]
+
         if axis in t.neighbors(d.location):
             d.deployed_toward = axis
             d.deploy_m = contact.deploy_progress(state, d.location, axis)
@@ -164,8 +173,10 @@ def withdraw(state: CampaignState, div: Division) -> None:
     div.order = Order()
     if div.movement and div.movement.progress > 0:
         div.movement.back = True
+
     else:
         div.movement = None
+
     state.dirty.add(div.id)
 
 
@@ -257,7 +268,7 @@ def _check_breaks(state: CampaignState, battle: Battle) -> None:
                     if d.movement and d.movement.path:
                         _contested(state, d.faction, d.location, d.movement.path[0])
                     withdraw(state, d)
-                    state.emit("contact_broken", battle=battle.id, division=i, faction=d.faction, org=round(d.org, 3))
+                    state.emit(EventKind.CONTACT_BROKEN, battle=battle.id, division=i, faction=d.faction, org=round(d.org, 3))
         return
     for i in list(battle.attackers):
         d = state.divisions[i]
@@ -265,7 +276,7 @@ def _check_breaks(state: CampaignState, battle: Battle) -> None:
             battle.attackers.remove(i)
             d.battle = None
             withdraw(state, d)
-            state.emit("attack_halted", battle=battle.id, division=i, org=round(d.org, 3))
+            state.emit(EventKind.ATTACK_HALTED, battle=battle.id, division=i, org=round(d.org, 3))
     for i in list(battle.defenders):
         d = state.divisions[i]
         if d.org < DEFENDER_BREAK_ORG or d.strength < DESTROYED_STRENGTH:
@@ -313,7 +324,7 @@ def _retreat(state: CampaignState, div: Division, battle: Battle | None = None, 
     ]
     if not options or div.strength < DESTROYED_STRENGTH:
         div.elements = {k: 0.0 for k in div.elements}
-        state.emit("division_destroyed", division=div.id, faction=div.faction, province=div.location, reason="encircled" if not options else "shattered")
+        state.emit(EventKind.DIVISION_DESTROYED, division=div.id, faction=div.faction, province=div.location, reason="encircled" if not options else "shattered")
         return
 
     def danger(pid: str) -> int:
@@ -327,7 +338,7 @@ def _retreat(state: CampaignState, div: Division, battle: Battle | None = None, 
     # cannot be pulled back into this battle as a defender.
     div.movement = Movement([dest], progress=1.0)
     state.dirty.add(div.id)
-    state.emit("division_retreated", division=div.id, faction=div.faction, origin=div.location, destination=dest)
+    state.emit(EventKind.DIVISION_RETREATED, division=div.id, faction=div.faction, origin=div.location, destination=dest)
 
 
 def _end(state: CampaignState, battle: Battle) -> None:
@@ -337,7 +348,7 @@ def _end(state: CampaignState, battle: Battle) -> None:
         if i in state.divisions and state.divisions[i].battle == battle.id:
             state.divisions[i].battle = None
     del state.battles[battle.id]
-    state.emit("battle_ended", battle=battle.id, province=battle.province, winner=winner, hours=round((state.time - battle.started) / 3600, 1),
+    state.emit(EventKind.BATTLE_ENDED, battle=battle.id, province=battle.province, winner=winner, hours=round((state.time - battle.started) / 3600, 1),
                battle_kind=battle.kind)
     if battle.attackers and battle.kind == "assault":
         _advance_after_victory(state, battle)
@@ -398,7 +409,7 @@ def _contested(state: CampaignState, fid: str, a: str, b: str) -> None:
             continue
         if {d.location, mv.path[0]} == {a, b} and d.authority is Authority.CAMPAIGN:
             withdraw(state, d)
-            state.emit("order_cancelled", division=d.id, reason="road contested")
+            state.emit(EventKind.ORDER_CANCELLED, division=d.id, reason="road contested")
 
 
 def _assaulting(div: Division, other: Division) -> bool:
@@ -456,7 +467,7 @@ def _meeting_engagements(state: CampaignState) -> None:
                 d.battle = battle.id
             state.battles[battle.id] = battle
             state.emit(
-                "battle_started", battle=battle.id, province=province, attacker=first.faction,
+                EventKind.BATTLE_STARTED, battle=battle.id, province=province, attacker=first.faction,
                 defender=second.faction, battle_kind="meeting",
             )
 
@@ -487,11 +498,11 @@ def _overrun(state: CampaignState) -> None:
             if c.movement and c.movement.path:
                 _contested(state, c.faction, c.location, c.movement.path[0])
             del state.convoys[c.id]
-            state.emit("convoy_destroyed", convoy=c.id, faction=c.faction, reason=f"overrun by {d.name}")
+            state.emit(EventKind.CONVOY_DESTROYED, convoy=c.id, faction=c.faction, reason=f"overrun by {d.name}")
     for u in list(state.air_defense.values()):
         if u.authority is Authority.CAMPAIGN and (d := overrun_by(u)):
             del state.air_defense[u.id]
-            state.emit("sam_destroyed", sam=u.id, system=u.system.name, faction=u.faction, province=u.location,
+            state.emit(EventKind.SAM_DESTROYED, sam=u.id, system=u.system.name, faction=u.faction, province=u.location,
                        reason=f"overrun by {d.name}")
             air_defense.schedule_replacement(state, u)
 
@@ -505,7 +516,7 @@ def _remove_destroyed(state: CampaignState) -> None:
                 b.attackers = [i for i in b.attackers if i != div.id]
                 b.defenders = [i for i in b.defenders if i != div.id]
             del state.divisions[div.id]
-            state.emit("division_removed", division=div.id, faction=div.faction)
+            state.emit(EventKind.DIVISION_REMOVED, division=div.id, faction=div.faction)
             from . import supply
 
             supply.schedule_reform(state, div)

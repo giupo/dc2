@@ -1,0 +1,227 @@
+# Air defence catalogue: SAM systems and early-warning radars.
+#
+# One table per system, keyed by the id used in scenarios (`system = "buk"`).
+#
+#   name             NATO reporting name or common name
+#   role             long | medium | short | ewr
+#   range_m          engagement range, m
+#   detection_m      own radar detection range, m
+#   ceiling_m        maximum engagement altitude, m
+#   missiles         ready missiles on the launchers
+#   pk               nominal single-shot kill probability
+#   speed_kmh        road speed, km/h
+#   setup_s          time to go into action after moving, s
+#   elements         site composition (radar, search_radar, launcher, cp, ...)
+#   radar            emits, so anti-radiation missiles can hit it (default true)
+#   reload_per_hour  missiles reloaded per hour when supplied (default 4)
+#
+# [<id>.dcs] is read only by the DCS adapter: site element -> DCS unit type
+# (one DCS unit per element).
+
+# ---- long range
+
+[patriot]
+name = "Patriot"
+role = "long"
+range_m = 70_000
+detection_m = 160_000
+ceiling_m = 24_000
+missiles = 16
+pk = 0.45
+speed_kmh = 40
+setup_s = 2700  # 45 min
+elements = { radar = 1, launcher = 4, cp = 1, power = 1 }
+
+[patriot.dcs]
+radar = "Patriot str"
+launcher = "Patriot ln"
+cp = "Patriot ECS"
+power = "Patriot EPP"
+
+[s300ps]
+name = "SA-10 Grumble"
+role = "long"
+range_m = 75_000
+detection_m = 160_000
+ceiling_m = 27_000
+missiles = 16
+pk = 0.4
+speed_kmh = 40
+setup_s = 1800  # 30 min
+elements = { search_radar = 1, radar = 1, cp = 1, launcher = 4 }
+
+[s300ps.dcs]
+search_radar = "S-300PS 64H6E sr"
+radar = "S-300PS 40B6M tr"
+cp = "S-300PS 54K6 cp"
+launcher = "S-300PS 5P85C ln"
+
+# ---- medium range
+
+[hawk]
+name = "Hawk"
+role = "medium"
+range_m = 40_000
+detection_m = 90_000
+ceiling_m = 14_000
+missiles = 12
+pk = 0.35
+speed_kmh = 40
+setup_s = 1800  # 30 min
+elements = { search_radar = 1, radar = 1, cp = 1, launcher = 4 }
+
+[hawk.dcs]
+search_radar = "Hawk sr"
+radar = "Hawk tr"
+cp = "Hawk pcp"
+launcher = "Hawk ln"
+
+[nasams]
+name = "NASAMS"
+role = "medium"
+range_m = 25_000
+detection_m = 75_000
+ceiling_m = 15_000
+missiles = 12
+pk = 0.4
+speed_kmh = 60
+setup_s = 900  # 15 min
+elements = { radar = 1, cp = 1, launcher = 3 }
+
+[nasams.dcs]
+radar = "NASAMS_Radar_MPQ64F1"
+cp = "NASAMS_Command_Post"
+launcher = "NASAMS_LN_C"
+
+[buk]
+name = "SA-11 Gadfly"
+role = "medium"
+range_m = 35_000
+detection_m = 80_000
+ceiling_m = 22_000
+missiles = 16
+pk = 0.4
+speed_kmh = 50
+setup_s = 300  # 5 min
+elements = { search_radar = 1, cp = 1, launcher = 4 }
+
+[buk.dcs]
+search_radar = "SA-11 Buk SR 9S18M1"
+cp = "SA-11 Buk CC 9S470M1"
+launcher = "SA-11 Buk LN 9A310M1"
+
+[kub]
+name = "SA-6 Gainful"
+role = "medium"
+range_m = 25_000
+detection_m = 70_000
+ceiling_m = 12_000
+missiles = 12
+pk = 0.3
+speed_kmh = 50
+setup_s = 600  # 10 min
+elements = { radar = 1, launcher = 4 }
+
+[kub.dcs]
+radar = "Kub 1S91 str"
+launcher = "Kub 2P25 ln"
+
+# ---- short range
+
+[tor]
+name = "SA-15 Gauntlet"
+role = "short"
+range_m = 12_000
+detection_m = 25_000
+ceiling_m = 6000
+missiles = 16
+pk = 0.4
+speed_kmh = 60
+setup_s = 180  # 3 min
+elements = { launcher = 2 }
+reload_per_hour = 8
+
+[tor.dcs]
+launcher = "Tor 9A331"
+
+[osa]
+name = "SA-8 Gecko"
+role = "short"
+range_m = 10_000
+detection_m = 30_000
+ceiling_m = 5000
+missiles = 12
+pk = 0.3
+speed_kmh = 60
+setup_s = 300  # 5 min
+elements = { launcher = 3 }
+reload_per_hour = 8
+
+[osa.dcs]
+launcher = "Osa 9A33 ln"
+
+[avenger]
+name = "Avenger"
+role = "short"
+range_m = 8000
+detection_m = 12_000
+ceiling_m = 3800
+missiles = 16
+pk = 0.3
+speed_kmh = 70
+setup_s = 60
+elements = { launcher = 4 }
+radar = false
+reload_per_hour = 8
+
+[avenger.dcs]
+launcher = "M1097 Avenger"
+
+# ---- early warning
+
+[ewr_1l13]
+name = "1L13 Box Spring"
+role = "ewr"
+range_m = 0
+detection_m = 250_000
+ceiling_m = 0
+missiles = 0
+pk = 0.0
+speed_kmh = 30
+setup_s = 1800  # 30 min
+elements = { radar = 1 }
+
+[ewr_1l13.dcs]
+radar = "1L13 EWR"
+
+[ewr_55g6]
+name = "55G6 Tall Rack"
+role = "ewr"
+range_m = 0
+detection_m = 300_000
+ceiling_m = 0
+missiles = 0
+pk = 0.0
+speed_kmh = 30
+setup_s = 1800  # 30 min
+elements = { radar = 1 }
+
+[ewr_55g6.dcs]
+radar = "55G6 EWR"
+
+[ewr_fps117]
+name = "AN/FPS-117"
+role = "ewr"
+range_m = 0
+detection_m = 300_000
+ceiling_m = 0
+missiles = 0
+pk = 0.0
+speed_kmh = 30
+setup_s = 1800  # 30 min
+elements = { radar = 1, dome = 1, cp = 1 }
+
+[ewr_fps117.dcs]
+radar = "FPS-117"
+dome = "FPS-117 Dome"
+cp = "FPS-117 ECS"

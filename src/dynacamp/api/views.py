@@ -16,7 +16,7 @@ from typing import Any
 
 from .. import bullseye, geometry
 from ..air import FlightStatus, Task
-from ..events import clock
+from ..events import PUBLIC, EventKind, clock
 from ..forces import Convoy, Division, OrderKind
 from ..geo import Vec2
 from ..projection import to_latlon
@@ -692,22 +692,17 @@ def air_defense(state: CampaignState, viewer: str | None = None) -> dict[str, An
 # ---------------------------------------------------------------- events
 
 
-# Events every faction learns about whoever caused them.
-PUBLIC_EVENTS = {"battle_started", "battle_ended", "province_captured", "war_declared", "air_engagement",
-                 "sam_engagement", "aircraft_lost", "player_joined", "player_left"}
-
-
 def visible_event(state: CampaignState, viewer: str | None, e) -> bool:
     """True if ``viewer`` would know about event ``e``: its own and allies'
     events and the public ones (battles, captures, engagements, losses)."""
-    if viewer is None or e.kind in PUBLIC_EVENTS:
+    if viewer is None or e.kind in PUBLIC:
         return True
     owner = e.data.get("faction")
     return owner is None or not state.at_war(viewer, owner)
 
 
 def events(
-    state: CampaignState, since: int = 0, kinds: set[str] | None = None, limit: int = 500, viewer: str | None = None
+    state: CampaignState, since: int = 0, kinds: set[EventKind] | None = None, limit: int = 500, viewer: str | None = None
 ) -> dict[str, Any]:
     """A page of events.
 

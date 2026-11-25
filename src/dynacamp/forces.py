@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from . import catalog
 from .geo import Vec2
 from .world import Theater
 
@@ -39,20 +40,8 @@ class ElementType:
     combat: bool = True  # trucks, for instance, are not
 
 
-ELEMENTS: dict[str, ElementType] = {
-    e.id: e
-    for e in (
-        ElementType("infantry", 0.40, 0.05, 0.60, 0.10, 0.0),  # one squad (~10 men)
-        ElementType("mbt", 1.20, 2.00, 1.00, 2.50, 0.9),
-        ElementType("ifv", 1.00, 0.80, 1.00, 1.20, 0.6),
-        ElementType("apc", 0.50, 0.10, 0.50, 0.40, 0.4),
-        ElementType("artillery", 3.00, 0.60, 0.30, 0.20, 0.3),
-        ElementType("mlrs", 4.00, 0.30, 0.20, 0.10, 0.2),
-        ElementType("sam_short", 0.10, 0.05, 0.20, 0.00, 0.3),
-        ElementType("aaa", 0.50, 0.20, 0.30, 0.10, 0.4),
-        ElementType("truck", 0.0, 0.0, 0.0, 0.0, 0.0, combat=False),
-    )
-}
+ELEMENTS: dict[str, ElementType] = catalog.build("ground", ElementType, section="elements")
+"""Every element type, from ``[elements]`` in ``data/catalog/ground.toml``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,43 +69,11 @@ class DivisionTemplate:
         return float(sum(self.elements.values()))
 
 
-DEFAULT_TEMPLATES: dict[str, DivisionTemplate] = {
-    t.id: t
-    for t in (
-        DivisionTemplate(
-            "mech_brigade",
-            "Mechanised brigade",
-            {"infantry": 120, "ifv": 90, "mbt": 30, "artillery": 18, "sam_short": 8, "truck": 60},
-            speed_kmh=35,
-            supply_capacity=72,
-            supply_use_per_hour=1.0,
-        ),
-        DivisionTemplate(
-            "tank_brigade",
-            "Armoured brigade",
-            {"infantry": 40, "ifv": 40, "mbt": 90, "artillery": 18, "aaa": 8, "truck": 60},
-            speed_kmh=35,
-            supply_capacity=72,
-            supply_use_per_hour=1.3,
-        ),
-        DivisionTemplate(
-            "infantry_brigade",
-            "Motorised infantry brigade",
-            {"infantry": 250, "apc": 60, "artillery": 18, "aaa": 6, "truck": 80},
-            speed_kmh=40,
-            supply_capacity=72,
-            supply_use_per_hour=0.7,
-        ),
-        DivisionTemplate(
-            "artillery_group",
-            "Artillery group",
-            {"infantry": 30, "artillery": 36, "mlrs": 18, "truck": 50},
-            speed_kmh=30,
-            supply_capacity=72,
-            supply_use_per_hour=1.2,
-        ),
-    )
-}
+DEFAULT_TEMPLATES: dict[str, DivisionTemplate] = catalog.build(
+    "ground", DivisionTemplate, section="templates", convert={"elements": catalog.counts}
+)
+"""The stock brigade templates, from ``[templates]`` in ``data/catalog/ground.toml``.
+Scenarios may add their own."""
 
 
 # ---------------------------------------------------------------- authority

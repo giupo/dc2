@@ -591,7 +591,9 @@ un test controlla che le missioni lo contengano aggiornato.
 src/dynacamp/
   geo.py world.py forces.py state.py events.py     modello: geometria, mappa, forze, stato, log
   air.py air_defense.py                            aviazione e difesa aerea (modello)
+  catalog.py                                       caricatore del catalogo (data/catalog/*.toml)
   loadouts.py radio.py units.py                    armamento, frequenze radio, unità di misura
+  data/catalog/                                    catalogo: aircraft, air_defense, ground (TOML, a mano)
   data/                                            loadouts.json, radio.json (generati dai dati di DCS)
   systems/                                         simulazione:
     ai.py                                            IA di teatro (retrovie, fronte, offensive, riserve)

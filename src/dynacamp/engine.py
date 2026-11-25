@@ -33,6 +33,7 @@ from . import callsigns
 from .air import Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
 from .air_defense import AirDefenseUnit
 from .bubble import BubbleConfig, BubbleManager, Player
+from .events import EventKind
 from .forces import Authority, Convoy, Division, MobileEntity
 from .state import CampaignState
 from .systems import PIPELINE, air, ato, combat, movement
@@ -164,7 +165,7 @@ class Engine:
                 self._handle(report)
 
             for pid in self.bubbles.prune(self.wall_clock()):
-                self.state.emit("player_left", player=pid, reason="timeout")
+                self.state.emit(EventKind.PLAYER_LEFT, player=pid, reason="timeout")
 
             self._handoffs()
 
@@ -210,18 +211,18 @@ class Engine:
                 ent.handoff_started = state.time
                 self._outbox.append(Materialize(self._snapshot(ent)))
                 self._in_game.add(ent.id)
-                state.emit("handoff", entity=ent.id, to="game")
+                state.emit(EventKind.HANDOFF, entity=ent.id, to="game")
 
             elif a is Authority.DELEGATED and ent.id not in wanted:
                 ent.authority = Authority.DEMATERIALIZING
                 ent.handoff_started = state.time
                 self._outbox.append(Dematerialize(ent.id))
-                state.emit("handoff", entity=ent.id, to="campaign")
+                state.emit(EventKind.HANDOFF, entity=ent.id, to="campaign")
 
             elif a in (Authority.MATERIALIZING, Authority.DEMATERIALIZING):
                 assert ent.handoff_started is not None
                 if state.time - ent.handoff_started > cfg.handoff_timeout_s:
-                    state.emit("handoff_timeout", entity=ent.id, state=a.value)
+                    state.emit(EventKind.HANDOFF_TIMEOUT, entity=ent.id, state=a.value)
                     self._reclaim(ent)
 
     def _reclaim(self, ent: MobileEntity) -> None:
@@ -249,7 +250,7 @@ class Engine:
             ato.player_disconnected(self.state, pid)
 
         self.bubbles.clear()
-        self.state.emit("game_disconnected", reason=reason)
+        self.state.emit(EventKind.GAME_DISCONNECTED, reason=reason)
 
     # ------------------------------------------------------------ reports
 
@@ -259,7 +260,7 @@ class Engine:
         match r:
             case PlayerSeen():
                 if r.player_id not in self.bubbles.players:
-                    state.emit("player_joined", player=r.player_id, name=r.name, side=r.side, player_kind=r.kind.value)
+                    state.emit(EventKind.PLAYER_JOINED, player=r.player_id, name=r.name, side=r.side, player_kind=r.kind.value)
                 self.bubbles.update_player(
                     Player(r.player_id, r.name, r.side, r.kind, r.position, r.altitude, self.wall_clock())
                 )
@@ -267,7 +268,7 @@ class Engine:
             case PlayerLeft():
                 if r.player_id in self.bubbles.players:
                     self.bubbles.remove_player(r.player_id)
-                    state.emit("player_left", player=r.player_id, reason="left")
+                    state.emit(EventKind.PLAYER_LEFT, player=r.player_id, reason="left")
                 ato.player_disconnected(state, r.player_id)
 
             case JoinRequest():
@@ -310,7 +311,7 @@ class Engine:
                     ent.handoff_started = None
 
                 else:
-                    state.emit("handoff_failed", entity=ent.id, error=r.error)
+                    state.emit(EventKind.HANDOFF_FAILED, entity=ent.id, error=r.error)
                     self._in_game.discard(ent.id)
                     ent.authority = Authority.CAMPAIGN
                     ent.handoff_started = None
@@ -439,7 +440,7 @@ class Engine:
             combat.apply_reported_losses(ent, before - ent.strength)
 
             if before - ent.strength > 0:
-                self.state.emit("game_losses", entity=ent.id, strength=round(ent.strength, 3))
+                self.state.emit(EventKind.GAME_LOSSES, entity=ent.id, strength=round(ent.strength, 3))
 
         elif isinstance(ent, AirDefenseUnit) and elements:
             lost = False
@@ -448,18 +449,18 @@ class Engine:
                 lost |= alive < ent.elements[k]
                 ent.elements[k] = alive
             if lost:
-                self.state.emit("game_losses", entity=ent.id, strength=round(ent.strength, 3))
+                self.state.emit(EventKind.GAME_LOSSES, entity=ent.id, strength=round(ent.strength, 3))
 
         elif isinstance(ent, Convoy) and elements:
             trucks = min(ent.trucks, elements.get("truck", 0.0))
             if trucks < ent.trucks:
                 ent.cargo *= trucks / ent.trucks if ent.trucks else 0.0
                 ent.trucks = trucks
-                self.state.emit("game_losses", entity=ent.id, trucks=round(trucks, 1))
+                self.state.emit(EventKind.GAME_LOSSES, entity=ent.id, trucks=round(trucks, 1))
 
             if ent.trucks <= 0:
                 self.state.convoys.pop(ent.id, None)
-                self.state.emit("convoy_destroyed", convoy=ent.id, faction=ent.faction, reason="game")
+                self.state.emit(EventKind.CONVOY_DESTROYED, convoy=ent.id, faction=ent.faction, reason="game")
                 return
 
         if pos is None:

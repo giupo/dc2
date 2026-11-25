@@ -26,6 +26,7 @@ from ..geo import Vec2
 from ..state import CampaignState, Faction
 from .. import radio
 from . import air, intel, routing
+from ..events import EventKind
 
 ATO_INTERVAL_S = 3600.0
 STARTUP_LEAD_S = 30 * 60.0
@@ -616,7 +617,7 @@ def _build_dead(
 def _announce(state: CampaignState, pkg: Package) -> None:
     """Emit ``package_planned`` for a package just built."""
     state.emit(
-        "package_planned",
+        EventKind.PACKAGE_PLANNED,
         package=pkg.id,
         number=pkg.number,
         faction=pkg.faction,
@@ -836,7 +837,7 @@ def join(
     leave(state, player_id)
     f.players[player_id] = Seat(player_id, name)
     state.player_flights[player_id] = f.id
-    state.emit("seat_taken", player=player_id, flight=f.id, callsign=f.callsign, package=f.package)
+    state.emit(EventKind.SEAT_TAKEN, player=player_id, flight=f.id, callsign=f.callsign, package=f.package)
     return True, briefing_text(state, f)
 
 
@@ -858,7 +859,7 @@ def leave(state: CampaignState, player_id: str) -> bool:
     f, seat = found
     if seat.state in (SeatState.ASSIGNED, SeatState.AIRBORNE):
         seat.state = SeatState.LEFT
-        state.emit("seat_released", player=player_id, flight=f.id)
+        state.emit(EventKind.SEAT_RELEASED, player=player_id, flight=f.id)
     return True
 
 
@@ -867,7 +868,7 @@ def player_took_off(state: CampaignState, player_id: str) -> None:
     found = seat_of(state, player_id)
     if found and found[1].state is SeatState.ASSIGNED:
         found[1].state = SeatState.AIRBORNE
-        state.emit("player_takeoff", player=player_id, flight=found[0].id)
+        state.emit(EventKind.PLAYER_TAKEOFF, player=player_id, flight=found[0].id)
 
 
 def player_landed(state: CampaignState, player_id: str) -> None:
@@ -876,7 +877,7 @@ def player_landed(state: CampaignState, player_id: str) -> None:
     if found and found[1].state is SeatState.AIRBORNE:
         found[1].state = SeatState.LANDED
         state.player_flights.pop(player_id, None)
-        state.emit("player_landed", player=player_id, flight=found[0].id)
+        state.emit(EventKind.PLAYER_LANDED, player=player_id, flight=found[0].id)
 
 
 def player_lost(state: CampaignState, player_id: str) -> None:
@@ -891,7 +892,7 @@ def player_lost(state: CampaignState, player_id: str) -> None:
     sq = state.squadrons[f.squadron]
     sq.aircraft -= 1
     sq.committed -= 1
-    state.emit("aircraft_lost", flight=f.id, faction=f.faction, count=1, cause="player", player=player_id)
+    state.emit(EventKind.AIRCRAFT_LOST, flight=f.id, faction=f.faction, count=1, cause="player", player=player_id)
 
 
 def player_disconnected(state: CampaignState, player_id: str) -> None:

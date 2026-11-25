@@ -1,4 +1,4 @@
-import type { Campaign, CampaignEvent, MapData } from "../api/client";
+import type { Campaign, CampaignEvent, EventKind, MapData } from "../api/client";
 
 // ---------------------------------------------------------------- colours
 
@@ -36,18 +36,71 @@ export const TEMPLATE_SHORT: Record<string, string> = {
 
 export type EventCategory = "ground" | "fires" | "logistics" | "air" | "players" | "orders" | "system";
 
-export function eventCategory(kind: string): EventCategory {
-  if (kind === "artillery_fire") return "fires";
-  if (kind.startsWith("convoy") || kind.startsWith("depot")) return "logistics";
-  if (["ai_order", "order_completed", "order_cancelled", "attack_halted"].includes(kind)) return "orders";
-  if (
-    kind.startsWith("flight") || kind.startsWith("air") || kind.startsWith("package") || kind === "aircraft_lost"
-  )
-    return "air";
-  if (kind.startsWith("player") || kind.startsWith("seat")) return "players";
-  if (kind.startsWith("sam") || kind === "harm_strike") return "air";
-  if (kind.startsWith("handoff") || kind.startsWith("game")) return "system";
-  return "ground";
+/** Category of every event kind. A `Record` over the generated `EventKind`
+ * union, so a kind added to the engine fails `tsc` until it is placed here. */
+const EVENT_CATEGORY: Record<EventKind, EventCategory> = {
+  ai_order: "orders",
+  artillery_fire: "fires",
+  attack_halted: "orders",
+  battle_started: "ground",
+  battle_ended: "ground",
+  contact_broken: "ground",
+  division_destroyed: "ground",
+  division_reformed: "ground",
+  division_reforming: "ground",
+  division_removed: "ground",
+  division_retreated: "ground",
+  objective_changed: "ground",
+  order_cancelled: "orders",
+  order_completed: "orders",
+  province_captured: "ground",
+  withdrawal_completed: "ground",
+  convoy_delivered: "logistics",
+  convoy_destroyed: "logistics",
+  convoy_dispatched: "logistics",
+  convoy_returned: "logistics",
+  air_engagement: "air",
+  air_strike: "air",
+  aircraft_delivered: "air",
+  aircraft_lost: "air",
+  airlift_delivered: "air",
+  flight_aborted: "air",
+  flight_cancelled: "air",
+  flight_complete: "air",
+  flight_landed: "air",
+  flight_replanned: "air",
+  flight_rerouted: "air",
+  flight_rtb: "air",
+  flight_takeoff: "air",
+  package_complete: "air",
+  package_ordered: "air",
+  package_planned: "air",
+  package_retimed: "air",
+  scramble: "air",
+  harm_strike: "air",
+  sam_destroyed: "air",
+  sam_engagement: "air",
+  sam_relocating: "air",
+  sam_replaced: "air",
+  sam_struck: "air",
+  game_disconnected: "system",
+  game_losses: "system",
+  handoff: "system",
+  handoff_failed: "system",
+  handoff_timeout: "system",
+  player_joined: "players",
+  player_landed: "players",
+  player_left: "players",
+  player_takeoff: "players",
+  seat_released: "players",
+  seat_taken: "players",
+  campaign_resumed: "system",
+  campaign_saved: "system",
+  time_control: "system",
+};
+
+export function eventCategory(kind: EventKind): EventCategory {
+  return EVENT_CATEGORY[kind] ?? "ground";
 }
 
 export const CATEGORY_ICON: Record<EventCategory, string> = {

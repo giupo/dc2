@@ -309,7 +309,9 @@ curl -X POST -H "Authorization: Bearer $DYNACAMP_API_TOKEN" -H 'Content-Type: ap
 
 ### `GET /api/events?since=0&kinds=a,b&limit=500`
 Eventi in ordine, a pagine: `{"events": [...], "next": N}`. Si richiama con
-`since=next`. Ogni evento: `seq, time, kind, data`. I tipi principali sono
+`since=next`. Ogni evento: `seq, time, kind, data`. `kind` è un valore dello
+schema `EventKind` (elenco completo nell'OpenAPI); un tipo sconosciuto in
+`kinds` dà 422. I tipi principali sono
 `province_captured`, `battle_started/ended`, `division_retreated/destroyed`,
 `convoy_dispatched/delivered/destroyed`, `package_planned`, `flight_takeoff`,
 `air_strike`, `air_engagement`, `aircraft_lost`, `seat_taken`,

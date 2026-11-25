@@ -21,6 +21,7 @@ export type AirDefense = S["AirDefenseView"];
 export type Briefing = S["BriefingView"];
 export type SamSite = S["SamSiteView"];
 export type CampaignEvent = S["EventView"];
+export type EventKind = S["EventKind"];
 export type EventsPage = S["EventsPage"];
 export type Time = S["Time"];
 /** `tick` message of the SSE stream (not part of the JSON routes, hence not in the schema). */

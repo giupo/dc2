@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from .geo import Vec2
 from .air import Airbase, Flight, Package, Squadron
 from .air_defense import AirDefenseUnit
-from .events import EventLog
+from .events import EventKind, EventLog
 from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
 from .units import UnitDomain, Units
@@ -158,7 +158,7 @@ class CampaignState:
         self._counter += 1
         return f"{prefix}{self._counter}"
 
-    def emit(self, kind: str, **data: object) -> None:
+    def emit(self, kind: EventKind, **data: object) -> None:
         """Append an event at the current campaign time.
 
         Args:

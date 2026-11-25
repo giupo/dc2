@@ -24,6 +24,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from . import catalog
 from .forces import Authority, MobileEntity
 from .geo import Vec2
 from .world import Theater
@@ -78,42 +79,10 @@ class SamSystem:
         return self.role is not SamRole.EWR
 
 
-def _s(*a, **k) -> SamSystem:
-    """Shorthand constructor for the catalogue."""
-    return SamSystem(*a, **k)
-
-
-SYSTEMS: dict[str, SamSystem] = {
-    s.id: s
-    for s in (
-        # long range
-        _s("patriot", "Patriot", SamRole.LONG, 70_000, 160_000, 24_000, 16, 0.45, 40, 45 * 60,
-           {"radar": 1, "launcher": 4, "cp": 1, "power": 1}, reload_per_hour=4),
-        _s("s300ps", "SA-10 Grumble", SamRole.LONG, 75_000, 160_000, 27_000, 16, 0.4, 40, 30 * 60,
-           {"search_radar": 1, "radar": 1, "cp": 1, "launcher": 4}, reload_per_hour=4),
-        # medium range
-        _s("hawk", "Hawk", SamRole.MEDIUM, 40_000, 90_000, 14_000, 12, 0.35, 40, 30 * 60,
-           {"search_radar": 1, "radar": 1, "cp": 1, "launcher": 4}),
-        _s("nasams", "NASAMS", SamRole.MEDIUM, 25_000, 75_000, 15_000, 12, 0.4, 60, 15 * 60,
-           {"radar": 1, "cp": 1, "launcher": 3}),
-        _s("buk", "SA-11 Gadfly", SamRole.MEDIUM, 35_000, 80_000, 22_000, 16, 0.4, 50, 5 * 60,
-           {"search_radar": 1, "cp": 1, "launcher": 4}),
-        _s("kub", "SA-6 Gainful", SamRole.MEDIUM, 25_000, 70_000, 12_000, 12, 0.3, 50, 10 * 60,
-           {"radar": 1, "launcher": 4}),
-        # short range
-        _s("tor", "SA-15 Gauntlet", SamRole.SHORT, 12_000, 25_000, 6_000, 16, 0.4, 60, 3 * 60,
-           {"launcher": 2}, reload_per_hour=8),
-        _s("osa", "SA-8 Gecko", SamRole.SHORT, 10_000, 30_000, 5_000, 12, 0.3, 60, 5 * 60,
-           {"launcher": 3}, reload_per_hour=8),
-        _s("avenger", "Avenger", SamRole.SHORT, 8_000, 12_000, 3_800, 16, 0.3, 70, 60,
-           {"launcher": 4}, radar=False, reload_per_hour=8),
-        # early warning
-        _s("ewr_1l13", "1L13 Box Spring", SamRole.EWR, 0, 250_000, 0, 0, 0.0, 30, 30 * 60, {"radar": 1}),
-        _s("ewr_55g6", "55G6 Tall Rack", SamRole.EWR, 0, 300_000, 0, 0, 0.0, 30, 30 * 60, {"radar": 1}),
-        _s("ewr_fps117", "AN/FPS-117", SamRole.EWR, 0, 300_000, 0, 0, 0.0, 30, 30 * 60,
-           {"radar": 1, "dome": 1, "cp": 1}),
-    )
-}
+SYSTEMS: dict[str, SamSystem] = catalog.build(
+    "air_defense", SamSystem, convert={"role": SamRole, "elements": catalog.counts}
+)
+"""Every air defence system, from ``data/catalog/air_defense.toml``."""
 
 RADAR_ELEMENTS = ("radar", "search_radar")
 

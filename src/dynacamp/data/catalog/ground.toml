@@ -1,0 +1,159 @@
+# Ground forces catalogue: element types and brigade templates.
+#
+# [elements.<id>]: one kind of combat or support element (a vehicle, or an
+# infantry squad of about 10 men).
+#   soft_attack   firepower against unarmoured targets
+#   hard_attack   firepower against armour
+#   defense       attacks it absorbs when defending
+#   breakthrough  attacks it absorbs when attacking
+#   hardness      0 = soft, 1 = fully armoured
+#   combat        false for support elements such as trucks (default true)
+#
+# [elements.<id>.dcs] is read only by the DCS adapter:
+#   ratio         campaign elements one DCS unit stands for
+#   blue, red     DCS unit type per side
+#
+# [templates.<id>]: composition and logistics of a brigade type. Scenarios use
+# them by id and may add their own ([[templates]] in the scenario).
+#   name                 display name
+#   elements             nominal element counts
+#   speed_kmh            road march speed, km/h
+#   supply_capacity      supply points carried (about three days)
+#   supply_use_per_hour  consumption at rest
+
+[elements.infantry]
+soft_attack = 0.4
+hard_attack = 0.05
+defense = 0.6
+breakthrough = 0.1
+hardness = 0.0
+
+[elements.infantry.dcs]
+ratio = 10
+blue = "Soldier M4"
+red = "Infantry AK"
+
+[elements.mbt]
+soft_attack = 1.2
+hard_attack = 2.0
+defense = 1.0
+breakthrough = 2.5
+hardness = 0.9
+
+[elements.mbt.dcs]
+ratio = 6
+blue = "M-1 Abrams"
+red = "T-72B"
+
+[elements.ifv]
+soft_attack = 1.0
+hard_attack = 0.8
+defense = 1.0
+breakthrough = 1.2
+hardness = 0.6
+
+[elements.ifv.dcs]
+ratio = 8
+blue = "M-2 Bradley"
+red = "BMP-2"
+
+[elements.apc]
+soft_attack = 0.5
+hard_attack = 0.1
+defense = 0.5
+breakthrough = 0.4
+hardness = 0.4
+
+[elements.apc.dcs]
+ratio = 8
+blue = "M-113"
+red = "BTR-80"
+
+[elements.artillery]
+soft_attack = 3.0
+hard_attack = 0.6
+defense = 0.3
+breakthrough = 0.2
+hardness = 0.3
+
+[elements.artillery.dcs]
+ratio = 6
+blue = "M-109"
+red = "SAU Msta"
+
+[elements.mlrs]
+soft_attack = 4.0
+hard_attack = 0.3
+defense = 0.2
+breakthrough = 0.1
+hardness = 0.2
+
+[elements.mlrs.dcs]
+ratio = 6
+blue = "MLRS"
+red = "Grad-URAL"
+
+[elements.sam_short]
+soft_attack = 0.1
+hard_attack = 0.05
+defense = 0.2
+breakthrough = 0.0
+hardness = 0.3
+
+[elements.sam_short.dcs]
+ratio = 4
+blue = "M1097 Avenger"
+red = "Strela-10M3"
+
+[elements.aaa]
+soft_attack = 0.5
+hard_attack = 0.2
+defense = 0.3
+breakthrough = 0.1
+hardness = 0.4
+
+[elements.aaa.dcs]
+ratio = 4
+blue = "Vulcan"
+red = "ZSU-23-4 Shilka"
+
+[elements.truck]
+soft_attack = 0.0
+hard_attack = 0.0
+defense = 0.0
+breakthrough = 0.0
+hardness = 0.0
+combat = false
+
+[elements.truck.dcs]
+ratio = 3
+blue = "M 818"
+red = "Ural-375"
+
+[templates.mech_brigade]
+name = "Mechanised brigade"
+elements = { infantry = 120, ifv = 90, mbt = 30, artillery = 18, sam_short = 8, truck = 60 }
+speed_kmh = 35
+supply_capacity = 72
+supply_use_per_hour = 1.0
+
+[templates.tank_brigade]
+name = "Armoured brigade"
+elements = { infantry = 40, ifv = 40, mbt = 90, artillery = 18, aaa = 8, truck = 60 }
+speed_kmh = 35
+supply_capacity = 72
+supply_use_per_hour = 1.3
+
+[templates.infantry_brigade]
+name = "Motorised infantry brigade"
+elements = { infantry = 250, apc = 60, artillery = 18, aaa = 6, truck = 80 }
+speed_kmh = 40
+supply_capacity = 72
+supply_use_per_hour = 0.7
+
+[templates.artillery_group]
+name = "Artillery group"
+elements = { infantry = 30, artillery = 36, mlrs = 18, truck = 50 }
+speed_kmh = 30
+supply_capacity = 72
+supply_use_per_hour = 1.2

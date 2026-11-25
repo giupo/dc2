@@ -19,9 +19,10 @@ briefing shows it, so the players know what the AI will call them.
 Eastern aircraft (``red`` side, Russian country in the missions) use numeric
 callsigns: nothing is sent and DCS keeps the template's.
 
-The type lists are copied from pydcs (``callnames``), keyed by campaign
-aircraft id; ``tests/test_callsigns.py`` checks them against pydcs when it is
-installed, so the runtime does not need it.
+The type lists are copied from pydcs (``callnames``) into the aircraft
+catalogue (``callsigns`` in the ``dcs`` sub-table of
+``data/catalog/aircraft.toml``); ``tests/test_callsigns.py`` checks them
+against pydcs when it is installed, so the runtime does not need it.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from . import catalog
 from .air import Task
 
 if TYPE_CHECKING:
@@ -41,17 +43,7 @@ TANKER = ("Texaco", "Arco", "Shell")
 
 # Type-specific names, numbered from len(GENERIC) + 1 (from pydcs ``callnames``).
 TYPE_NAMES: dict[str, tuple[str, ...]] = {
-    "f16c": ("Viper", "Venom", "Lobo", "Cowboy", "Python", "Rattler", "Panther", "Wolf", "Weasel", "Wild", "Ninja", "Jedi"),
-    "fa18c": ("Hornet", "Squid", "Ragin", "Roman", "Sting", "Jury", "Joker", "Ram", "Hawk", "Devil", "Check", "Snake"),
-    "a10c": ("Hawg", "Boar", "Pig", "Tusk"),
-    "a10a": ("Hawg", "Boar", "Pig", "Tusk"),
-    "ah64d": ("ArmyAir", "Apache", "Crow", "Chaos", "Sioux", "Gatling", "Gunslinger", "Hammerhead", "Bootleg",
-              "Palehorse", "Carnivore", "Saber"),
-    "b1b": ("Bone", "Dark", "Vader"),
-    "b52h": ("Buff", "Dump", "Kenworth"),
-    "oh58d": ("Anvil", "Azrael", "Bam-Bam", "Blackjack", "Bootleg", "Burnin' Stogie", "Chaos", "Crazyhorse", "Crusader",
-              "Darkhorse", "Eagle", "Lighthorse", "Mustang", "Outcast", "Palehorse", "Pegasus", "Pistol", "Roughneck",
-              "Saber", "Shamus", "Spur", "Stetson", "Wrath"),
+    aid: tuple(d["callsigns"]) for aid, d in catalog.dcs("aircraft").items() if d.get("callsigns")
 }
 
 WESTERN_SIDE = "blue"  # the missions put blue in the USA country (western callsigns)
