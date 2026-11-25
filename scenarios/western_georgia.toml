@@ -1,9 +1,9 @@
 # Demo scenario on the DCS Caucasus map.
 # Red attacks out of Abkhazia toward Kutaisi; Blue defends and wants Sukhumi.
 #
-# Coordinates: pos = [east, north] in metres on the theater plane.
-# For DCS that is [DCS z, DCS x]. Values were drafted with tools/dcs_ll.py
-# (about 1 km accurate here): check them in the mission editor before relying on them.
+# Coordinates: ll = [lat, lon], WGS84 decimal degrees, projected by the engine
+# with DCS' Caucasus transverse Mercator (dynacamp.projection). Town centres are
+# approximate (about 1 km): check them in the mission editor before relying on them.
 
 [campaign]
 name = "Western Georgia"
@@ -17,6 +17,7 @@ name = "Georgian-Coalition Forces"
 side = "blue"
 enemies = ["red"]
 objectives = [{ province = "sukhumi", priority = 3 }, { province = "ochamchire", priority = 1 }]
+bullseye = "samtredia"  # BULLS reference: a province (its centre) or [east, north] metres
 
 [[factions]]
 id = "red"
@@ -24,13 +25,14 @@ name = "Northern Expeditionary Group"
 side = "red"
 enemies = ["blue"]
 objectives = [{ province = "kutaisi", priority = 3 }, { province = "senaki", priority = 2 }, { province = "poti", priority = 2 }]
+bullseye = "ochamchire"  # BULLS reference: a province (its centre) or [east, north] metres
 
 # ------------------------------------------------------------------ provinces
 
 [[provinces]]
 id = "gudauta"
 name = "Gudauta"
-pos = [522263, -196475]
+ll = [43.111692, 40.640804]
 terrain = "hills"
 controller = "red"
 infrastructure = 3
@@ -40,7 +42,7 @@ depot = { stock = 6000, capacity = 10000, production_per_hour = 120, trucks = 12
 [[provinces]]
 id = "sukhumi"
 name = "Sukhumi"
-pos = [555505, -205551]
+ll = [43.002857, 41.034822]
 terrain = "urban"
 controller = "red"
 infrastructure = 4
@@ -50,7 +52,7 @@ depot = { stock = 3000, capacity = 6000, production_per_hour = 60, trucks = 60 }
 [[provinces]]
 id = "tkvarcheli"
 name = "Tkvarcheli"
-pos = [610388, -217273]
+ll = [42.849479, 41.685977]
 terrain = "mountain"
 controller = "red"
 infrastructure = 1
@@ -58,7 +60,7 @@ infrastructure = 1
 [[provinces]]
 id = "ochamchire"
 name = "Ochamchire"
-pos = [594934, -234381]
+ll = [42.711248, 41.477968]
 terrain = "plains"
 controller = "red"
 infrastructure = 3
@@ -67,7 +69,7 @@ victory_points = 1
 [[provinces]]
 id = "gali"
 name = "Gali"
-pos = [616930, -241180]
+ll = [42.630617, 41.734959]
 terrain = "forest"
 controller = "red"
 infrastructure = 2
@@ -76,7 +78,7 @@ victory_points = 1
 [[provinces]]
 id = "jvari"
 name = "Jvari"
-pos = [641840, -228545]
+ll = [42.719524, 42.051474]
 terrain = "mountain"
 controller = "blue"
 infrastructure = 1
@@ -84,7 +86,7 @@ infrastructure = 1
 [[provinces]]
 id = "zugdidi"
 name = "Zugdidi"
-pos = [629690, -253287]
+ll = [42.510973, 41.873320]
 terrain = "urban"
 controller = "blue"
 infrastructure = 3
@@ -93,7 +95,7 @@ victory_points = 3
 [[provinces]]
 id = "martvili"
 name = "Martvili"
-pos = [672458, -259812]
+ll = [42.411712, 42.378415]
 terrain = "hills"
 controller = "blue"
 infrastructure = 2
@@ -101,7 +103,7 @@ infrastructure = 2
 [[provinces]]
 id = "senaki"
 name = "Senaki"
-pos = [648830, -278092]
+ll = [42.272192, 42.071324]
 terrain = "plains"
 controller = "blue"
 infrastructure = 3
@@ -110,7 +112,7 @@ victory_points = 3
 [[provinces]]
 id = "poti"
 name = "Poti"
-pos = [617382, -294711]
+ll = [42.153663, 41.674025]
 terrain = "marsh"
 controller = "blue"
 infrastructure = 4
@@ -119,7 +121,7 @@ victory_points = 4
 [[provinces]]
 id = "samtredia"
 name = "Samtredia"
-pos = [672289, -287808]
+ll = [42.163104, 42.339236]
 terrain = "plains"
 controller = "blue"
 infrastructure = 4
@@ -128,7 +130,7 @@ victory_points = 1
 [[provinces]]
 id = "lanchkhuti"
 name = "Lanchkhuti"
-pos = [647663, -298333]
+ll = [42.093279, 42.031475]
 terrain = "forest"
 controller = "blue"
 infrastructure = 2
@@ -136,7 +138,7 @@ infrastructure = 2
 [[provinces]]
 id = "kutaisi"
 name = "Kutaisi"
-pos = [700376, -272183]
+ll = [42.273779, 42.695890]
 terrain = "urban"
 controller = "blue"
 infrastructure = 5
@@ -146,7 +148,7 @@ depot = { stock = 8000, capacity = 12000, production_per_hour = 150, trucks = 15
 [[provinces]]
 id = "zestafoni"
 name = "Zestafoni"
-pos = [730350, -286353]
+ll = [42.116985, 43.033806]
 terrain = "hills"
 controller = "blue"
 infrastructure = 3
@@ -154,7 +156,7 @@ infrastructure = 3
 [[provinces]]
 id = "ambrolauri"
 name = "Ambrolauri"
-pos = [733634, -239882]
+ll = [42.525541, 43.139550]
 terrain = "mountain"
 controller = "blue"
 infrastructure = 1
@@ -162,7 +164,7 @@ infrastructure = 1
 [[provinces]]
 id = "ozurgeti"
 name = "Ozurgeti"
-pos = [647163, -317382]
+ll = [41.924307, 42.001383]
 terrain = "hills"
 controller = "blue"
 infrastructure = 2
@@ -170,7 +172,7 @@ infrastructure = 2
 [[provinces]]
 id = "kobuleti"
 name = "Kobuleti"
-pos = [630098, -330292]
+ll = [41.825288, 41.782153]
 terrain = "plains"
 controller = "blue"
 infrastructure = 3
@@ -179,7 +181,7 @@ victory_points = 1
 [[provinces]]
 id = "batumi"
 name = "Batumi"
-pos = [620437, -351324]
+ll = [41.646815, 41.641818]
 terrain = "urban"
 controller = "blue"
 infrastructure = 4
@@ -382,59 +384,60 @@ template = "artillery_group"
 province = "samtredia"
 
 # ------------------------------------------------------------------ air
-# name = DCS airdrome name. pos = exact airdrome position from pydcs. An airbase with a province
+# name = DCS airdrome name. ll = airdrome position (from pydcs). An airbase with a province
 # belongs to whoever controls it; rear bases outside the map give a faction.
 
 [[airbases]]
 id = "kutaisi"
 name = "Kutaisi"
-pos = [683859, -284887]
+ll = [42.177618, 42.481309]
 province = "kutaisi"
 
 [[airbases]]
 id = "senaki"
 name = "Senaki-Kolkhi"
-pos = [647279, -281782]
+ll = [42.240853, 42.048018]
 province = "senaki"
 
 [[airbases]]
 id = "kobuleti"
 name = "Kobuleti"
-pos = [635633, -317962]
+ll = [41.929921, 41.863283]
 province = "kobuleti"
 
 [[airbases]]
 id = "batumi"
 name = "Batumi"
-pos = [617386, -355811]
+ll = [41.609594, 41.600241]
 province = "batumi"
 
 [[airbases]]
 id = "vaziani"
 name = "Vaziani"
-pos = [903149, -319065]
+ll = [41.629020, 45.027304]
 faction = "blue"
 
 [[airbases]]
 id = "sukhumi"
 name = "Sukhumi-Babushara"
-pos = [564392, -220592]
+ll = [42.861095, 41.125004]
 province = "sukhumi"
 
 [[airbases]]
 id = "gudauta"
 name = "Gudauta"
-pos = [516452, -196710]
+ll = [43.114327, 40.569748]
 province = "gudauta"
 
 [[airbases]]
 id = "sochi"
 name = "Sochi-Adler"
-pos = [462219, -164496]
+ll = [43.444358, 39.941079]
 faction = "red"
 
 [[squadrons]]
 id = "b_viper"
+insignia = "usaf_480fs.webp"  # web/public/insignia/CREDITS.md
 name = '480th FS "Warhawks"'
 faction = "blue"
 airbase = "kutaisi"
@@ -444,6 +447,7 @@ callsign = "Venom"
 
 [[squadrons]]
 id = "b_hawg"
+insignia = "usaf_75fs.webp"  # web/public/insignia/CREDITS.md
 name = '75th FS "Tiger Sharks"'
 faction = "blue"
 airbase = "kobuleti"
@@ -453,6 +457,7 @@ callsign = "Boar"
 
 [[squadrons]]
 id = "b_hornet"
+insignia = "usmc_vmfa312.webp"  # web/public/insignia/CREDITS.md
 name = 'VMFA-312 "Checkerboards"'
 faction = "blue"
 airbase = "batumi"
@@ -462,6 +467,7 @@ callsign = "Check"
 
 [[squadrons]]
 id = "b_eagle"
+insignia = "usaf_493fs.webp"  # web/public/insignia/CREDITS.md
 name = '493rd FS "Grim Reapers"'
 faction = "blue"
 airbase = "vaziani"
@@ -471,6 +477,7 @@ callsign = "Reaper"
 
 [[squadrons]]
 id = "b_apache"
+insignia = "usarmy_3avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = "1-3 ARB, 12th CAB"
 faction = "blue"
 airbase = "senaki"
@@ -680,6 +687,7 @@ province = "sukhumi"
 
 [[squadrons]]
 id = "b_tomcat"
+insignia = "usn_vf32.webp"  # web/public/insignia/CREDITS.md
 name = 'VF-32 "Swordsmen"'
 faction = "blue"
 airbase = "batumi"
@@ -689,6 +697,7 @@ callsign = "Gypsy"
 
 [[squadrons]]
 id = "b_mudhen"
+insignia = "usaf_492fs.webp"  # web/public/insignia/CREDITS.md
 name = '492nd FS "Madhatters"'
 faction = "blue"
 airbase = "vaziani"
@@ -707,6 +716,7 @@ callsign = "Bulldog"
 
 [[squadrons]]
 id = "b_tornado"
+insignia = "raf_9sqn.webp"  # web/public/insignia/CREDITS.md
 name = "No. IX(B) Sqn RAF"
 faction = "blue"
 airbase = "vaziani"
@@ -734,6 +744,7 @@ callsign = "Ares"
 
 [[squadrons]]
 id = "b_bone"
+insignia = "usaf_37bs.webp"  # web/public/insignia/CREDITS.md
 name = '37th BS "Tigers"'
 faction = "blue"
 airbase = "vaziani"
@@ -743,6 +754,7 @@ callsign = "Dark"
 
 [[squadrons]]
 id = "b_nighthawk"
+insignia = "usaf_8fs.svg"  # web/public/insignia/CREDITS.md
 name = '8th FS "Black Sheep"'
 faction = "blue"
 airbase = "vaziani"
@@ -752,6 +764,7 @@ callsign = "Vega"
 
 [[squadrons]]
 id = "b_cobra"
+insignia = "usmc_hmla167.webp"  # web/public/insignia/CREDITS.md
 name = 'HMLA-167 "Warriors"'
 faction = "blue"
 airbase = "senaki"
@@ -761,6 +774,7 @@ callsign = "Warrior"
 
 [[squadrons]]
 id = "b_kiowa"
+insignia = "usarmy_17cav_dui.webp"  # web/public/insignia/CREDITS.md
 name = "1-17 Cavalry"
 faction = "blue"
 airbase = "kobuleti"
@@ -862,6 +876,7 @@ callsign = "Magic"
 
 [[squadrons]]
 id = "b_tanker"
+insignia = "usaf_351ars.webp"  # web/public/insignia/CREDITS.md
 name = "351st ARS"
 faction = "blue"
 airbase = "vaziani"
@@ -871,6 +886,7 @@ callsign = "Texaco"
 
 [[squadrons]]
 id = "b_airlift"
+insignia = "usaf_37as.webp"  # web/public/insignia/CREDITS.md
 name = '37th AS "Bobcats"'
 faction = "blue"
 airbase = "vaziani"
@@ -880,6 +896,7 @@ callsign = "Herky"
 
 [[squadrons]]
 id = "b_chinook"
+insignia = "usarmy_214avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = 'B Co 1-214 GSAB "Big Windy"'
 faction = "blue"
 airbase = "kutaisi"
@@ -889,6 +906,7 @@ callsign = "Big Windy"
 
 [[squadrons]]
 id = "b_blackhawk"
+insignia = "usarmy_214avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = "A Co 1-214 GSAB"
 faction = "blue"
 airbase = "batumi"

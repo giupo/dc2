@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection } from "geojson";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Flight } from "../api/client";
-import { ageLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
+import { ageLabel, bullsLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
 import { useLiveFeed, type LiveFeed } from "../lib/livePositions";
 import { affiliation, airbaseSidc, airSidc, convoySidc, designation, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { CampaignData } from "../lib/useCampaign";
@@ -464,6 +464,31 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     };
   }, [map, picking]);
 
+  // Bullseye of the viewpoint side: a marker, and the BULLS call of the cursor
+  // (written straight into the DOM: no React render on every mouse move).
+  const bulls = campaign?.factions.find((f) => f.side === viewpoint)?.bullseye.ll ?? null;
+  const variation = campaign?.magnetic_variation_deg ?? 0;
+  const bullsMarkers = useMemo<MarkerSpec[]>(() => {
+    const at = lngLat(bulls);
+    if (!at || !bulls) return [];
+    const html = `<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="13" cy="13" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M13 0 V26 M0 13 H26" stroke="currentColor" stroke-width="1"/></svg>`;
+    return [{ id: "bullseye", at, html, cls: "bullseye", title: `Bullseye (${viewpoint}): ${bulls[0].toFixed(4)}, ${bulls[1].toFixed(4)} — reference of BULLS calls` }];
+  }, [bulls?.[0], bulls?.[1], viewpoint]);
+  const readout = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!map || !bulls) return;
+    const move = (e: { lngLat: { lat: number; lng: number } }) => {
+      if (readout.current) readout.current.textContent = `BULLS ${bullsLabel(bulls, [e.lngLat.lat, e.lngLat.lng], variation, units)}`;
+    };
+    const out = () => { if (readout.current) readout.current.textContent = ""; };
+    map.on("mousemove", move);
+    map.getCanvas().addEventListener("mouseleave", out);
+    return () => {
+      map.off("mousemove", move);
+      map.getCanvas().removeEventListener("mouseleave", out);
+    };
+  }, [map, bulls?.[0], bulls?.[1], variation, units]);
+
   // Smooth movement: positions streamed a few times a second, interpolated at 60 fps.
   const feed = useLiveFeed(data.faction);
   useHtmlMarkers(map, logisticsMarkers, onSelect, feed);
@@ -471,11 +496,13 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
   useHtmlMarkers(map, divisionMarkers, onSelect, feed);
   useHtmlMarkers(map, battleMarkers, onSelect);
   useHtmlMarkers(map, airMarkers, onSelect, feed);
+  useHtmlMarkers(map, bullsMarkers, onSelect);
 
   const shown = [...problems].filter((p) => !dismissed.has(p));
   return (
     <>
       <div ref={container} className="map" />
+      {bulls && <div ref={readout} className="bulls-readout" title={`Cursor from the ${viewpoint} bullseye: magnetic bearing / range`} />}
       {shown.length > 0 && (
         <div className="map-notices">
           {shown.map((p) => (

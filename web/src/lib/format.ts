@@ -112,6 +112,8 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
       return `Convoy ${d.convoy} back at depot`;
     case "package_planned":
       return `${d.number ? `PKG ${d.number} · ` : ""}${d.task}: ${d.target}, TOT ${d.tot} — ${(d.flights as string[]).join(", ")}`;
+    case "package_complete":
+      return `${d.number ? `PKG ${d.number} · ` : ""}${d.task}: ${d.target} — mission over`;
     case "package_ordered":
       return `${fac(d.faction)} planner orders PKG ${d.number} · ${d.task}: ${d.target}`;
     case "package_retimed":
@@ -124,6 +126,10 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
       return `${d.callsign} landed`;
     case "flight_aborted":
       return `${d.callsign} aborts: ${d.reason}`;
+    case "scramble":
+      return `SCRAMBLE ${d.callsign} from ${d.base}: ${d.aircraft} over ${d.threatened}`;
+    case "flight_rerouted":
+      return `${d.callsign} reroutes around ${d.reason}`;
     case "flight_cancelled":
       return `${d.callsign} cancelled: ${d.reason}`;
     case "flight_complete":
@@ -182,4 +188,20 @@ export function fmtAlt(m: number, units: Units): string {
 
 export function fmtSpeed(kmh: number, units: Units): string {
   return units === "imperial" ? `${Math.round(kmh / 1.852 / 5) * 5} kts` : `${Math.round(kmh)} km/h`;
+}
+
+/** BULLS call of a point, "045/32": magnetic bearing (great circle from the
+ * bullseye, minus the theatre's magnetic variation) and range in NM or km.
+ * Same rule as the engine's `dynacamp.bullseye.label`. */
+export function bullsLabel(bulls: number[], at: number[], variationDeg: number, units: Units): string {
+  const rad = Math.PI / 180;
+  const [p1, p2] = [bulls[0] * rad, at[0] * rad];
+  const dl = (at[1] - bulls[1]) * rad;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  const brg = ((Math.atan2(y, x) / rad - variationDeg) % 360 + 360) % 360;
+  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  const km = 2 * 6371.0088 * Math.asin(Math.sqrt(a));
+  const dist = units === "imperial" ? km / 1.852 : km;
+  return `${String(Math.round(brg) % 360).padStart(3, "0")}/${Math.round(dist)}`;
 }

@@ -3,9 +3,9 @@
 # Tartus). The front runs between Khan Shaykhun and Hama; a desert flank opens
 # through Ithriyah and the Euphrates crossing at Tabqa.
 #
-# Coordinates: pos = [east, north] in metres = [DCS z, DCS x], computed from
-# town lat/lon with tools/dcs_ll.py (Syria transverse Mercator, same parameters
-# as pydcs). Town centres are approximate (~1 km).
+# Coordinates: ll = [lat, lon], WGS84 decimal degrees. The engine projects them
+# on the theater plane with DCS' Syria transverse Mercator (dynacamp.projection,
+# same parameters as pydcs). Town centres are approximate (~1 km).
 
 [campaign]
 name = "Syria - M5 Corridor"
@@ -19,6 +19,7 @@ name = "Coalition Task Force"
 side = "blue"
 enemies = ["red"]
 objectives = [{ province = "homs", priority = 3 }, { province = "hama", priority = 2 }, { province = "tartus", priority = 2 }]
+bullseye = { ll = [35.706252, 34.602944] }
 
 [[factions]]
 id = "red"
@@ -26,13 +27,14 @@ name = "Southern Army Group"
 side = "red"
 enemies = ["blue"]
 objectives = [{ province = "aleppo", priority = 3 }, { province = "idlib", priority = 2 }, { province = "latakia", priority = 2 }]
+bullseye = { ll = [33.908100, 35.509073] }
 
 # ------------------------------------------------------------------ provinces (blue)
 
 [[provinces]]
 id = "aleppo"
 name = "Aleppo"
-pos = [117377, 127835]
+ll = [36.200001, 37.159997]
 terrain = "urban"
 controller = "blue"
 infrastructure = 5
@@ -42,7 +44,7 @@ depot = { stock = 8000, capacity = 12000, production_per_hour = 150, trucks = 15
 [[provinces]]
 id = "al_bab"
 name = "Al-Bab"
-pos = [150034, 146139]
+ll = [36.369999, 37.520005]
 terrain = "plains"
 controller = "blue"
 infrastructure = 3
@@ -51,7 +53,7 @@ victory_points = 1
 [[provinces]]
 id = "khanasir"
 name = "Khanasir"
-pos = [147230, 80719]
+ll = [35.779996, 37.499999]
 terrain = "plains"
 controller = "blue"
 infrastructure = 2
@@ -59,7 +61,7 @@ infrastructure = 2
 [[provinces]]
 id = "tabqa"
 name = "Tabqa"
-pos = [242162, 86430]
+ll = [35.840002, 38.550004]
 terrain = "plains"
 controller = "blue"
 infrastructure = 2
@@ -68,7 +70,7 @@ victory_points = 2
 [[provinces]]
 id = "idlib"
 name = "Idlib"
-pos = [68991, 98914]
+ll = [35.929998, 36.630003]
 terrain = "urban"
 controller = "blue"
 infrastructure = 3
@@ -77,7 +79,7 @@ victory_points = 4
 [[provinces]]
 id = "saraqib"
 name = "Saraqib"
-pos = [84155, 90789]
+ll = [35.859997, 36.800001]
 terrain = "plains"
 controller = "blue"
 infrastructure = 4
@@ -86,7 +88,7 @@ victory_points = 1
 [[provinces]]
 id = "jisr_al_shughur"
 name = "Jisr al-Shughur"
-pos = [40653, 86324]
+ll = [35.810000, 36.320002]
 terrain = "hills"
 controller = "blue"
 infrastructure = 2
@@ -95,7 +97,7 @@ victory_points = 1
 [[provinces]]
 id = "latakia"
 name = "Latakia"
-pos = [-8302, 55586]
+ll = [35.519999, 35.789995]
 terrain = "urban"
 controller = "blue"
 infrastructure = 4
@@ -105,7 +107,7 @@ depot = { stock = 4000, capacity = 8000, production_per_hour = 80, trucks = 80 }
 [[provinces]]
 id = "maarat"
 name = "Maarat al-Numan"
-pos = [71835, 66655]
+ll = [35.640003, 36.670005]
 terrain = "plains"
 controller = "blue"
 infrastructure = 3
@@ -114,7 +116,7 @@ victory_points = 1
 [[provinces]]
 id = "khan_shaykhun"
 name = "Khan Shaykhun"
-pos = [69494, 44511]
+ll = [35.440004, 36.649999]
 terrain = "plains"
 controller = "blue"
 infrastructure = 3
@@ -122,7 +124,7 @@ infrastructure = 3
 [[provinces]]
 id = "ithriyah"
 name = "Ithriyah"
-pos = [162890, 35010]
+ll = [35.370004, 37.680000]
 terrain = "plains"
 controller = "blue"
 infrastructure = 1
@@ -132,7 +134,7 @@ infrastructure = 1
 [[provinces]]
 id = "hama"
 name = "Hama"
-pos = [77792, 9911]
+ll = [35.130002, 36.749999]
 terrain = "urban"
 controller = "red"
 infrastructure = 4
@@ -141,7 +143,7 @@ victory_points = 5
 [[provinces]]
 id = "salamiyah"
 name = "Salamiyah"
-pos = [104870, -3976]
+ll = [35.010004, 37.049999]
 terrain = "plains"
 controller = "red"
 infrastructure = 3
@@ -150,7 +152,7 @@ victory_points = 1
 [[provinces]]
 id = "masyaf"
 name = "Masyaf"
-pos = [40219, 3067]
+ll = [35.060001, 36.340000]
 terrain = "mountain"
 controller = "red"
 infrastructure = 2
@@ -158,7 +160,7 @@ infrastructure = 2
 [[provinces]]
 id = "baniyas"
 name = "Baniyas"
-pos = [4139, 17428]
+ll = [35.179997, 35.940001]
 terrain = "hills"
 controller = "red"
 infrastructure = 3
@@ -167,7 +169,7 @@ victory_points = 1
 [[provinces]]
 id = "tartus"
 name = "Tartus"
-pos = [-1420, -14607]
+ll = [34.889996, 35.889995]
 terrain = "urban"
 controller = "red"
 infrastructure = 4
@@ -177,7 +179,7 @@ depot = { stock = 4000, capacity = 8000, production_per_hour = 80, trucks = 80 }
 [[provinces]]
 id = "homs"
 name = "Homs"
-pos = [73131, -34376]
+ll = [34.730003, 36.710001]
 terrain = "urban"
 controller = "red"
 infrastructure = 5
@@ -187,7 +189,7 @@ depot = { stock = 5000, capacity = 8000, production_per_hour = 100, trucks = 100
 [[provinces]]
 id = "qusayr"
 name = "Al-Qusayr"
-pos = [60640, -58501]
+ll = [34.509999, 36.580002]
 terrain = "plains"
 controller = "red"
 infrastructure = 2
@@ -195,7 +197,7 @@ infrastructure = 2
 [[provinces]]
 id = "tiyas"
 name = "Tiyas (T4)"
-pos = [157056, -59199]
+ll = [34.520000, 37.629997]
 terrain = "plains"
 controller = "red"
 infrastructure = 2
@@ -204,7 +206,7 @@ victory_points = 2
 [[provinces]]
 id = "palmyra"
 name = "Palmyra"
-pos = [216749, -55380]
+ll = [34.560001, 38.279995]
 terrain = "plains"
 controller = "red"
 infrastructure = 2
@@ -213,7 +215,7 @@ victory_points = 2
 [[provinces]]
 id = "nabk"
 name = "An-Nabk"
-pos = [73200, -113169]
+ll = [34.019997, 36.730001]
 terrain = "hills"
 controller = "red"
 infrastructure = 4
@@ -221,7 +223,7 @@ infrastructure = 4
 [[provinces]]
 id = "dumayr"
 name = "Dumayr"
-pos = [68559, -155232]
+ll = [33.639997, 36.689998]
 terrain = "plains"
 controller = "red"
 infrastructure = 3
@@ -230,7 +232,7 @@ victory_points = 1
 [[provinces]]
 id = "damascus"
 name = "Damascus"
-pos = [31074, -168750]
+ll = [33.510000, 36.290004]
 terrain = "urban"
 controller = "red"
 infrastructure = 5
@@ -515,82 +517,83 @@ template = "tank_brigade"
 province = "damascus"
 
 # ------------------------------------------------------------------ air
-# name = DCS airdrome name. pos = exact airdrome position from pydcs.
+# name = DCS airdrome name. ll = airdrome position (from pydcs).
 
 [[airbases]]
 id = "aleppo"
 name = "Aleppo"
-pos = [123125, 125577]
+ll = [36.180620, 37.224363]
 province = "aleppo"
 
 [[airbases]]
 id = "kuweires"
 name = "Kuweires"
-pos = [155254, 125811]
+ll = [36.187495, 37.581497]
 province = "al_bab"
 
 [[airbases]]
 id = "jirah"
 name = "Jirah"
-pos = [187069, 115350]
+ll = [36.096867, 37.936534]
 province = "al_bab"
 
 [[airbases]]
 id = "tabqa"
 name = "Tabqa"
-pos = [243605, 76965]
+ll = [35.754724, 38.566445]
 province = "tabqa"
 
 [[airbases]]
 id = "abu_al_duhur"
 name = "Abu al-Duhur"
-pos = [111345, 76049]
+ll = [35.732307, 37.104129]
 province = "saraqib"
 
 [[airbases]]
 id = "bassel"
 name = "Bassel Al-Assad"
-pos = [5836, 42237]
+ll = [35.403852, 35.950237]
 province = "latakia"
 
 [[airbases]]
 id = "hama"
 name = "Hama"
-pos = [74333, 8663]
+ll = [35.118047, 36.712377]
 province = "hama"
 
 [[airbases]]
 id = "shayrat"
 name = "Shayrat"
-pos = [90675, -61368]
+ll = [34.490203, 36.907611]
 province = "homs"
 
 [[airbases]]
 id = "tiyas"
 name = "Tiyas"
-pos = [157071, -58908]
+ll = [34.522625, 37.630117]
 province = "tiyas"
 
 [[airbases]]
 id = "palmyra"
 name = "Palmyra"
-pos = [220126, -55703]
+ll = [34.557299, 38.316828]
 province = "palmyra"
 
 [[airbases]]
 id = "damascus"
 name = "Damascus"
-pos = [52081, -178652]
+ll = [33.425511, 36.518509]
 province = "damascus"
 
 [[airbases]]
 id = "dumayr"
 name = "Al-Dumayr"
-pos = [73972, -158713]
+ll = [33.609701, 36.749138]
 province = "dumayr"
 
 [[squadrons]]
 id = "b_viper"
+insignia = "usaf_555fs.webp"  # web/public/insignia/CREDITS.md
 name = '555th FS "Triple Nickel"'
 faction = "blue"
 airbase = "aleppo"
@@ -600,6 +603,7 @@ callsign = "Lobo"
 
 [[squadrons]]
 id = "b_hawg"
+insignia = "usaf_74fs.svg"  # web/public/insignia/CREDITS.md
 name = '74th FS "Flying Tigers"'
 faction = "blue"
 airbase = "abu_al_duhur"
@@ -609,6 +613,7 @@ callsign = "Tusk"
 
 [[squadrons]]
 id = "b_eagle"
+insignia = "usaf_493fs.webp"  # web/public/insignia/CREDITS.md
 name = '493rd FS "Grim Reapers"'
 faction = "blue"
 airbase = "jirah"
@@ -618,6 +623,7 @@ callsign = "Reaper"
 
 [[squadrons]]
 id = "b_hornet"
+insignia = "usmc_vmfa232.svg"  # web/public/insignia/CREDITS.md
 name = 'VMFA-232 "Red Devils"'
 faction = "blue"
 airbase = "bassel"
@@ -627,6 +633,7 @@ callsign = "Devil"
 
 [[squadrons]]
 id = "b_apache"
+insignia = "usarmy_101avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = '1-101 ARB "Expect No Mercy"'
 faction = "blue"
 airbase = "kuweires"
@@ -850,6 +857,7 @@ province = "tartus"
 
 [[squadrons]]
 id = "b_tomcat"
+insignia = "usn_vf103.svg"  # web/public/insignia/CREDITS.md
 name = 'VF-103 "Jolly Rogers"'
 faction = "blue"
 airbase = "bassel"
@@ -859,6 +867,7 @@ callsign = "Victory"
 
 [[squadrons]]
 id = "b_mudhen"
+insignia = "usaf_494fs.webp"  # web/public/insignia/CREDITS.md
 name = '494th FS "Panthers"'
 faction = "blue"
 airbase = "jirah"
@@ -868,6 +877,7 @@ callsign = "Panther"
 
 [[squadrons]]
 id = "b_harrier"
+insignia = "usmc_vma542.webp"  # web/public/insignia/CREDITS.md
 name = 'VMA-542 "Tigers"'
 faction = "blue"
 airbase = "abu_al_duhur"
@@ -895,6 +905,7 @@ callsign = "Cigogne"
 
 [[squadrons]]
 id = "b_falcon_a"
+insignia = "rnlaf_322sqn.svg"  # web/public/insignia/CREDITS.md
 name = '322 Sqn RNLAF "Polly Parrot"'
 faction = "blue"
 airbase = "aleppo"
@@ -913,6 +924,7 @@ callsign = "Panter"
 
 [[squadrons]]
 id = "b_buff"
+insignia = "usaf_20bs.webp"  # web/public/insignia/CREDITS.md
 name = '20th BS "Buccaneers"'
 faction = "blue"
 airbase = "jirah"
@@ -922,6 +934,7 @@ callsign = "Buff"
 
 [[squadrons]]
 id = "b_cobra"
+insignia = "usmc_hmla269.webp"  # web/public/insignia/CREDITS.md
 name = 'HMLA-269 "Gunrunners"'
 faction = "blue"
 airbase = "kuweires"
@@ -1033,13 +1046,14 @@ callsign = "Gyurza"
 [[airbases]]
 id = "incirlik"
 name = "Incirlik"
-pos = [-35240, 221208]
+ll = [37.002050, 35.426093]
 faction = "blue"
 
 # ------------------------------------------------------------------ support: AWACS, tankers, transports
 
 [[squadrons]]
 id = "b_awacs"
+insignia = "usaf_960aacs.webp"  # web/public/insignia/CREDITS.md
 name = "960th AACS"
 faction = "blue"
 airbase = "incirlik"
@@ -1049,6 +1063,7 @@ callsign = "Darkstar"
 
 [[squadrons]]
 id = "b_tanker"
+insignia = "usaf_351ars.webp"  # web/public/insignia/CREDITS.md
 name = "351st ARS"
 faction = "blue"
 airbase = "incirlik"
@@ -1067,6 +1082,7 @@ callsign = "Ascot"
 
 [[squadrons]]
 id = "b_chinook"
+insignia = "usarmy_214avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = 'B Co 1-214 GSAB "Big Windy"'
 faction = "blue"
 airbase = "aleppo"
@@ -1076,6 +1092,7 @@ callsign = "Big Windy"
 
 [[squadrons]]
 id = "b_blackhawk"
+insignia = "usarmy_214avn_dui.webp"  # web/public/insignia/CREDITS.md
 name = "A Co 1-214 GSAB"
 faction = "blue"
 airbase = "bassel"

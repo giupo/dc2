@@ -30,7 +30,7 @@ from .adapters.base import (
     UpdateRoute,
 )
 from . import callsigns
-from .air import Flight, FlightStatus, Task
+from .air import Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
 from .air_defense import AirDefenseUnit
 from .bubble import BubbleConfig, BubbleManager, Player
 from .forces import Authority, Convoy, Division, MobileEntity
@@ -562,8 +562,10 @@ class Engine:
             elements={"aircraft": float(f.ai_count)},
             waypoints=self._waypoints(f),
             speed_kmh=f.aircraft_type.cruise_kmh,
-            altitude=f.aircraft_type.cruise_alt_m,
+            altitude=flight_altitude(f),
             attrs={
+                # planned altitude at each waypoint sent (the briefing's profile)
+                "altitudes": tuple(waypoint_altitudes(f)[self._route_start(f):]),
                 "aircraft": f.aircraft_type.id,
                 "task": f.task.value,
                 "callsign": f.callsign,
@@ -580,12 +582,16 @@ class Engine:
             },
         )
 
+    @staticmethod
+    def _route_start(f: Flight) -> int:
+        """First waypoint of a flight still to send to the game (the station while on it)."""
+        return f.target_index if f.status is FlightStatus.ON_STATION else f.wp_index
+
     def _waypoints(self, ent: MobileEntity):
         """Remaining route of an entity as points (province centres or flight waypoints)."""
         t = self.state.theater
         if isinstance(ent, Flight):
-            start = ent.target_index if ent.status is FlightStatus.ON_STATION else ent.wp_index
-            return tuple(ent.waypoints[start:])
+            return tuple(ent.waypoints[self._route_start(ent):])
 
         if not ent.movement:
             return ()

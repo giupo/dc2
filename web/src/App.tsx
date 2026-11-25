@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { api, type Package } from "./api/client";
 import { BriefingCard, useBriefing } from "./components/BriefingCard";
 import { Details } from "./components/Details";
 import { Header } from "./components/Header";
@@ -66,7 +67,19 @@ export default function App() {
   // ATO orders are given as the viewpoint side's faction.
   const planner = usePlannerState(factions.find((f) => f.side === viewpoint)?.id ?? null);
 
-  const panelProps: PanelProps = { data, selected, select, viewpoint, units };
+  // Packages over (gone from the ATO) that an event was clicked about, in the current view.
+  const [archive, setArchive] = useState<Package[]>([]);
+  useEffect(() => setArchive([]), [fogFaction]);
+  const openArchived = useCallback((s: { kind: "flight" | "package"; id: string }) => {
+    const load = s.kind === "package" ? api.package(s.id, fogFaction) : api.flightPackage(s.id, fogFaction);
+    load.then((p) => {
+      setArchive((a) => [p, ...a.filter((x) => x.id !== p.id)].slice(0, 50));
+      const f = s.kind === "flight" ? p.flights.find((x) => x.id === s.id) : undefined;
+      select(s, f?.ll ?? p.ll);
+    }).catch(() => undefined); // an enemy's, or dropped from the archive: nothing to show
+  }, [fogFaction, select]);
+
+  const panelProps: PanelProps = { data, selected, select, viewpoint, units, archive, openArchived };
   const Active = TABS.find((t) => t.id === tab)!.Panel;
 
   return (

@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Any
 
 from .air import AIRCRAFT, Airbase, Squadron, Task
-from .air_defense import SYSTEMS, AirDefenseUnit
+from .air_defense import SYSTEMS, AirDefenseUnit, place_sites
 from .forces import DEFAULT_TEMPLATES, Division, DivisionTemplate
 from .geo import Vec2
+from .projection import from_latlon
 from .state import CampaignState, Faction, Objective
 from .world import Depot, LinkKind, Province, Terrain, Theater
-from . import units
+from . import bullseye, units
 
 
 class ScenarioError(ValueError):
@@ -26,7 +27,95 @@ def load(path: str | Path, with_roads: bool = True) -> CampaignState:
 
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
-    return from_dict(data, roads.load(path) if with_roads else None)
+    theater = data.get("campaign", {}).get("theater", "unnamed")
+    return from_dict(data, roads.load(path, theater) if with_roads else None)
+
+
+def point(spec: dict[str, Any], theater: str, what: str) -> Vec2:
+    """The position a scenario gives for something, on the theatre plane.
+
+    Scenario files give positions as ``ll = [lat, lon]`` (WGS84 degrees),
+    converted with the theatre's projection (:mod:`dynacamp.projection`). Only
+    a theatre without a projection (test maps) takes ``pos = [east, north]``
+    metres on the plane instead.
+
+    Args:
+        spec: The table holding ``ll`` or ``pos``.
+        theater: The theatre's name.
+        what: What it is, for error messages (e.g. ``"province aleppo"``).
+
+    Raises:
+        ScenarioError: Missing or malformed coordinates, or ``ll`` on a theatre
+            without a projection.
+    """
+    def pair(key: str) -> tuple[float, float]:
+        """The two numbers of ``spec[key]``."""
+        v = spec[key]
+        if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) for x in v)):
+            raise ScenarioError(f"{what}: {key} must be two numbers, not {v!r}")
+        return float(v[0]), float(v[1])
+
+    if "ll" in spec:
+        lat, lon = pair("ll")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ScenarioError(f"{what}: ll = [{lat}, {lon}] is not [lat, lon]")
+        v = from_latlon(theater, lat, lon)
+        if v is None:
+            raise ScenarioError(f"{what}: theater {theater!r} has no projection for lat/lon; give pos = [east, north]")
+        return v
+    if "pos" in spec:
+        return Vec2(*pair("pos"))
+    raise ScenarioError(f"{what}: no position (ll = [lat, lon])")
+
+
+def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], theater: Theater) -> None:
+    """Give every faction its bullseye (see :mod:`dynacamp.bullseye`).
+
+    ``bullseye`` in a ``[[factions]]`` table is a province id (its centre) or
+    a point, ``{ ll = [lat, lon] }`` (``{ pos = [east, north] }`` on a theatre
+    without projection). Without it a faction takes its side's: the one another faction
+    of the side gives, else the centre of the provinces the side holds.
+
+    Raises:
+        ScenarioError: Unknown province, malformed point, or two factions on the
+            same side with different bullseyes (the game has one per side).
+    """
+    given: dict[str, tuple[Vec2, str]] = {}  # side -> (point, faction that set it)
+    for spec in specs:
+        raw = spec.get("bullseye")
+
+        if raw is None:
+            continue
+
+        fid = spec["id"]
+
+        if isinstance(raw, str):
+            if raw not in theater.provinces:
+                raise ScenarioError(f"faction {fid}: bullseye {raw!r} is not a province")
+            where = theater.provinces[raw].center
+
+        elif isinstance(raw, dict):
+            where = point(raw, theater.name, f"faction {fid} bullseye")
+
+        else:
+            raise ScenarioError(f"faction {fid}: bullseye must be a province id or {{ ll = [lat, lon] }}, not {raw!r}")
+
+        side = factions[fid].side
+        if side in given and given[side][0] != where:
+            raise ScenarioError(
+                f"faction {fid}: bullseye differs from {given[side][1]}'s, on the same side {side!r} (DCS has one per side)"
+            )
+
+        given[side] = (where, fid)
+
+    for f in factions.values():
+        if f.side in given:
+            f.bullseye = given[f.side][0]
+            continue
+
+        ids = {o.id for o in factions.values() if o.side == f.side}
+        held = [p.center for p in theater.provinces.values() if p.controller in ids]
+        f.bullseye = bullseye.centre(held or [p.center for p in theater.provinces.values()] or [Vec2(0.0, 0.0)])
 
 
 def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) -> CampaignState:
@@ -47,23 +136,31 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
 
     factions: dict[str, Faction] = {}
     for f in data.get("factions", []):
-        factions[f["id"]] = Faction(
-            id=f["id"],
-            name=f.get("name", f["id"]),
-            side=f.get("side", f["id"]),
+        faction_id = f["id"]
+
+        factions[faction_id] = Faction(
+            id=faction_id,
+            name=f.get("name", faction_id),
+            side=f.get("side", faction_id),
             enemies=set(f.get("enemies", [])),
-            objectives=[Objective(o["province"], o.get("priority", 1)) for o in f.get("objectives", [])],
+            objectives=[
+                Objective(
+                    o["province"],
+                    o.get("priority", 1)) for o in f.get("objectives", [])
+            ],
+            bullseye=Vec2(0.0, 0.0),  # set below, once the provinces are known
         )
 
     for p in data.get("provinces", []):
         if p["controller"] not in factions:
             raise ScenarioError(f"province {p['id']}: unknown controller {p['controller']!r}")
+
         depot = p.get("depot")
         theater.add_province(
             Province(
                 id=p["id"],
                 name=p.get("name", p["id"]),
-                center=Vec2(*p["pos"]),
+                center=point(p, theater.name, f"province {p['id']}"),
                 terrain=Terrain(p.get("terrain", "plains")),
                 controller=p["controller"],
                 owner=p.get("owner", ""),
@@ -72,6 +169,8 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
                 depot=Depot(**depot) if depot else None,
             )
         )
+
+    _set_bullseyes(data.get("factions", []), factions, theater)
 
     for link in data.get("links", []):
         for end in (link["a"], link["b"]):
@@ -136,7 +235,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         state.airbases[b["id"]] = Airbase(
             id=b["id"],
             name=b.get("name", b["id"]),
-            position=Vec2(*b["pos"]),
+            position=point(b, theater.name, f"airbase {b['id']}"),
             province=b.get("province"),
             faction=b.get("faction"),
         )
@@ -157,6 +256,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
             aircraft=q.get("count", 12),
             callsign=q.get("callsign", q["id"].capitalize()),
             tasks=frozenset(Task(x) for x in q.get("tasks", [])),
+            insignia=q.get("insignia", ""),
         )
 
     for a in data.get("air_defense", []):
@@ -174,4 +274,5 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
             location=a["province"],
             system=system,
         )
+    place_sites(state.air_defense.values(), theater)
     return state

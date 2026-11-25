@@ -36,6 +36,7 @@ TARGET_KINDS: dict[Task, tuple[str, ...]] = {
     Task.BAI: ("division", "convoy"),
     Task.STRIKE: ("depot",),
     Task.SEAD: ("sam",),
+    Task.DEAD: ("sam",),
     Task.CAP: ("point",),
     Task.AWACS: ("point",),
     Task.TANKER: ("point",),
@@ -360,17 +361,20 @@ def order_package(
         sq = state.squadrons.get(squadron)
         if sq is None or sq.faction != faction:
             raise OrderError(f"no squadron {squadron}")
-        if task not in sq.tasks:
-            raise OrderError(f"{sq.name} does not fly {task.value}")
+        flown = Task.STRIKE if task is Task.DEAD else task  # DEAD: the squadron is the strikers'
+        if flown not in sq.tasks:
+            raise OrderError(f"{sq.name} does not fly {flown.value}")
     if tot is not None and tot > state.time + MAX_TOT_AHEAD_S:
         raise OrderError("the ATO looks at most 24 hours ahead")
     need = ato.package_size(state, faction, r)
     left = ato.sortie_budget_left(state, faction)
     if left < need:
         raise OrderError(f"sortie budget exhausted: {left} sorties left today, the package needs {need}")
-    if task in (Task.CAS, Task.BAI, Task.STRIKE) and intel.known_covering(state, faction, r.point):
+    if task is Task.DEAD and ato._allocate(state, faction, Task.SEAD, r.point, 2) is None:
+        raise OrderError("no SEAD squadron can keep the site's radars down for the strikers")
+    if task in (Task.CAS, Task.BAI, Task.STRIKE) and ato.route_exposed(state, faction, r):
         if ato._allocate(state, faction, Task.SEAD, r.point, 2) is None:
-            raise OrderError("the target is under a known SAM umbrella and no SEAD squadron can escort the package")
+            raise OrderError("the route crosses a known SAM umbrella it cannot fly around and no SEAD squadron can escort the package")
     pkg = ato.build_package(state, fac, r, squadron=squadron, tot=tot)
     if pkg is None:
         raise OrderError(_why_no_package(state, faction, task, r, squadron, tot))
@@ -383,6 +387,8 @@ def _why_no_package(
 ) -> str:
     """Explain why :func:`ato.build_package` found nothing."""
     size = 4 if task is Task.STRIKE else (1 if task in (Task.AWACS, Task.TANKER) else 2)
+    if task is Task.DEAD:
+        task = Task.STRIKE  # the strikers (SEAD is checked before building)
     candidates = [
         sq for sq in state.squadrons.values()
         if sq.faction == fid and task in sq.tasks and (squadron is None or sq.id == squadron)

@@ -192,3 +192,19 @@ def test_shipped_missions_embed_the_current_bridge(miz):
 
     with zipfile.ZipFile(miz) as z:
         assert z.read("l10n/DEFAULT/dynacamp_bridge.lua") == LUA_BRIDGE.read_bytes()
+
+
+@pytest.mark.parametrize("miz", sorted((ROOT / "missions").glob("*.miz")), ids=lambda p: p.stem)
+def test_shipped_missions_have_the_scenario_bullseyes(miz):
+    """Regenerate with `dynacamp build-miz scenarios/*.toml` after changing a scenario's bullseye."""
+    pytest.importorskip("dcs")
+    import dcs
+
+    from dynacamp import scenario
+
+    state = scenario.load(ROOT / "scenarios" / f"{miz.stem}.toml")
+    m = dcs.Mission()
+    m.load_file(str(miz))
+    for f in state.factions.values():
+        b = m.coalition[f.side].bullseye
+        assert (round(b["x"]), round(b["y"])) == (round(f.bullseye.y), round(f.bullseye.x)), f.side

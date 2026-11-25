@@ -31,7 +31,8 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
     <div className="briefing-backdrop" onClick={close}>
       <article className="briefing" onClick={(e) => e.stopPropagation()}>
         <header className="briefing-head">
-          <div>
+          {b.squadron_insignia && <img className="briefing-insignia" src={b.squadron_insignia} alt={`${b.squadron} insignia`} title={b.squadron} />}
+          <div className="briefing-title">
             <div className="briefing-kicker">PACKAGE {b.package_number} · MISSION BRIEFING · {b.task}</div>
             <h2>{b.title}</h2>
             <div className="briefing-sub">
@@ -68,7 +69,7 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
               <b>{b.target.name}</b>
             </p>
             <p className="mono">{b.target.coordinates}</p>
-            <p className="muted">{b.target.from_base}</p>
+            <p className="muted">{b.target.from_base} · BULLS {b.target.bulls}</p>
             {b.target.description && <p>{b.target.description}</p>}
             {!!b.target.composition.length && <ul className="compact">{b.target.composition.map((c, i) => <li key={i}>{c}</li>)}</ul>}
           </div>
@@ -79,7 +80,7 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
               {b.threats.map((t, i) => (
                 <li key={i}>
                   <span className="sev" style={{ background: SEVERITY_COLOR[t.severity] }}>{t.severity}</span>
-                  <b>{t.name}</b> <span className="muted">{t.detail}</span>
+                  <b>{t.name}</b> <span className="mono">BULLS {t.bulls}</span> <span className="muted">{t.detail}</span>
                 </li>
               ))}
             </ul>
@@ -88,6 +89,7 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
 
         <section>
           <h3>Flight plan</h3>
+          <p className="muted">Bullseye <span className="mono">{b.bullseye.coordinates}</span>; BULLS bearings magnetic, ranges in {b.units === "imperial" ? "NM" : "km"}.</p>
           <table className="table wp">
             <thead>
               <tr>
@@ -97,6 +99,7 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
                 <th>Alt</th>
                 <th>Speed</th>
                 <th>Position</th>
+                <th>BULLS</th>
                 <th>Notes</th>
               </tr>
             </thead>
@@ -109,6 +112,7 @@ export function BriefingCard({ b, close }: { b: Briefing; close: () => void }) {
                   <td className="mono">{w.alt_m ? fmtAlt(w.alt_m, b.units) : "-"}</td>
                   <td className="mono">{fmtSpeed(w.speed_kmh, b.units)}</td>
                   <td className="mono">{w.ll ? `${w.ll[0].toFixed(4)}, ${w.ll[1].toFixed(4)}` : "-"}</td>
+                  <td className="mono">{w.bulls}</td>
                   <td className="muted">{w.note}</td>
                 </tr>
               ))}

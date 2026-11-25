@@ -145,6 +145,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ato/packages/{package_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Package
+         * @description A package and its flights, also once it is over (archived).
+         */
+        get: operations["get_package_api_ato_packages__package_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ato/flights/{flight_id}/package": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Flight Package
+         * @description The package of a flight, also once it is over (archived).
+         */
+        get: operations["get_flight_package_api_ato_flights__flight_id__package_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ato/flights/{flight_id}/briefing": {
         parameters: {
             query?: never;
@@ -599,7 +639,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Seats */
             seats: number;
         };
@@ -616,6 +656,27 @@ export interface components {
             flights: components["schemas"]["BoardFlight"][];
         };
         /**
+         * BriefingBullseye
+         * @description The side's bullseye, reference of every ``bulls`` bearing/range.
+         */
+        BriefingBullseye: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /**
+             * Coordinates
+             * @description degrees and decimal minutes
+             */
+            coordinates: string;
+        };
+        /**
          * BriefingFlight
          * @description A flight of the package.
          */
@@ -628,7 +689,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Size */
             size: number;
             /** Base */
@@ -716,6 +777,11 @@ export interface components {
              * @description bearing and range from the home base
              */
             from_base: string;
+            /**
+             * Bulls
+             * @description magnetic bearing/range from the side's bullseye
+             */
+            bulls: string;
         };
         /**
          * BriefingThreat
@@ -748,6 +814,11 @@ export interface components {
              * @enum {string}
              */
             severity: "high" | "medium" | "low";
+            /**
+             * Bulls
+             * @description magnetic bearing/range from the side's bullseye
+             */
+            bulls: string;
         };
         /**
          * BriefingView
@@ -762,6 +833,7 @@ export interface components {
             units: "metric" | "imperial";
             /** Package Number */
             package_number: string;
+            bullseye: components["schemas"]["BriefingBullseye"];
             /** Flight Id */
             flight_id: string;
             /** Callsign */
@@ -778,13 +850,19 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Aircraft */
             aircraft: string;
             /** Size */
             size: number;
             /** Squadron */
             squadron: string;
+            /**
+             * Squadron Insignia
+             * @description URL path of the squadron's insignia image ("" = none)
+             * @default
+             */
+            squadron_insignia: string;
             /** Base */
             base: string;
             takeoff: components["schemas"]["Time"];
@@ -845,6 +923,11 @@ export interface components {
             speed_kmh: number;
             /** Note */
             note: string;
+            /**
+             * Bulls
+             * @description magnetic bearing/range from the side's bullseye, e.g. 045/32 (NM or km)
+             */
+            bulls: string;
         };
         /**
          * CampaignView
@@ -867,6 +950,12 @@ export interface components {
             name: string;
             /** Theater */
             theater: string;
+            /**
+             * Magnetic Variation Deg
+             * @description east positive; BULLS bearings are magnetic = true bearing minus this
+             * @default 0
+             */
+            magnetic_variation_deg: number;
             time: components["schemas"]["Time"];
             /**
              * Live
@@ -1195,6 +1284,8 @@ export interface components {
             aircraft: number;
             /** Objectives */
             objectives: components["schemas"]["ObjectiveView"][];
+            /** @description fixed reference point of the side's bearing/range calls (BULLS) */
+            bullseye: components["schemas"]["Located"];
         };
         /**
          * FireView
@@ -1246,6 +1337,12 @@ export interface components {
             squadron: string;
             /** Squadron Name */
             squadron_name: string;
+            /**
+             * Squadron Insignia
+             * @description URL path of the squadron's insignia image ("" = none)
+             * @default
+             */
+            squadron_insignia: string;
             /** Airbase */
             airbase: string;
             /** Aircraft */
@@ -1258,7 +1355,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /**
              * Status
              * @enum {string}
@@ -1410,6 +1507,22 @@ export interface components {
             road: boolean;
         };
         /**
+         * Located
+         * @description Something with a position.
+         */
+        Located: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+        };
+        /**
          * LogisticsView
          * @description Depots, convoys, supply network and brigade supply.
          */
@@ -1496,7 +1609,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             target: components["schemas"]["TargetIn"];
             /**
              * Squadron
@@ -1537,13 +1650,19 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
             /** Target */
             target: string;
             tot: components["schemas"]["Time"];
             /** @description earliest TOT the package can be moved to (startup lead included) */
             earliest_tot: components["schemas"]["Time"];
             created: components["schemas"]["Time"];
+            /**
+             * Archived
+             * @description the package is over and kept only for the record
+             * @default false
+             */
+            archived: boolean;
             /** Flights */
             flights: components["schemas"]["FlightView"][];
         };
@@ -1915,7 +2034,7 @@ export interface components {
             /** Aircraft Name */
             aircraft_name: string;
             /** Tasks */
-            tasks: ("CAP" | "ESCORT" | "SEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT")[];
+            tasks: ("CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT")[];
             /** Strength */
             strength: number;
             /** Available */
@@ -1924,6 +2043,12 @@ export interface components {
             committed: number;
             /** Servicing */
             servicing: number;
+            /**
+             * Insignia
+             * @description URL path of the insignia image ("" = none)
+             * @default
+             */
+            insignia: string;
         };
         /**
          * TargetIn
@@ -2181,6 +2306,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AtoView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_package_api_ato_packages__package_id__get: {
+        parameters: {
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
+            header?: never;
+            path: {
+                package_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageView"];
+                };
+            };
+            /** @description unknown package (or an enemy's) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_flight_package_api_ato_flights__flight_id__package_get: {
+        parameters: {
+            query?: {
+                /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
+                faction?: string | null;
+            };
+            header?: never;
+            path: {
+                flight_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageView"];
+                };
+            };
+            /** @description unknown flight (or an enemy's) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -17,9 +17,13 @@ import time
 from collections import Counter
 from pathlib import Path
 
+from dynacamp.units import UnitDomain
+
 from . import persistence, scenario
 from .engine import Engine
 from .state import CampaignState
+from .units import UnitDomain
+
 
 NOTABLE = {
     "battle_started",
@@ -39,6 +43,8 @@ NOTABLE = {
     "air_engagement",
     "aircraft_lost",
     "flight_aborted",
+    "flight_rerouted",
+    "scramble",
     "flight_cancelled",
     "seat_taken",
     "seat_released",
@@ -88,6 +94,7 @@ def _load_campaign(path: str) -> tuple[CampaignState, persistence.SaveInfo | Non
         print(f"Resumed '{info.name}' at {_clock(info.campaign_time)} from {path} "
               f"(saved {time.strftime('%Y-%m-%d %H:%M', time.localtime(info.saved_at))} by {info.version})", flush=True)
         return state, info
+    
     return scenario.load(path), None
 
 
@@ -219,7 +226,12 @@ def cmd_serve(args: argparse.Namespace) -> None:
     signal.signal(signal.SIGINT, stop)  # also when started with SIGINT ignored (background jobs)
 
     try:
-        run_realtime(engine, compression=compression, tick_s=1.0 / args.tick_hz, on_tick=on_tick)
+        run_realtime(
+            engine,
+            compression=compression,
+            tick_s=1.0 / args.tick_hz,
+            on_tick=on_tick
+        )
 
     except KeyboardInterrupt:
         pass
@@ -328,7 +340,7 @@ def main(argv: list[str] | None = None) -> None:
                    help="time compression with no players (default: $DYNACAMP_COMPRESSION, else the save's, else 60)")
     v.add_argument("--tick-hz", type=float, default=10.0,
                    help="engine steps per real second (smoother movement, more CPU)")
-    v.add_argument("--units", choices=["imperial", "metric"],
+    v.add_argument("--units", choices=[UnitDomain.IMPERIAL, UnitDomain.METRIC],
                    help="units of briefings and map marks for players (default: the scenario's, else imperial)")
     v.add_argument("--report-hours", type=float, default=1)
     v.add_argument("--events")

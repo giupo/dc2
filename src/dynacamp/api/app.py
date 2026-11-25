@@ -14,7 +14,7 @@ import json
 import secrets
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Literal
+
 
 import anyio
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -24,6 +24,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import Engine
+from ..units import Units
 from ..persistence import Saver
 from . import schemas, views
 
@@ -135,11 +136,31 @@ def create_app(
         with engine.lock:
             return views.ato(state(), viewer(faction))
 
+    @app.get("/api/ato/packages/{package_id}", response_model=schemas.PackageView, tags=["air"],
+             responses={404: {"description": "unknown package (or an enemy's)"}})
+    def get_package(package_id: str, faction: str | None = FACTION):
+        """A package and its flights, also once it is over (archived)."""
+        with engine.lock:
+            p = views.find_package(state(), package_id=package_id, viewer=viewer(faction))
+            if p is None:
+                raise HTTPException(status_code=404, detail=f"no package {package_id}")
+            return views.package_view(state(), p)
+
+    @app.get("/api/ato/flights/{flight_id}/package", response_model=schemas.PackageView, tags=["air"],
+             responses={404: {"description": "unknown flight (or an enemy's)"}})
+    def get_flight_package(flight_id: str, faction: str | None = FACTION):
+        """The package of a flight, also once it is over (archived)."""
+        with engine.lock:
+            p = views.find_package(state(), flight_id=flight_id, viewer=viewer(faction))
+            if p is None:
+                raise HTTPException(status_code=404, detail=f"no flight {flight_id}")
+            return views.package_view(state(), p)
+
     @app.get("/api/ato/flights/{flight_id}/briefing", response_model=schemas.BriefingView, tags=["air"])
     def get_briefing(
         flight_id: str,
         faction: str | None = FACTION,
-        units: Literal["metric", "imperial"] | None = Query(
+        units: Units | None = Query(
             None, description="units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's)"
         ),
     ):

@@ -20,12 +20,28 @@ dynacamp = "dynacamp.cli:main"
 dev = [
     "httpx2>=2.16.2",
     "pytest>=8",
+    "pytest-xdist>=3.6",
+    "pytest-watcher>=0.4",
 ]
 # Sphinx documentation: uv run --group docs sphinx-build -b html docs/sphinx docs/sphinx/_build/html
 docs = [
     "sphinx>=8",
     "furo",
     "myst-parser",
+]
+
+# `uv run ptw .`: re-run the tests when a source, test, scenario or the Lua
+# bridge changes (editor lock/backup files and the venv/UI excluded).
+[tool.pytest-watcher]
+now = true
+clear = true
+delay = 0.5
+runner = "pytest"
+runner_args = ["-q", "-W", "ignore::SyntaxWarning"]
+patterns = ["**/*.py", "**/*.lua", "**/*.toml", "src/**/*.json", "scenarios/**/*.json", "missions/*.miz"]
+ignore_patterns = [
+    "**/.venv/**", "**/web/**", "**/docs/**", "**/__pycache__/**", "**/.git/**",
+    "**/.#*", "**/#*#", "**/*~", "**/flycheck_*", "**/*_flymake.py",
 ]
 
 [build-system]
@@ -37,4 +53,6 @@ packages = ["src/dynacamp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Parallel on every CPU (pytest-xdist); `-n 0` for a serial run (e.g. with pdb).
+addopts = "-n auto"
 pythonpath = ["src"]

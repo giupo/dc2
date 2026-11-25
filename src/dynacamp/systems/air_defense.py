@@ -6,8 +6,11 @@
   makes it much harder to suppress.
 * **Engagements** (outside player bubbles): every active site with missiles
   fires salvos at the nearest hostile flight it detects within range and
-  ceiling. Short-range systems only reach jets while they are low, i.e. on
-  their attack run (helicopters always fly low).
+  ceiling. The altitude is the flight's planned profile
+  (:func:`dynacamp.air.flight_altitude`, the same the briefing gives and the
+  AI flies in the game): short-range systems reach CAS/BAI jets on their
+  attack run, helicopters always, strike and SEAD jets at medium altitude
+  only if they reach that high.
 * **SEAD.** SEAD flights fire anti-radiation missiles at emitting radars in
   reach: the radar is suppressed for a while or destroyed. Networked sites
   often just go dark in time.
@@ -20,8 +23,8 @@
 
 from __future__ import annotations
 
-from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task
-from ..air_defense import RADAR_ELEMENTS, AirDefenseUnit, SamRole, SamStatus
+from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
+from ..air_defense import RADAR_ELEMENTS, AirDefenseUnit, SamRole, SamStatus, place_sites
 from ..forces import Authority
 from ..geo import Vec2
 from ..state import CampaignState
@@ -32,10 +35,12 @@ ENGAGE_COOLDOWN_S = 3 * 60.0
 NETWORK_RANGE_FACTOR = 0.5  # a site is networked within this share of an EWR's detection range
 NETWORK_PK_BONUS = 1.15
 SEAD_PK_FACTOR = 0.7  # SEAD aircraft fly defensively (ECM, low, notching)
+# The package's SEAD flight jams for everyone near it (its ECM pods stand in for
+# a dedicated jammer: DCS has no AI EA-6B or EA-18G).
+ECM_SCREEN_FACTOR = 0.6
+ECM_SCREEN_RANGE_M = 40_000.0
 DEFENSIVE_FACTOR = 0.5  # chaff, ECM and manoeuvring against every engagement
 PAIR_COOLDOWN_S = 10 * 60.0  # one site engages the same flight at most this often
-LOW_ALTITUDE_M = 300.0
-LOW_NEAR_TARGET_M = 15_000.0  # strikers are low within this distance of their target
 HARM_RANGE_M = 60_000.0
 HARM_COOLDOWN_S = 15 * 60.0
 SUPPRESS_S = 20 * 60.0
@@ -46,7 +51,6 @@ ADA_INTERVAL_S = 2 * 3600.0
 # How much better a new position must be before a site packs up and moves:
 # long-range systems take long to set up again, short-range ones are nimble.
 MOVE_GAIN = {SamRole.LONG: 2.0, SamRole.MEDIUM: 1.6, SamRole.SHORT: 1.25}
-STRIKE_TASKS = (Task.CAS, Task.BAI, Task.STRIKE, Task.SEAD)
 
 
 def units(state: CampaignState, faction: str | None = None) -> list[AirDefenseUnit]:
@@ -58,6 +62,7 @@ def run(state: CampaignState, dt: float) -> None:
     """Status, reloads, engagements, SEAD, losses; ADA planning every ``ADA_INTERVAL_S``."""
     _reform(state)
     _update_status(state)
+    place_sites(state.air_defense.values(), state.theater)
     _reload(state, dt)
     _engage(state)
     _sead(state)
@@ -139,15 +144,6 @@ def _reload(state: CampaignState, dt: float) -> None:
 # ---------------------------------------------------------------- engagements
 
 
-def _altitude(f: Flight) -> float:
-    """Altitude a flight is at for SAM purposes (low near its target or if a helicopter)."""
-    if f.aircraft_type.helo:
-        return LOW_ALTITUDE_M
-    if f.task in STRIKE_TASKS and not f.attacked and f.pos.distance_to(f.target_point) <= LOW_NEAR_TARGET_M:
-        return LOW_ALTITUDE_M
-    return f.aircraft_type.cruise_alt_m
-
-
 def _engage(state: CampaignState) -> None:
     """Every ready site fires a salvo at the nearest detected flight in reach."""
     t = state.theater
@@ -169,7 +165,7 @@ def _engage(state: CampaignState) -> None:
             if state.at_war(u.faction, f.faction) and f.ai_count > 0
             and state.timers.get(f"sam:{u.id}:{f.id}", 0.0) <= state.time
             and f.pos.distance_to(here) <= u.system.range_m
-            and _altitude(f) <= u.system.ceiling_m
+            and flight_altitude(f) <= u.system.ceiling_m
             and detects(state, u, f.pos)
         ]
         if not targets:
@@ -181,6 +177,7 @@ def _engage(state: CampaignState) -> None:
             u.system.pk * DEFENSIVE_FACTOR
             * (NETWORK_PK_BONUS if networked else 1.0)
             * (SEAD_PK_FACTOR if f.task is Task.SEAD else 1.0)
+            * (ECM_SCREEN_FACTOR if ecm_screened(state, f) else 1.0)
         )
         fired = int(min(SALVO, u.missiles))
         kills = min(f.ai_count, sum(1 for _ in range(fired) if state.rng.random() < pk))
@@ -197,6 +194,65 @@ def _engage(state: CampaignState) -> None:
             f.status = FlightStatus.RTB
             f.wp_index = len(f.waypoints) - 1
             state.emit("flight_aborted", flight=f.id, callsign=f.callsign, reason="SAM threat")
+        if f.ai_count > 0 and f.status in ACTIVE_STATUSES:
+            evade(state, f, u)
+
+
+def ecm_screened(state: CampaignState, f: Flight) -> bool:
+    """True if another flight of ``f``'s package, a SEAD one with ECM, is close enough to jam for it."""
+    pkg = state.packages.get(f.package)
+    if pkg is None:
+        return False
+    for oid in pkg.flights:
+        o = state.flights.get(oid)
+        if (
+            o is not None and o is not f and o.task is Task.SEAD and o.ai_count > 0
+            and o.status in ACTIVE_STATUSES and o.pos.distance_to(f.pos) <= ECM_SCREEN_RANGE_M
+        ):
+            return True
+    return False
+
+
+def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
+    """React to a SAM that just fired on ``f`` (and so is now known): an orbit
+    moves out of its umbrella, a transit detours around it on the current leg.
+
+    Once per flight and site. Flights with players seated keep their briefed
+    route (the planner can still change it); SEAD flights are there for it.
+    """
+    from . import ato, routing
+
+    key = f"evade:{f.id}:{u.id}"
+    if key in state.timers or f.players or f.task is Task.SEAD or not f.simulated_by_campaign:
+        return
+    state.timers[key] = state.time + 12 * 3600.0
+    if f.task.orbits and f.wp_index <= f.target_index:
+        # Keep covering the same point, from outside the umbrellas we now know.
+        anchor = f.waypoints[f.target_index]
+        radius = air.CAP_ORBIT_RADIUS_M if f.task is Task.CAP else air.SUPPORT_ORBIT_RADIUS_M
+        station = ato.cap_station(state, f.faction, anchor, radius, waypoint_altitudes(f)[f.target_index])
+        if station is None:
+            f.status = FlightStatus.RTB
+            f.wp_index = f.target_index + 1
+            state.emit("flight_aborted", flight=f.id, callsign=f.callsign, reason="SAM threat")
+            return
+        if station.distance_to(anchor) < 1.0:
+            return
+        f.waypoints[f.target_index] = station
+        if f.status is FlightStatus.ON_STATION:
+            f.status = FlightStatus.AIRBORNE
+            f.wp_index = f.target_index
+        state.emit("flight_rerouted", flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
+        return
+    if f.wp_index >= len(f.waypoints):
+        return
+    detour = routing.leg(f.pos, f.waypoints[f.wp_index], routing.threats(state, f.faction))
+    if not detour:
+        return
+    f.waypoints[f.wp_index:f.wp_index] = detour
+    if f.target_index >= f.wp_index:
+        f.target_index += len(detour)
+    state.emit("flight_rerouted", flight=f.id, callsign=f.callsign, faction=f.faction, reason=f"{u.system.name} ({u.id})")
 
 
 def _sead(state: CampaignState) -> None:

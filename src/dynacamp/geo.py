@@ -15,8 +15,8 @@ class Vec2:
     """Immutable 2-D vector / point on the theater plane, in metres.
 
     Attributes:
-        x: East coordinate (metres).
-        y: North coordinate (metres).
+        x: East coordinate.
+        y: North coordinate.
     """
     x: float  # east, metres
     y: float  # north, metres

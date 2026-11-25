@@ -44,7 +44,7 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 | **IA** | Per fazione: sicurezza di retrovie e fianchi, schieramento sul fronte, offensive con superiorità locale, riserve. |
 | **Logistica** | Depositi, rifornimento diretto, **convogli fisici** sulle strade, ricomplementi, ricostituzione delle brigate distrutte. |
 | **Artiglieria** | Missioni di fuoco continue sul fronte, a gittate realistiche. |
-| **Aviazione / ATO** | 64 tipi di aereo degli anni '80, '90 e 2000. Pacchetti CAS, BAI, STRIKE, CAP e SEAD/DEAD con scorte, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10. |
+| **Aviazione / ATO** | 64 tipi di aereo degli anni '80, '90 e 2000. Pacchetti CAS, BAI, STRIKE, CAP e DEAD con scorte, SEAD con ECM, **rotte attorno ai SAM noti**, **scramble** di due intercettori contro chi si avvicina a basi e asset, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10. |
 | **Supporto aereo** | **AWACS** in orbita dietro il fronte (sensore principale, controllo dei caccia), **tanker** che allungano raggio d'azione e permanenza delle CAP, **trasporti** con ponte aereo verso i depositi avanzati e rifornimento in elicottero delle brigate isolate. |
 | **Nebbia di guerra** | Ogni fazione vede solo quello che i suoi sensori hanno trovato: radar e occhi degli aerei, AWACS, radar a terra, ricognizione, ELINT, lanci SAM. Contatti con età, fonte e identificazione. **Anche IA, ATO, artiglieria e briefing decidono sul quadro informativo**, non sulla verità. |
 | **ATO stile BMS** | Ogni package ha un **numero a 4 cifre**, come in Falcon/BMS. La UI mostra l'ATO come lista di voli ordinata per decollo: package, volo, missione, aereo, T/O, TOT, stato. |
@@ -226,6 +226,14 @@ ricomplementi, e quelle distrutte vengono ricostituite dopo 48 h.
 - **Supporto:** E-3A, E-2C, A-50 (AWACS); KC-135, KC-130, IL-78M (tanker);
   C-130, C-17A, IL-76MD, An-26B, UH-60A, CH-47D, Mi-8MT, Mi-26 (trasporto).
 
+**Bullseye.** Ogni lato ha un punto di riferimento fisso per le chiamate
+radio: "BULLS 045/32" vuol dire rotta magnetica 045 e 32 NM (o km) dal
+bullseye. Lo definisce lo scenario (`bullseye` in `[[factions]]`) e sta in
+`Faction.bullseye`. `build-miz` lo scrive nella missione per F10 e cockpit.
+Il briefing lo usa per bersaglio, waypoint e minacce, e la mappa web mostra
+il bullseye del lato e la chiamata BULLS sotto il cursore. Le rotte sono
+magnetiche: rotta vera sull'ellissoide meno la declinazione del teatro.
+
 L'armamento di ogni aereo per ogni compito sta in
 `src/dynacamp/data/loadouts.json`, generato dalle tabelle dei piloni di DCS
 (`dynacamp loadouts`). È la fonte unica per briefing e missioni.
@@ -246,8 +254,12 @@ mappa F10. Nella UI c'è una scheda stampabile in stile kneeboard.
 
 **Aviazione e ATO.** Ogni ora l'ATO converte la situazione in richieste: CAS
 sulle battaglie, CAP fuori dalla copertura SAM nemica, BAI su colonne e
-convogli, STRIKE sui depositi, SEAD/DEAD sui siti SAM. Le richieste diventano
-pacchetti con scorta e SEAD quando servono. Il decollo è almeno 30 minuti dopo
+convogli, STRIKE sui depositi, DEAD sui siti SAM. Le richieste diventano
+pacchetti con scorta e SEAD quando servono. Le rotte girano attorno ai SAM noti
+quando la deviazione è ragionevole; quello che non si può evitare chiede un
+volo SEAD, che con i suoi pod ECM protegge anche il resto del package. Un
+aereo nemico noto entro 30 NM da una base, o da un asset vicino a una base,
+fa partire uno **scramble** di due intercettori dalla base. Il decollo è almeno 30 minuti dopo
 la pianificazione, per dare tempo ai giocatori. Fuori dalle bolle i voli sono
 simulati in modo astratto: navigazione, attacchi, duelli aria-aria, perdite
 contro la difesa aerea.
@@ -461,16 +473,23 @@ Gli scenari sono file TOML in `scenarios/`:
 | Sezione | Contenuto |
 |---|---|
 | `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `seed`, `start_hour` |
-| `[[factions]]` | `id`, `name`, `side` (`blue`/`red`), `enemies`, `objectives` |
-| `[[provinces]]` | `id`, `name`, `pos = [est, nord]`, `terrain`, `controller`, `infrastructure`, `victory_points`, `depot = {...}` |
+| `[[factions]]` | `id`, `name`, `side` (`blue`/`red`), `enemies`, `objectives`, `bullseye` (id di provincia o `{ ll = [lat, lon] }`; senza: il centro delle province del lato; uno per lato) |
+| `[[provinces]]` | `id`, `name`, `ll = [lat, lon]`, `terrain`, `controller`, `infrastructure`, `victory_points`, `depot = {...}` |
 | `[[links]]` | `a`, `b`, `kind` (`road`/`track`/`rail`), `river` |
 | `[[divisions]]` | `id`, `name`, `faction`, `template`, `province` |
 | `[[templates]]` | template di brigata personalizzati (opzionale) |
-| `[[airbases]]` | `id`, `name` (nome dell'aeroporto DCS), `pos`, `province` oppure `faction` |
-| `[[squadrons]]` | `id`, `name`, `faction`, `airbase`, `aircraft` (`f16c`, `fa18c`, `f15c`, `a10c`, `ah64d`, `su27`, `mig29s`, `su25t`, `su24m`, `mi24p`), `count`, `callsign` |
+| `[[airbases]]` | `id`, `name` (nome dell'aeroporto DCS), `ll = [lat, lon]`, `province` oppure `faction` |
+| `[[squadrons]]` | `id`, `name`, `faction`, `airbase`, `aircraft` (`f16c`, `fa18c`, `f15c`, `a10c`, `ah64d`, `su27`, `mig29s`, `su25t`, `su24m`, `mi24p`), `count`, `callsign`, `insignia` (file in `web/public/insignia/`, fonti e licenze in `CREDITS.md` lì) |
 | `[[air_defense]]` | `id`, `name`, `faction`, `system` (`patriot`, `s300ps`, `hawk`, `nasams`, `buk`, `kub`, `tor`, `osa`, `avenger`, `ewr_fps117`, `ewr_1l13`, `ewr_55g6`), `province` |
 
-Le coordinate si convertono da lat/lon con `python tools/dcs_ll.py <teatro> <lat> <lon>`.
+Tutte le coordinate dei file degli scenari sono `ll = [lat, lon]`, in gradi
+decimali WGS84 (6 decimali, circa 10 cm). Le stesse convenzioni valgono per
+le polilinee in `<scenario>.roads.json` (formato 2). Il motore le proietta sul
+piano del teatro con la trasversa di Mercatore di DCS (`projection.py`). Solo
+un teatro senza proiezione, come le mappe finte dei test, accetta
+`pos = [est, nord]` in metri. `python tools/dcs_ll.py <teatro> <lat> <lon>`
+mostra le coordinate DCS di un punto, utile per un confronto nel mission
+editor.
 Dopo aver modificato i collegamenti, ricalcola le strade con
 `uv run dynacamp roads scenarios/<nome>.toml`.
 
@@ -486,7 +505,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 | `dynacamp loadouts` | rigenera gli armamenti dalle tabelle dei piloni di DCS; serve l'extra `miz` |
 | `dynacamp openapi [-o file]` | schema OpenAPI dell'API |
 | `dynacamp lua-path` | percorso del bridge Lua |
-| `tools/dcs_ll.py` | lat/lon → coordinate DCS e scenario |
+| `tools/dcs_ll.py` | lat/lon → coordinate DCS (x nord, z est), per confronto nel mission editor |
 
 ## Documentazione
 
@@ -515,10 +534,27 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 ## Sviluppo e test
 
 ```bash
-uv run pytest                          # 134 test: motore, ATO, difesa aerea, API, DCS, .miz, bridge Lua
+uv run pytest                          # ~172 test: motore, ATO, difesa aerea, API, DCS, .miz, bridge Lua
+uv run pytest -n 0                     # seriale (per esempio per usare --pdb)
+tools/watch-tests.sh                   # rilancia i test a ogni modifica (anche: tools/watch-tests.sh tests/test_air.py -x)
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 (cd web && npx tsc -b)                 # typecheck della UI
 ```
+
+I test girano in parallelo su tutte le CPU (`pytest-xdist`, `addopts = "-n auto"`
+in `pyproject.toml`): circa 9 s invece di 26. Il limite è il test più lungo
+(la campagna dimostrativa, ~6,5 s). Ogni test deve quindi restare
+indipendente: niente porte fisse (si usa la porta 0), file solo in `tmp_path`,
+nessuno stato condiviso tra un test e l'altro.
+
+`tools/watch-tests.sh` avvia `pytest-watcher`, configurato in
+`[tool.pytest-watcher]` di `pyproject.toml`. Fa un primo giro subito, poi
+rilancia la suite quando cambia un file Python, Lua o TOML, i dati in
+`src/` e `scenarios/`, oppure i `.miz`. Ignora la `.venv`, `web/`, `docs/` e
+i file temporanei degli editor (`.#*`, `*~`, `flycheck_*`). Lo script passa la
+radice con un percorso assoluto, perché con `.` watchdog non vede le
+modifiche. Un semplice `touch` non basta a farlo ripartire: serve una
+scrittura vera, come quella di un salvataggio dall'editor.
 
 Dopo modifiche al backend dell'API: `cd web && npm run gen:api`. Dopo
 modifiche al bridge Lua: `uv run dynacamp build-miz scenarios/*.toml`, perché
@@ -666,6 +702,26 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     con token). Ogni rifiuto spiega il motivo. Le rotte cambiate arrivano
     subito ai voli in DCS, con i task al bersaglio, e i giocatori seduti
     ricevono un nuovo briefing.
+22. **Rotte attorno ai SAM, DEAD ed ECM.** Le rotte aggirano i SAM noti su un
+    grafo di visibilità (`systems/routing.py`); le stazioni CAP, AWACS e tanker
+    tengono fuori l'intera orbita; un volo su cui spara un SAM sconosciuto
+    devia o sposta la stazione. Quello che non si può evitare chiede il SEAD,
+    che porta l'ECM per tutto il package (in DCS non ci sono jammer IA). I
+    package DEAD mettono attaccanti sui siti dietro al SEAD; le scorte tengono
+    una barriera sul bordo dell'ombrello. Misura su 8 seed e 3 giorni: aerei
+    blu abbattuti dai SAM da 56 a 13 in Siria e da 49 a 21 in Georgia, senza
+    cambiare la guerra a terra.
+23. **Scramble.** Un aereo nemico noto che arriva entro 30 NM da una base, o
+    da un asset vicino a una base, fa decollare in 5 minuti una coppia di
+    intercettori (`systems/scramble.py`). La coppia lo insegue sulla sua
+    ultima posizione nota, ma non dentro un SAM noto e non oltre 60 NM da
+    casa. Non scatta contro i caccia, che sono affare della CAP. Misura su 8
+    seed e 3 giorni: circa 20 scramble per parte al giorno, il 10–15%
+    raggiunge l'intruso.
+24. **Bullseye.** Un punto di riferimento fisso per lato, scelto dallo
+    scenario e scritto nel `.miz`. Briefing e mappa danno le posizioni come
+    "BULLS 045/32" (rotta magnetica e distanza), calcolate in modo identico
+    da motore e UI.
 
 ## Limiti noti e prossimi passi
 
@@ -679,7 +735,6 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
   fasi e condizioni di vittoria.
 - **IADS in DCS:** dentro DCS ogni sito combatte da solo. Il coordinamento
   (EMCON) richiederebbe integrare uno script come Skynet IADS.
-- **Rotte aeree:** i voli non pianificano rotte attorno ai SAM.
 - **Nebbia di guerra in DCS:** la nebbia vale per motore, UI e briefing; in DCS
   i giocatori vedono quello che vede il loro aereo (e la mappa F10 secondo le
   opzioni del server). I contatti scoperti in gioco non tornano ancora al

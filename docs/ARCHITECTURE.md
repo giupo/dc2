@@ -62,7 +62,8 @@ lavorano a ratei orari, quindi lo stesso codice gira a 1x (live) o compresso.
 
 **Strade.** I collegamenti tra province hanno la geometria della strada
 reale: `dynacamp roads <scenario>` li calcola una volta con OSRM su dati
-OpenStreetMap e li salva in `<scenario>.roads.json`, versionato con lo
+OpenStreetMap e li salva in `<scenario>.roads.json` come punti `[lat, lon]`
+(formato 2; il formato 1, in metri sul piano, si legge ancora), versionato con lo
 scenario, così il motore non ha bisogno di rete. Movimento, linee di difesa,
 posizioni d'assalto, convogli e percorsi mostrati nella UI stanno sulla
 polilinea stradale, quindi niente scorciatoie sul mare. Se OSM ha una strada chiusa
@@ -139,12 +140,14 @@ un volo IA dentro una bolla lo fa volare DCS.
 1. Richieste per priorità: CAS sulle nostre battaglie, CAP sulle province di
    fronte più minacciate (3 stazioni, tirate fuori dalla copertura SAM nota),
    BAI su convogli e colonne nemiche *localizzati* in movimento o a ridosso del
-   fronte, STRIKE sui depositi, SEAD/DEAD sui SAM noti che coprono il fronte,
+   fronte, STRIKE sui depositi, DEAD sui SAM noti che coprono il fronte,
    più le missioni di supporto (AWACS, tanker, trasporti: vedi sotto).
 2. Per ogni richiesta, lo squadrone migliore in raggio con aerei disponibili
-   (raggio +40% se un tanker è in stazione). Si aggiungono un volo SEAD se c'è
-   difesa aerea sul bersaglio o un SAM noto lo copre (niente attacco se il SEAD
-   non è disponibile) e una scorta se i caccia nemici possono arrivarci.
+   (raggio +40% se un tanker è in stazione). La rotta gira attorno ai SAM noti
+   quando si può (vedi **Rotte attorno ai SAM**). Si aggiungono un volo SEAD
+   se c'è difesa aerea sul bersaglio o la rotta resta esposta a un SAM noto
+   (niente attacco se il SEAD non è disponibile) e una scorta se i caccia
+   nemici possono arrivarci.
 3. **Decollo almeno 30 minuti dopo la pianificazione**, così i giocatori hanno
    il tempo di scegliere un volo e avviare l'aereo.
 4. Limiti: budget di 2,5 sortite per aereo al giorno (a token bucket, così non
@@ -179,6 +182,23 @@ ricognizione armata: segue la colonna. Aria-aria: un volo combatte un ingaggio
 alla volta, prima si risolvono le coppie caccia-caccia (così la scorta impegna
 gli intercettori). Gli attaccanti intercettati rientrano, i caccia rientrano
 se perdono metà della formazione.
+
+**Scramble** (`systems/scramble.py`). Ogni minuto ogni fazione guarda gli aerei
+nemici del suo quadro informativo: se uno è entro **30 NM** da una sua base, o
+da un asset vicino a una base (deposito, sito SAM o brigata entro 20 NM),
+parte una coppia di intercettori. Escono dalla base minacciata se ha caccia
+pronti, altrimenti dalla migliore base entro 60 NM. Decollano 5 minuti dopo
+l'allarme, saltando il ciclo dell'ATO, e puntano l'ultima posizione nota
+dell'intruso (guida da terra). Lo combattono con il normale modello
+aria-aria e rientrano quando l'intruso sparisce, si perde il contatto, si
+allontana oltre 60 NM da casa, entra in un ombrello SAM noto, oppure dopo
+30 minuti. Niente allarme per i caccia nemici (CAP, scorte e intercettori:
+sono affare della CAP), per un intruso che ha già un nostro caccia entro
+40 km o che sta sotto un SAM noto, e per un'ora su un intruso già
+intercettato. Al massimo 4 scramble attivi per fazione. Sono voli CAP con
+bersaglio `flight` (l'id dell'intruso), quindi in DCS volano come una CAP
+(ingaggio di bersagli aerei) sulla posizione dell'intruso. Consumano il budget
+di sortite.
 
 **Giocatori nei pacchetti.** Un giocatore non ha un volo suo: prende un *posto*
 in un volo pianificato dall'ATO e sostituisce uno degli aerei IA dello
@@ -224,16 +244,73 @@ arrivi un anti-radiazione.
 **Ingaggi** (`systems/air_defense.py`, fuori dalle bolle): salve di 2 missili
 sul volo nemico più vicino rilevato entro portata e quota massima, al più una
 volta ogni 10 minuti per coppia sito-volo, con efficacia ridotta da
-contromisure e manovre. Il corto raggio raggiunge i jet solo in fase d'attacco,
-quando sono bassi; gli elicotteri sono sempre bassi. I missili si ricaricano
-entro 60 km di strada da un deposito.
+contromisure e manovre. I missili si ricaricano entro 60 km di strada da un
+deposito.
 
-**SEAD/DEAD.** I voli SEAD colpiscono i radar accesi entro 60 km. L'ATO
-pianifica SEAD/DEAD sui siti a medio e lungo raggio che coprono il fronte,
-aggiunge una scorta SEAD a ogni pacchetto che entra in copertura, non manda
-attaccanti sotto un ombrello SAM se non ha SEAD disponibili e arretra le
-stazioni CAP fuori dalla copertura nemica. Anche l'artiglieria colpisce i siti;
+**Profilo di quota** (`air.waypoint_altitudes`, `air.flight_altitude`). Uno
+solo per volo, usato dal briefing, dalla rotta mandata a DCS (una quota per
+waypoint) e dal modello SAM e dei sensori del motore. La quota di un waypoint
+è quella a cui si vola *verso* di lui, come fa l'IA di DCS: crociera (6000 m
+per i jet, bassa per gli elicotteri), CAP in stazione a 7500 m, e per gli
+attacchi bersaglio e uscita alla quota d'attacco del compito (CAS/BAI 1500 m,
+STRIKE/SEAD 6000 m, scorta 7500 m). CAS e BAI arrivano all'IP in crociera e
+scendono verso il bersaglio. Il corto raggio quindi raggiunge CAS e BAI nella
+corsa d'attacco e gli elicotteri sempre; STRIKE e SEAD solo se arriva a
+6000 m (il Tor sì).
+
+**Rotte attorno ai SAM** (`systems/routing.py`). I pianificatori usano il
+quadro informativo: una minaccia è un sito SAM nemico *noto*, nella sua ultima
+posizione nota, con il raggio d'ingaggio più il 15%. Contano i medio e lungo
+raggio e i corto raggio che arrivano alla quota di crociera del volo (il Tor
+sì, l'Osa no; per gli elicotteri tutti). Ogni tratta della rotta è il percorso
+più breve che resta fuori dai cerchi, cercato su un grafo di visibilità (un
+poligono di 12 punti attorno a ogni cerchio). La deviazione si accetta solo se
+non supera 1,6 volte la tratta diretta e se la rotta resta nel carburante. Per
+gli attacchi l'ATO prova 7 assi d'attacco e i due lati di uscita, e tiene la
+rotta con il costo minore: lunghezza + 5 × metri dentro gli ombrelli. I cerchi
+che coprono il bersaglio non si possono evitare: restano come *esposizione*,
+e l'esposizione chiede il SEAD.
+
+**Stazioni.** CAP, AWACS e tanker arretrano verso la base finché **l'intera
+orbita** (15 km di raggio per le CAP, 30 km per AWACS e tanker) resta fuori
+dagli ombrelli noti.
+
+**Reazione in volo.** Quando un SAM spara a un volo IA simulato dal motore, il
+sito diventa noto e il volo reagisce una volta per sito: un'orbita sposta la
+stazione fuori dall'ombrello (o rientra se non può), un volo in transito
+devia attorno al sito sulla tratta corrente (`flight_rerouted`). I voli con
+giocatori seduti tengono la rotta del briefing; i voli SEAD restano.
+
+**SEAD, ECM e DEAD.** I voli SEAD colpiscono i radar accesi entro 60 km. Il
+SEAD di un package parte 2 minuti prima degli altri e fa anche da jammer: i
+voli del package entro 40 km da lui subiscono il 60% della Pk dei SAM. In DCS
+non esistono jammer IA (EA-6B, EA-18G), quindi i pod ECM dei voli SEAD li
+sostituiscono, con l'opzione ECM sempre accesa. I package **DEAD** sui siti a
+medio e lungo raggio che coprono il fronte mettono insieme SEAD (con ECM) che
+spegne i radar, attaccanti STRIKE che bombardano il sito due minuti dopo
+(colpi più efficaci su un sito spento o in movimento) e la scorta. Senza
+attaccanti il package è solo SEAD; senza SEAD non parte. La **scorta** di ogni
+package spazza davanti e tiene una barriera sul bordo del primo ombrello SAM
+della rotta: dentro lavorano SEAD ed ECM. Anche l'artiglieria colpisce i siti;
 se la provincia cade, i siti che ci si trovano sono persi.
+
+**Bullseye** (`dynacamp/bullseye.py`). `Faction.bullseye` è il punto di
+riferimento fisso del lato. Lo definisce lo scenario: un id di provincia o
+`[est, nord]`; senza, è il centro delle province del lato all'inizio, e le
+fazioni dello stesso lato devono averlo uguale, perché DCS ne ha uno per
+coalizione. Non cambia durante la campagna, ed è nel `.miz` (`build-miz`). Un
+punto si chiama "BULLS rrr/dd": la rotta vera è calcolata sul grande cerchio
+in lat/lon, perché la griglia DCS può distare 6° dal nord vero; si toglie la
+declinazione del teatro (`MAGNETIC_VARIATION_DEG`, approssimata) e si dà la
+distanza in NM o km. Briefing, testo in gioco e UI usano la stessa regola.
+
+**Postazioni.** Più siti nella stessa provincia non stanno uno sopra
+l'altro, né sulla mappa né in DCS. Ogni sito fermo ha una postazione
+(`air_defense.place_sites`): il primo occupa il centro della provincia, gli
+altri stanno a passi di 3 km lungo le strade che ne escono, prima quelle
+verso province amiche. Le strade garantiscono la terraferma anche nelle
+province costiere. Il sito tiene la postazione finché non riparte, quindi
+non salta quando altri siti arrivano o se ne vanno.
 
 **Comando di difesa aerea.** Ogni 2 h, per fazione, riposiziona i sistemi
 mobili lungo le strade (`route_entity`). Il corto raggio segue le brigate,
@@ -413,7 +490,6 @@ gruppi DCS l'est si chiama `y`.
     il rimpiazzo graduale);
   - il decollo dal parcheggio dei voli IA nelle bolle: oggi partono in volo
     vicino alla base;
-  - le rotte attorno ai SAM;
   - le missioni di ricognizione per rinfrescare il quadro informativo.
 * **Nebbia di guerra in DCS:** vale per motore, UI e briefing. Quello che i
   giocatori scoprono in DCS non torna ancora al quadro informativo.

@@ -22,6 +22,7 @@ AD_RADIUS_M = 15_000.0
 TARGET_SEARCH_M = 20_000.0
 PLAYER_FLIGHT_TIMEOUT_S = 3 * 3600.0
 TURNAROUND_S = 3 * 3600.0
+ARCHIVE_MAX = 2000  # completed packages kept for the event log (see CampaignState.archive)
 REPLACEMENT_INTERVAL_S = 8 * 3600.0  # one new airframe per squadron this often, up to establishment
 CAP_ORBIT_RADIUS_M = 15_000.0
 SUPPORT_ORBIT_RADIUS_M = 30_000.0
@@ -162,6 +163,10 @@ def _target_entity(state: CampaignState, f: Flight) -> Division | Convoy | None:
 
 def _fly(state: CampaignState, f: Flight, dt: float) -> None:
     """Move the AI part along its waypoints; attack, orbit or land on arrival."""
+    if f.target_kind == "flight":  # scrambled interceptors chase their intruder
+        from . import scramble
+
+        scramble.pursue(state, f)
     if f.status is FlightStatus.ON_STATION:
         if state.time < f.station_until:
             # Fly the orbit around the station point (wider for AWACS and tankers).
@@ -304,7 +309,9 @@ def attack(state: CampaignState, f: Flight) -> None:
             near = [u for u in state.air_defense.values() if state.at_war(f.faction, u.faction) and u.position(t).distance_to(point) <= TARGET_SEARCH_M]
             site = min(near, key=lambda u: u.position(t).distance_to(point)) if near else None
         if site is not None and site.authority is Authority.CAMPAIGN:
-            if site.emitting:
+            # SEAD shoots anti-radiation missiles at a live radar; strikers (DEAD)
+            # bomb the site, best once the SEAD ahead of them has put it down.
+            if site.emitting and f.task is Task.SEAD:
                 ada.hit_on_radar(state, site, eff, by=f.callsign)
             else:
                 ada.strike_site(state, site, eff, by=f.callsign)
@@ -436,7 +443,7 @@ def _air_combat(state: CampaignState) -> None:
 
 def _cleanup(state: CampaignState) -> None:
     """Drop expired cooldowns and completed packages."""
-    for key in [k for k, v in state.timers.items() if k.startswith(("aa:", "sam:", "harm:")) and v <= state.time]:
+    for key in [k for k, v in state.timers.items() if k.startswith(("aa:", "sam:", "harm:", "evade:", "scramble:")) and v <= state.time]:
         del state.timers[key]
     for pkg in list(state.packages.values()):
         flights = [state.flights[i] for i in pkg.flights if i in state.flights]
@@ -446,6 +453,10 @@ def _cleanup(state: CampaignState) -> None:
                     break  # still held by the game: wait for the handoff
             else:
                 for f in flights:
-                    del state.flights[f.id]
-                del state.packages[pkg.id]
-                state.emit("package_complete", package=pkg.id, faction=pkg.faction, task=pkg.task.value, target=pkg.target_label)
+                    state.archived_flights[f.id] = state.flights.pop(f.id)
+                state.archive[pkg.id] = state.packages.pop(pkg.id)
+                while len(state.archive) > ARCHIVE_MAX:
+                    old = state.archive.pop(next(iter(state.archive)))
+                    for fid in old.flights:
+                        state.archived_flights.pop(fid, None)
+                state.emit("package_complete", package=pkg.id, number=pkg.number, faction=pkg.faction, task=pkg.task.value, target=pkg.target_label)

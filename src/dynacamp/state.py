@@ -6,12 +6,13 @@ import random
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
+from .geo import Vec2
 from .air import Airbase, Flight, Package, Squadron
 from .air_defense import AirDefenseUnit
 from .events import EventLog
 from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
-
+from .units import UnitDomain, Units
 
 @dataclass(slots=True)
 class Objective:
@@ -32,12 +33,15 @@ class Faction:
     Attributes:
         id: Faction id.
         name: Display name.
+        bullseye: The side's fixed reference point for bearing/range calls
+            (``BULLS 045/32``, see :mod:`dynacamp.bullseye`).
         side: Game-facing side (``"blue"``/``"red"``), mapped to coalitions by adapters.
         enemies: Factions it is at war with.
         objectives: Provinces it wants.
     """
     id: str
     name: str
+    bullseye: Vec2
     side: str  # game-facing side, e.g. "blue" / "red"; adapters map it to coalitions
     enemies: set[str] = field(default_factory=set)
     objectives: list[Objective] = field(default_factory=list)
@@ -88,6 +92,9 @@ class CampaignState:
         squadrons: Squadrons by id.
         packages: ATO packages by id.
         flights: Flights by id.
+        archive: Completed packages by id, oldest first (the last ``ARCHIVE_MAX``):
+            what the event log talks about after they leave the ATO.
+        archived_flights: The flights of the archived packages, by id.
         air_defense: SAM sites and early-warning radars by id.
         player_flights: Player id -> flight id of the seat they hold.
         events: The event log.
@@ -100,7 +107,7 @@ class CampaignState:
     factions: dict[str, Faction]
     seed: int = 0
     time: float = 0.0  # campaign seconds since start
-    units: str = "imperial"  # of texts for players: "imperial" (kts/ft/NM) or "metric"
+    units: Units = UnitDomain.IMPERIAL # of texts for players: "imperial" (kts/ft/NM) or "metric"
     divisions: dict[str, Division] = field(default_factory=dict)
     convoys: dict[str, Convoy] = field(default_factory=dict)
     battles: dict[str, Battle] = field(default_factory=dict)
@@ -108,6 +115,8 @@ class CampaignState:
     squadrons: dict[str, Squadron] = field(default_factory=dict)
     packages: dict[str, Package] = field(default_factory=dict)
     flights: dict[str, Flight] = field(default_factory=dict)
+    archive: dict[str, Package] = field(default_factory=dict)
+    archived_flights: dict[str, Flight] = field(default_factory=dict)
     air_defense: dict[str, AirDefenseUnit] = field(default_factory=dict)
     player_flights: dict[str, str] = field(default_factory=dict)  # player id -> flight id
     sortie_log: dict[str, list[tuple[float, int]]] = field(default_factory=dict)  # faction -> (time, aircraft)

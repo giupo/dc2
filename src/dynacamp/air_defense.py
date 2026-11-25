@@ -9,14 +9,26 @@ Life cycle of a site: ``moving`` (radar off, packed) -> ``setting_up`` (setup
 time of the system) -> ``active`` (radar on, engages). SEAD can force it into
 ``suppressed`` (radar off for a while); losing all radars or all launchers
 destroys it.
+
+Several sites in one province do not stand on top of each other: each one at
+rest gets its own **emplacement** (:func:`place_sites`), the province centre
+for the first and then points ``SITE_SPACING_M`` apart along the roads out of
+the province (on land, also in coastal provinces), friendly roads first. The
+emplacement is kept until the site moves again, so it does not jump around
+when other sites come and go or a neighbouring province changes hands.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from .forces import MobileEntity
+from .forces import Authority, MobileEntity
+from .geo import Vec2
+from .world import Theater
+
+SITE_SPACING_M = 3_000.0  # between sites sharing a province
 
 
 class SamRole(StrEnum):
@@ -127,6 +139,9 @@ class AirDefenseUnit(MobileEntity):
         status: Active, setting up, moving or suppressed.
         engage_ready: Next time it can fire a salvo.
         scoot: It was targeted and should relocate.
+        site: Emplacement at rest, ``(province, neighbour, metres along the road
+            to it)``; neighbour ``""`` is the province centre. None (or another
+            province) until :func:`place_sites` gives it one.
     """
     name: str
     system: SamSystem
@@ -136,6 +151,7 @@ class AirDefenseUnit(MobileEntity):
     status: SamStatus = SamStatus.ACTIVE
     engage_ready: float = 0.0  # next time it can fire a salvo
     scoot: bool = False  # was targeted: relocate at the next chance ("shoot and scoot")
+    site: tuple[str, str, float] | None = None  # emplacement at rest (see place_sites)
     kind: str = "sam"
 
     def __post_init__(self) -> None:
@@ -172,7 +188,52 @@ class AirDefenseUnit(MobileEntity):
         nominal = sum(self.system.elements.values())
         return sum(self.elements.values()) / nominal if nominal else 0.0
 
+    def position(self, theater: Theater) -> Vec2:
+        """Current position: on the road while moving, else its emplacement.
+
+        Args:
+            theater: The map.
+        """
+        if self.movement or (self.game_position is not None and self.authority is not Authority.CAMPAIGN):
+            return super().position(theater)
+        if self.site is None or self.site[0] != self.location or not self.site[1]:
+            return theater.provinces[self.location].center
+        return theater.point_on_link(self.location, self.site[1], self.site[2])
+
     @property
     def bubble_reach(self) -> float:
         """A player inside the engagement range brings the site into the game."""
         return self.system.range_m
+
+
+def place_sites(units: Iterable[AirDefenseUnit], theater: Theater) -> None:
+    """Give every site at rest without an emplacement in its province a free one.
+
+    The province centre if nobody holds it, else the nearest free point
+    ``SITE_SPACING_M`` apart along the roads out of the province: roads to
+    provinces of the site's faction first, then the others, each no further
+    than half the road. Sites already placed keep their emplacement.
+
+    Args:
+        units: All the air defence units (the placed ones block their spots).
+        theater: The map.
+    """
+    units = list(units)
+    taken: dict[str, set[tuple[str, float]]] = {}
+    for u in units:
+        if not u.movement and u.site is not None and u.site[0] == u.location:
+            taken.setdefault(u.location, set()).add((u.site[1], u.site[2]))
+    for u in units:
+        if u.movement:
+            u.site = None  # packed up: a new emplacement where it stops
+            continue
+        if u.site is not None and u.site[0] == u.location:
+            continue
+        used = taken.setdefault(u.location, set())
+        roads = sorted(theater.neighbors(u.location), key=lambda n: (theater.provinces[n].controller != u.faction, n))
+        spots = [("", 0.0)]
+        for k in range(1, 6):
+            spots += [(n, k * SITE_SPACING_M) for n in roads if k * SITE_SPACING_M <= theater.link(u.location, n).length / 2]
+        spot = next((s for s in spots if s not in used), ("", 0.0))
+        used.add(spot)
+        u.site = (u.location, *spot)

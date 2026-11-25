@@ -273,6 +273,11 @@ def build_mission(
         """Campaign point -> pydcs point."""
         return Point(v.y, v.x, terrain)  # campaign (east, north) -> DCS (x north, y east)
 
+    # -------------------------------------------------- bullseyes (one per coalition: the side's)
+    for f in state.factions.values():
+        if f.side in m.coalition:
+            m.coalition[f.side].bullseye = {"x": f.bullseye.y, "y": f.bullseye.x}  # DCS x north, y east
+
     # -------------------------------------------------- province reference zones
     for p in state.theater.provinces.values():
         m.triggers.add_triggerzone(point(p.center), radius=3000, hidden=False, name=f"DC {p.id}")

@@ -102,14 +102,21 @@ def test_ato_frequencies_are_clear_of_airfields_guard_and_each_other(demo):
 
     reserved = radio.reserved(demo.theater.name)
     assert len(reserved) > 40 and 243.0 in reserved and 121.5 in reserved  # Caucasus ATC + guard
-    Engine(demo).run_for(86400, dt=300)
-    live = [p for p in demo.packages.values() if not p.done]
-    flights = [f for f in demo.flights.values() if f.status.value not in ("done", "cancelled")]
-    assert live and flights
-    used = [p.uhf_mhz for p in live] + [f.vhf_mhz for f in flights]
-    assert all(m and radio.clear(m, reserved) for m in used)  # no airfield, no guard
-    assert all(radio.clear(m, used[:i] + used[i + 1:]) for i, m in enumerate(used))  # no two the same
-    assert all(radio.PACKAGE_BAND[0] <= p.uhf_mhz <= radio.PACKAGE_BAND[1] for p in live)
-    b = briefing.briefing(demo, flights[0])
-    assert f"{demo.packages[flights[0].package].uhf_mhz:.3f}" in b["comms"]["package"]
-    assert f"{flights[0].vhf_mhz:.3f}" in b["comms"]["flight"]
+    engine = Engine(demo)
+    checked = 0
+    for _ in range(8):  # every 3 hours for a day: what is in the air at that moment
+        engine.run_for(3 * 3600, dt=300)
+        live = [p for p in demo.packages.values() if not p.done]
+        flights = [f for f in demo.flights.values() if f.status.value not in ("done", "cancelled")]
+        if not (live and flights):
+            continue
+        checked += 1
+        sample = flights[0]
+        used = [p.uhf_mhz for p in live] + [f.vhf_mhz for f in flights]
+        assert all(m and radio.clear(m, reserved) for m in used)  # no airfield, no guard
+        assert all(radio.clear(m, used[:i] + used[i + 1:]) for i, m in enumerate(used))  # no two the same
+        assert all(radio.PACKAGE_BAND[0] <= p.uhf_mhz <= radio.PACKAGE_BAND[1] for p in live)
+        b = briefing.briefing(demo, sample)  # the briefing gives the same frequencies
+        assert f"{demo.packages[sample.package].uhf_mhz:.3f}" in b["comms"]["package"]
+        assert f"{sample.vhf_mhz:.3f}" in b["comms"]["flight"]
+    assert checked >= 4

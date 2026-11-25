@@ -2,8 +2,15 @@
 
 Every ATO cycle each faction turns the situation into mission requests
 (CAS over our battles, CAP over the front, BAI on enemy columns and convoys,
-STRIKE on depots), ranks them, and builds packages: a main flight plus SEAD
-when the target is defended and an escort when enemy fighters can reach it.
+STRIKE on depots, DEAD on SAM sites), ranks them, and builds packages: a main
+flight plus SEAD when the target is defended and an escort when enemy fighters
+can reach it.
+
+Routes go around the SAM umbrellas the faction knows when a reasonable detour
+exists (:mod:`dynacamp.systems.routing`). What cannot be avoided (the target's
+own cover) calls for SEAD, whose ECM also screens the package; without SEAD
+the strikers do not go. DEAD packages put strikers on the SAM sites
+themselves, two minutes behind the SEAD that keeps their radars down.
 Takeoffs are planned at least ``STARTUP_LEAD_S`` ahead so that human pilots
 have time to pick a flight and start up.
 """
@@ -11,14 +18,14 @@ have time to pick a flight and start up.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from ..air import FlightStatus, Flight, Package, Seat, SeatState, Squadron, Task
+from ..air import CAP_ALT_M, FlightStatus, Flight, Package, Seat, SeatState, Squadron, Task
 from ..events import clock
 from ..geo import Vec2
 from ..state import CampaignState, Faction
 from .. import radio
-from . import air, intel
+from . import air, intel, routing
 
 ATO_INTERVAL_S = 3600.0
 STARTUP_LEAD_S = 30 * 60.0
@@ -93,7 +100,8 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
 
     active_caps = [
         f for f in state.flights.values()
-        if f.faction == fid and f.task is Task.CAP and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
+        if f.faction == fid and f.task is Task.CAP and f.target_kind != "flight"  # scrambles are extra
+        and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
     ]
     covered = {f.target_id for f in active_caps}
     stations = sorted(
@@ -133,7 +141,8 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
         if p.depot is not None and state.at_war(fid, p.controller):
             out.append(Request(Task.STRIKE, 3 + p.depot.stock / 5000, f"supply depot {p.name}", p.center, "depot", pid))
 
-    # SEAD/DEAD on enemy SAM sites that cover the front.
+    # DEAD on enemy SAM sites that cover the front: strikers on the site under
+    # SEAD cover (see build_package; SEAD alone if nobody can strike it).
     from ..air_defense import SamRole
 
     for c in intel.known(state, fid, "sam"):
@@ -144,7 +153,7 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
         if near_front(pos, FRONT_REACH_M + u.system.range_m):
             prio = 8.5 if u.system.role is SamRole.LONG else 7.5
             near = t.nearest(pos).name
-            out.append(Request(Task.SEAD, prio, f"{u.system.name} site near {near}", pos, "sam", u.id))
+            out.append(Request(Task.DEAD, prio, f"{u.system.name} site near {near}", pos, "sam", u.id))
     out += _support_requests(state, faction)
     return sorted(out, key=lambda r: (-r.priority, r.target_id))
 
@@ -194,10 +203,18 @@ def support_station(state: CampaignState, fid: str, setback: float) -> Vec2 | No
     unit = leg * (1.0 / leg.length())
     point = front + unit * setback
     for _ in range(12):
-        if not intel.known_covering(state, fid, point):
+        if orbit_clear(state, fid, point, air.SUPPORT_ORBIT_RADIUS_M):
             return point
         point = point + unit * 10_000.0
     return None
+
+
+def orbit_clear(
+    state: CampaignState, fid: str, point: Vec2, orbit_radius: float, altitude: float = routing.DEFAULT_ALTITUDE_M
+) -> bool:
+    """True if a whole orbit of ``orbit_radius`` around ``point``, flown at
+    ``altitude``, stays out of every known enemy SAM umbrella (with the routing margin)."""
+    return all(t.center.distance_to(point) >= t.radius + orbit_radius for t in routing.threats(state, fid, altitude))
 
 
 def _support_requests(state: CampaignState, faction: Faction) -> list[Request]:
@@ -241,12 +258,22 @@ CAP_PULLBACK_STEP_M = 5_000.0
 CAP_PULLBACK_MAX_M = 80_000.0
 
 
-def cap_station(state: CampaignState, fid: str, point: Vec2) -> Vec2 | None:
+def cap_station(
+    state: CampaignState, fid: str, point: Vec2, orbit_radius: float | None = None, altitude: float = CAP_ALT_M
+) -> Vec2 | None:
     """Where to orbit to cover ``point``: pulled back towards our nearest airbase
-    until outside enemy medium/long-range SAM coverage (None if impossible)."""
-    from . import air_defense
+    until the whole orbit is outside the known enemy SAM coverage at the
+    orbit's altitude (None if impossible).
 
-    if not intel.known_covering(state, fid, point):
+    Args:
+        state: The campaign.
+        fid: Planning faction.
+        point: What the orbit should cover.
+        orbit_radius: Radius of the orbit (None: a CAP's).
+        altitude: Altitude of the orbit (default: a CAP's).
+    """
+    radius = air.CAP_ORBIT_RADIUS_M if orbit_radius is None else orbit_radius
+    if orbit_clear(state, fid, point, radius, altitude):
         return point
     bases = [b.position for b in state.airbases.values() if b.owner(state.theater) == fid]
     if not bases:
@@ -260,7 +287,7 @@ def cap_station(state: CampaignState, fid: str, point: Vec2) -> Vec2 | None:
     while moved < min(CAP_PULLBACK_MAX_M, leg.length()):
         moved += CAP_PULLBACK_STEP_M
         candidate = point + step * moved
-        if not intel.known_covering(state, fid, candidate):
+        if orbit_clear(state, fid, candidate, radius, altitude):
             return candidate
     return None
 
@@ -315,11 +342,53 @@ def needs_sead(state: CampaignState, fid: str, point: Vec2) -> bool:
     return air.air_defense(state, fid, point) >= SEAD_THRESHOLD or bool(intel.known_covering(state, fid, point))
 
 
+def _likely_home(state: CampaignState, fid: str, task: Task, point: Vec2) -> Vec2 | None:
+    """Nearest own airbase with a squadron for ``task``: where the package will
+    most likely come from, to estimate its route before allocating it."""
+    bases = [
+        state.airbases[sq.airbase] for sq in state.squadrons.values()
+        if sq.faction == fid and task in sq.tasks and state.airbases[sq.airbase].owner(state.theater) == fid
+    ]
+    return min((b.position for b in bases), key=lambda p: (p.distance_to(point), p.x, p.y), default=None)
+
+
+def sead_required(state: CampaignState, fid: str, r: Request, home: Vec2 | None = None) -> bool:
+    """True if a package against ``r`` needs SEAD support: air defence at the
+    target, or a known SAM umbrella its route cannot fly around.
+
+    Args:
+        state: The campaign.
+        fid: Planning faction.
+        r: The request.
+        home: Where the main flight takes off (None: the likeliest airbase).
+    """
+    return needs_sead(state, fid, r.point) or route_exposed(state, fid, r, home)
+
+
+def route_exposed(state: CampaignState, fid: str, r: Request, home: Vec2 | None = None) -> bool:
+    """True if the best route to ``r`` still enters a known SAM umbrella (the
+    target's own cover, or one too costly to fly around).
+
+    Args:
+        state: The campaign.
+        fid: Planning faction.
+        r: The request.
+        home: Where the main flight takes off (None: the likeliest airbase).
+    """
+    home = home or _likely_home(state, fid, r.task, r.point)
+    if home is None:
+        return False
+    waypoints, _ = plan_route(state, fid, r.task, home, r.point)
+    return bool(routing.exposure(waypoints, routing.threats(state, fid)))
+
+
 def package_size(state: CampaignState, fid: str, r: Request) -> int:
     """Aircraft the package for ``r`` will need (main flight + SEAD/escort if called for)."""
+    if r.task is Task.DEAD:
+        return 4 + (2 if enemy_air_threat(state, fid, r.point) else 0)
     size = 4 if r.task is Task.STRIKE else 2
     if r.task in (Task.CAS, Task.BAI, Task.STRIKE):
-        if needs_sead(state, fid, r.point):
+        if sead_required(state, fid, r):
             size += 2
         if enemy_air_threat(state, fid, r.point):
             size += 2
@@ -419,13 +488,9 @@ def build_package(
         and missing, or ``tot`` is too early).
     """
     fid = faction.id
+    if r.task is Task.DEAD:
+        return _build_dead(state, faction, r, squadron, tot)
     size = 4 if r.task is Task.STRIKE else (1 if r.task in (Task.AWACS, Task.TANKER) else 2)
-    if r.task in (Task.CAS, Task.BAI, Task.STRIKE):
-        from . import air_defense
-
-        # Never send strikers under a SAM umbrella without SEAD support.
-        if intel.known_covering(state, fid, r.point) and _allocate(state, fid, Task.SEAD, r.point, 2) is None:
-            return None
     require = _target_requirement(state, r)
     if squadron is not None:
         base_require = require
@@ -434,16 +499,59 @@ def build_package(
     if main is None:
         return None
     sq, dist = main
-    earliest = earliest_tot(sq, dist, state.time)
+    # Route first: around the umbrellas it can avoid. What is left (the target's
+    # own cover, or a detour too long) calls for SEAD, without which strikers stay home.
+    main_route = plan_route(state, fid, r.task, state.airbases[sq.airbase].position, r.point, sq)
+    sead = None
+    if r.task in (Task.CAS, Task.BAI, Task.STRIKE) and sead_required(state, fid, r, state.airbases[sq.airbase].position):
+        sead = _allocate(state, fid, Task.SEAD, r.point, 2, {sq.id})
+        if sead is None and routing.exposure(main_route[0], routing.threats(state, fid)):
+            return None
+    earliest = earliest_tot(sq, routing.length(main_route[0][: main_route[1] + 1]), state.time)
+    if sead is not None:
+        earliest = max(earliest, earliest_tot(sead[0], sead[1], state.time) + 120)
     if tot is None:
         tot = math.ceil(earliest / 300.0) * 300.0  # round to 5 minutes
     elif tot < earliest:
         return None
 
+    pkg = _new_package(state, fid, r, tot)
+    lead = _add_flight(state, pkg, sq, r.task, size, tot, r, main_route)
+
+    used = {sq.id}
+    if r.task in (Task.CAS, Task.BAI, Task.STRIKE):
+        if sead is not None:
+            used.add(sead[0].id)
+            _add_flight(state, pkg, sead[0], Task.SEAD, 2, tot - 120, r)
+        _add_escort(state, pkg, lead, r, used)
+    _announce(state, pkg)
+    return pkg
+
+
+def _add_escort(state: CampaignState, pkg: Package, lead: Flight, r: Request, used: set[str]) -> None:
+    """Fighter escort for a package if enemy fighters can reach its target.
+
+    The escort sweeps ahead of the package and holds at the edge of the SAM
+    umbrella its route enters (the SEAD flight and its ECM work inside):
+    fighters are no use against SAMs, and enemy fighters keep out of their
+    own SAMs' way too. With no umbrella on the route it goes to the target.
+    """
+    if not enemy_air_threat(state, pkg.faction, r.point):
+        return
+    esc = _allocate(state, pkg.faction, Task.ESCORT, r.point, 2, used)
+    if esc is None:
+        return
+    umbrellas = routing.threats(state, pkg.faction, esc[0].aircraft_type.cruise_alt_m)
+    screen = routing.screen_point(lead.waypoints, lead.target_index, umbrellas)
+    _add_flight(state, pkg, esc[0], Task.ESCORT, 2, pkg.tot, replace(r, point=screen) if screen else r)
+
+
+def _new_package(state: CampaignState, fid: str, r: Request, tot: float, task: Task | None = None) -> Package:
+    """Register an empty package for ``r`` with its common frequency."""
     pkg = Package(
         id=state.new_id("pk"),
         faction=fid,
-        task=r.task,
+        task=task or r.task,
         target_label=r.label,
         target_point=r.point,
         tot=tot,
@@ -451,31 +559,66 @@ def build_package(
     )
     pkg.uhf_mhz = radio.allocate(pkg.id, radio.PACKAGE_BAND, _taken_frequencies(state))
     state.packages[pkg.id] = pkg
-    _add_flight(state, pkg, sq, r.task, size, tot, r)
+    return pkg
 
-    used = {sq.id}
-    if r.task in (Task.CAS, Task.BAI, Task.STRIKE):
-        if needs_sead(state, fid, r.point):
-            sead = _allocate(state, fid, Task.SEAD, r.point, 2, used)
-            if sead:
-                used.add(sead[0].id)
-                _add_flight(state, pkg, sead[0], Task.SEAD, 2, tot - 120, r)
-        if enemy_air_threat(state, fid, r.point):
-            esc = _allocate(state, fid, Task.ESCORT, r.point, 2, used)
-            if esc:
-                _add_flight(state, pkg, esc[0], Task.ESCORT, 2, tot, r)
 
+def _build_dead(
+    state: CampaignState, faction: Faction, r: Request, squadron: str | None, tot: float | None
+) -> Package | None:
+    """DEAD package on a SAM site: SEAD (with ECM) two minutes ahead keeps the
+    radars down, strikers bomb the site, fighters escort if enemy fighters can
+    reach it. Without strikers it is flown as SEAD alone; without SEAD it is
+    not flown at all (bombers into a live umbrella).
+
+    Args:
+        state: The campaign.
+        faction: Planning faction.
+        r: DEAD request on a ``sam`` target.
+        squadron: Squadron of the strikers (None: the best available).
+        tot: Time on target of the strikers (None: the earliest possible).
+    """
+    fid = faction.id
+    if squadron is not None:
+        strike = _allocate(state, fid, Task.STRIKE, r.point, 2, require=lambda sq: sq.id == squadron)
+        if strike is None:
+            return None
+    else:
+        strike = _allocate(state, fid, Task.STRIKE, r.point, 2)
+    sead = _allocate(state, fid, Task.SEAD, r.point, 2, {strike[0].id} if strike else set())
+    if sead is None:
+        return None
+    lead = 120.0 if strike else 0.0
+    earliest = earliest_tot(sead[0], sead[1], state.time) + lead
+    if strike:
+        earliest = max(earliest, earliest_tot(strike[0], strike[1], state.time))
+    if tot is None:
+        tot = math.ceil(earliest / 300.0) * 300.0
+    elif tot < earliest:
+        return None
+
+    pkg = _new_package(state, fid, r, tot, Task.DEAD if strike else Task.SEAD)
+    first = _add_flight(state, pkg, sead[0], Task.SEAD, 2, tot - lead, r)
+    used = {sead[0].id}
+    if strike:
+        first = _add_flight(state, pkg, strike[0], Task.STRIKE, 2, tot, r)
+        used.add(strike[0].id)
+    _add_escort(state, pkg, first, r, used)
+    _announce(state, pkg)
+    return pkg
+
+
+def _announce(state: CampaignState, pkg: Package) -> None:
+    """Emit ``package_planned`` for a package just built."""
     state.emit(
         "package_planned",
         package=pkg.id,
         number=pkg.number,
-        faction=fid,
-        task=r.task.value,
-        target=r.label,
-        tot=clock(tot),
+        faction=pkg.faction,
+        task=pkg.task.value,
+        target=pkg.target_label,
+        tot=clock(pkg.tot),
         flights=[state.flights[f].callsign for f in pkg.flights],
     )
-    return pkg
 
 
 def _target_requirement(state: CampaignState, r: Request):
@@ -524,24 +667,100 @@ def _rotate(v: Vec2, a: float) -> Vec2:
     return Vec2(v.x * math.cos(a) - v.y * math.sin(a), v.x * math.sin(a) + v.y * math.cos(a))
 
 
-def _add_flight(state: CampaignState, pkg: Package, sq: Squadron, task: Task, size: int, tot: float, r: Request) -> Flight:
-    """Create a flight for a package and commit its aircraft."""
+EXPOSURE_WEIGHT = 5.0  # a metre inside a known umbrella costs this many metres of detour
+ATTACK_AXES_RAD = (0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5)  # IP bearings tried, off the direct inbound axis
+
+
+def _key_points(home: Vec2, target: Vec2, task: Task, axis: float = 0.0, egress_side: float = 1.0) -> tuple[list[Vec2], int]:
+    """Key waypoints of a sortie before any detour: home, IP, target, egress, home
+    (orbits, transports and short hops just go there and back).
+
+    Args:
+        home: Takeoff and landing point.
+        target: Target or station.
+        task: Flight task.
+        axis: Bearing of the IP off the direct inbound axis, radians.
+        egress_side: +1 or -1: which side of the attack axis to leave by.
+
+    Returns:
+        (points, index of the target).
+    """
+    leg = home - target
+    if task.orbits or task is Task.TRANSPORT or leg.length() <= MIN_ATTACK_LEG_M:
+        return [home, target, home], 1
+    unit = _rotate(leg * (1.0 / leg.length()), axis)
+    # IP and egress scale down for targets close to the base.
+    ip = target + unit * min(IP_DISTANCE_M, leg.length() * 0.5)
+    # Egress off the attack axis (not back over the same defences), then home.
+    egress = target + _rotate(unit, egress_side * EGRESS_TURN_RAD) * min(EGRESS_DISTANCE_M, leg.length() * 0.5)
+    return [home, ip, target, egress, home], 2
+
+
+def plan_route(
+    state: CampaignState, fid: str, task: Task, home: Vec2, target: Vec2, sq: Squadron | None = None
+) -> tuple[list[Vec2], int]:
+    """Route of a sortie around the enemy SAM umbrellas the faction knows.
+
+    Attack sorties try several attack axes and both egress sides, and keep the
+    one with the least exposure (metres inside umbrellas, weighted) for its
+    length; every leg detours around the umbrellas it can (see
+    :mod:`dynacamp.systems.routing`). Umbrellas over the target itself cannot be
+    avoided: they are what the package's SEAD is for.
+
+    Args:
+        state: The campaign.
+        fid: Planning faction.
+        task: Flight task.
+        home: Takeoff and landing point.
+        target: Target or station.
+        sq: Squadron flying it, to keep the route within its fuel (None: no check).
+
+    Returns:
+        (waypoints, index of the target waypoint).
+    """
+    umbrellas = routing.threats(state, fid, sq.aircraft_type.cruise_alt_m if sq else routing.DEFAULT_ALTITUDE_M)
+    plain = _key_points(home, target, task)
+    if not umbrellas:
+        return plain
+    fuel = math.inf
+    if sq is not None:
+        stretch = TANKER_RADIUS_FACTOR if not task.support and not sq.aircraft_type.helo and air.tanker_on_station(state, fid) else 1.0
+        fuel = 2.0 * sq.aircraft_type.radius_km * 1000.0 * stretch
+    axes = [(0.0, 1.0)] if plain[1] == 1 else [(a, s) for a in ATTACK_AXES_RAD for s in (1.0, -1.0)]
+    best: tuple[float, list[Vec2], int] | None = None
+    for axis, side in axes:
+        points, ti = _key_points(home, target, task, axis, side)
+        waypoints, index = routing.route(points, umbrellas)
+        total = routing.length(waypoints)
+        if total > fuel:
+            continue
+        cost = total + EXPOSURE_WEIGHT * sum(routing.exposure(waypoints, umbrellas).values())
+        if best is None or cost < best[0]:
+            best = (cost, waypoints, index[ti])
+    if best is None:
+        return plain
+    return best[1], best[2]
+
+
+def _add_flight(
+    state: CampaignState, pkg: Package, sq: Squadron, task: Task, size: int, tot: float, r: Request,
+    planned: tuple[list[Vec2], int] | None = None,
+) -> Flight:
+    """Create a flight for a package and commit its aircraft.
+
+    Args:
+        state: The campaign.
+        pkg: Its package.
+        sq: Squadron that flies it.
+        task: Flight task.
+        size: Aircraft.
+        tot: Time on target (or on station).
+        r: The package's request.
+        planned: Route already planned with :func:`plan_route` (None: plan it here).
+    """
     base = state.airbases[sq.airbase]
     home = base.position
-    target = r.point
-    if task.orbits or task is Task.TRANSPORT:
-        waypoints, target_index = [home, target, home], 1
-    else:
-        leg = home - target
-        if leg.length() > MIN_ATTACK_LEG_M:
-            unit = leg * (1.0 / leg.length())
-            # IP and egress scale down for targets close to the base.
-            ip = target + unit * min(IP_DISTANCE_M, leg.length() * 0.5)
-            # Egress off the attack axis (not back over the same defences), then home.
-            egress = target + _rotate(unit, EGRESS_TURN_RAD) * min(EGRESS_DISTANCE_M, leg.length() * 0.5)
-            waypoints, target_index = [home, ip, target, egress, home], 2
-        else:
-            waypoints, target_index = [home, target, home], 1
+    waypoints, target_index = planned or plan_route(state, sq.faction, task, home, r.point, sq)
     to_target = sum(waypoints[i].distance_to(waypoints[i + 1]) for i in range(target_index))
     speed = sq.aircraft_type.cruise_kmh / 3.6
     flight = Flight(

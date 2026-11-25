@@ -16,12 +16,14 @@ function KV({ k, children }: { k: string; children: ReactNode }) {
 
 /** Floating card describing whatever is selected on the map or in a list. */
 export function Details(props: PanelProps & { close: () => void; openBriefing?: (flightId: string) => void }) {
-  const { data, selected, select, close, viewpoint, openBriefing, units } = props;
+  const { data, selected, select, close, viewpoint, openBriefing, units, archive } = props;
   const { campaign, map, forces, logistics, ato, fronts } = data;
   if (!selected) return null;
   const prov = (id: string | null | undefined) => map?.provinces.find((p) => p.id === id);
   const provName = (id: string | null | undefined) => prov(id)?.name ?? id ?? "—";
-  const flights = [...(ato?.packages.flatMap((p) => p.flights) ?? []), ...(ato?.tracks ?? [])];
+  // Live packages first, then the finished ones fetched from the archive.
+  const packages = [...(ato?.packages ?? []), ...archive.filter((a) => !ato?.packages.some((p) => p.id === a.id))];
+  const flights = [...packages.flatMap((p) => p.flights), ...(ato?.tracks ?? [])];
 
   let title = "";
   let color = "#9ca3af";
@@ -69,7 +71,7 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
     }
     case "flight":
     case "package": {
-      const pkg = selected.kind === "package" ? ato?.packages.find((p) => p.id === selected.id) : ato?.packages.find((p) => p.flights.some((f) => f.id === selected.id));
+      const pkg = selected.kind === "package" ? packages.find((p) => p.id === selected.id) : packages.find((p) => p.flights.some((f) => f.id === selected.id));
       const f = selected.kind === "flight" ? flights.find((x) => x.id === selected.id) : undefined;
       if (f?.intel) {
         // an enemy radar track: only what the sensors tell
@@ -93,8 +95,9 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
         <>
           <KV k="Package">#{pkg.number} · {pkg.task} · {pkg.target}</KV>
           <KV k="TOT">{pkg.tot.label}</KV>
-          <PackageOrders pkg={pkg} flight={f} />
-          {f && openBriefing && (
+          {pkg.archived && <KV k="Mission">over (archived)</KV>}
+          {!pkg.archived && <PackageOrders pkg={pkg} flight={f} />}
+          {f && openBriefing && !pkg.archived && (
             <button className="primary" onClick={() => openBriefing(f.id)}>
               📋 Mission briefing
             </button>
@@ -103,7 +106,10 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
             <>
               <KV k="Task">{f.task}</KV>
               <KV k="Status">{f.status}</KV>
-              <KV k="Squadron">{f.squadron_name}</KV>
+              <KV k="Squadron">
+                {f.squadron_insignia && <img className="kv-insignia" src={f.squadron_insignia} alt="" />}
+                {f.squadron_name}
+              </KV>
               <KV k="Aircraft">{f.size} ({f.ai} AI, {f.players.filter((p) => p.state !== "left").length} players)</KV>
               <KV k="Takeoff">{f.takeoff.label}</KV>
               {f.on_station_until && <KV k="On station until">{f.on_station_until.label}</KV>}

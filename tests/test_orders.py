@@ -4,7 +4,7 @@ import pytest
 
 from dynacamp.adapters.base import Materialize, UpdateRoute
 from dynacamp.adapters.dcs.protocol import DcsTranslator
-from dynacamp.air import FlightStatus, SeatState, Task
+from dynacamp.air import FlightStatus, SeatState, Task, waypoint_altitudes
 from dynacamp.engine import Engine
 from dynacamp.geo import Vec2
 from dynacamp.systems import ato, intel, orders
@@ -115,9 +115,12 @@ def test_route_change_reaches_the_game_and_the_players():
     # the DCS bridge gets an air route with the attack at the target point
     msg = DcsTranslator().encode(routes[-1])
     assert msg["cmd"] == "route"
-    alts = {p["alt"] for p in msg["points"]}
-    assert alts == {f.aircraft_type.cruise_alt_m}
-    target = msg["points"][1 + routes[-1].snapshot.attrs["target_index"]]
+    # ...at the altitudes of the briefing's profile, one per waypoint
+    snap = routes[-1].snapshot
+    assert [p["alt"] for p in msg["points"][1:]] == list(snap.attrs["altitudes"])
+    assert msg["points"][0]["alt"] == snap.altitude
+    target = msg["points"][1 + snap.attrs["target_index"]]
+    assert target["alt"] == waypoint_altitudes(f)[f.target_index]
     assert target["task"]["params"]["tasks"], "no task at the target waypoint"
 
 

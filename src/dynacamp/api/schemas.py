@@ -10,6 +10,8 @@ Conventions: ``pos`` = [east, north] metres on the theater plane, ``ll`` =
 
 from __future__ import annotations
 
+from ..units import Units
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,6 +64,7 @@ class FactionView(Model):
     divisions: int
     aircraft: int
     objectives: list[ObjectiveView]
+    bullseye: Located = Field(description="fixed reference point of the side's bearing/range calls (BULLS)")
 
 
 class PlayerView(Located):
@@ -92,11 +95,13 @@ class SaveView(Model):
 class CampaignView(Model):
     """Campaign overview: clock, factions, players."""
     save: SaveView | None = Field(None, description="saving (null without a running engine)")
-    units: Literal["metric", "imperial"] = Field(description="units of the texts for players (default of the UI)")
+    units: Units = Field(description="units of the texts for players (default of the UI)")
     control: ControlView | None = Field(None, description="pause and speed (null without a running engine)")
     api_version: int
     name: str
     theater: str
+    magnetic_variation_deg: float = Field(
+        0.0, description="east positive; BULLS bearings are magnetic = true bearing minus this")
     time: Time
     live: bool = Field(description="a game is simulating part of the campaign: time runs 1:1")
     players: list[PlayerView]
@@ -303,7 +308,7 @@ class LogisticsView(Model):
 
 # ---------------------------------------------------------------- ATO
 
-Task = Literal["CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE", "AWACS", "TANKER", "TRANSPORT"]
+Task = Literal["CAP", "ESCORT", "SEAD", "DEAD", "CAS", "BAI", "STRIKE", "AWACS", "TANKER", "TRANSPORT"]
 
 
 class SeatView(Model):
@@ -328,6 +333,7 @@ class FlightView(Located):
     faction: str
     squadron: str
     squadron_name: str
+    squadron_insignia: str = Field("", description="URL path of the squadron's insignia image (\"\" = none)")
     airbase: str
     aircraft: str
     aircraft_name: str
@@ -361,6 +367,7 @@ class PackageView(Located):
     tot: Time
     earliest_tot: Time = Field(description="earliest TOT the package can be moved to (startup lead included)")
     created: Time
+    archived: bool = Field(False, description="the package is over and kept only for the record")
     flights: list[FlightView]
 
 
@@ -377,6 +384,7 @@ class SquadronView(Model):
     available: int
     committed: int
     servicing: int
+    insignia: str = Field("", description="URL path of the insignia image (\"\" = none)")
 
 
 class BoardFlight(Model):
@@ -416,6 +424,7 @@ class BriefingWaypoint(Located):
     alt_m: int
     speed_kmh: int
     note: str
+    bulls: str = Field(description="magnetic bearing/range from the side's bullseye, e.g. 045/32 (NM or km)")
 
 
 class BriefingTarget(Located):
@@ -428,6 +437,7 @@ class BriefingTarget(Located):
     composition: list[str]
     coordinates: str = Field(description="degrees and decimal minutes")
     from_base: str = Field(description="bearing and range from the home base")
+    bulls: str = Field(description="magnetic bearing/range from the side's bullseye")
 
 
 class BriefingThreat(Located):
@@ -438,6 +448,7 @@ class BriefingThreat(Located):
     detail: str
     range_km: float
     severity: Literal["high", "medium", "low"]
+    bulls: str = Field(description="magnetic bearing/range from the side's bullseye")
 
 
 class BriefingStore(Model):
@@ -472,11 +483,18 @@ class BriefingSupport(Located):
     until: Time
 
 
+class BriefingBullseye(Located):
+    """The side's bullseye, reference of every ``bulls`` bearing/range."""
+
+    coordinates: str = Field(description="degrees and decimal minutes")
+
+
 class BriefingView(Model):
     """The mission package of a flight. Numbers are SI (``alt_m``, ``speed_kmh``,
     ``range_km``); texts are written in ``units``."""
-    units: Literal["metric", "imperial"]
+    units: Units
     package_number: str
+    bullseye: BriefingBullseye
 
     flight_id: str
     callsign: str
@@ -488,6 +506,7 @@ class BriefingView(Model):
     aircraft: str
     size: int
     squadron: str
+    squadron_insignia: str = Field("", description="URL path of the squadron's insignia image (\"\" = none)")
     base: str
     takeoff: Time
     tot: Time

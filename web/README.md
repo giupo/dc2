@@ -11,7 +11,12 @@ intelligence and a live event feed.
   - battles at the contact point and artillery fire;
   - brigades, convoys, flights, airbases and SAM sites as APP-6 symbols;
   - SAM rings and the IADS network;
-  - the named waypoints of the selected flight.
+  - the named waypoints of the selected flight;
+  - the bullseye of the "View as" side (target rings), with the cursor's
+    BULLS call ("BULLS 085/55": magnetic bearing / range in the chosen units)
+    at the bottom left. It is computed in the browser (`bullsLabel` in
+    `lib/format.ts`) with the same rule as the engine: great circle from the
+    bullseye minus the theatre's `magnetic_variation_deg`.
 
   Every layer can be toggled.
 - **Smooth movement:** positions stream at 5 Hz (`/api/positions/stream`) and
@@ -25,8 +30,9 @@ intelligence and a live event feed.
   - *Debugging:* `window.__dynacampFeed` exposes the feed in the browser
     console.
 - **Time controls** (header): pause/play and 1×, 10×, 60×, 300×, 900×, 3600×
-  (`POST /api/control`). They are disabled while a game is live, because time
-  must then run 1:1.
+  (`POST /api/control`). **Space** toggles pause (not while typing in a
+  field). They are disabled while a game is live, because time must then run
+  1:1, and until the API token is known.
 - **API token** (padlock next to the time controls): commands need the token
   printed by `dynacamp serve`.
   - *Getting it:* open the printed link `http://…/#token=…` and the UI stores
@@ -71,6 +77,19 @@ intelligence and a live event feed.
 - **Mission briefing:** opens from a flight's details as a kneeboard card.
   **Print** gives an A4 sheet: the card is a portal on `<body>`, and print CSS
   removes the app and sets the page margins.
+- **Squadron insignia:** in the briefing header and in a flight's details.
+  Files in `public/insignia/` (served at `/insignia/<file>`), named by the
+  scenario's `insignia` for each squadron. Sources and licences are in
+  `public/insignia/CREDITS.md`: only free files (public domain, CC0) from
+  Wikimedia Commons; rasters are scaled to 256 px WebP.
+- **Events tab:** an event about a package or a flight is clickable. It opens
+  the package or flight details, centres the map, and highlights every event
+  about the same flight. Air combat events show one button per callsign.
+  Packages that are over and gone from the ATO are fetched from the engine's
+  archive (`GET /api/ato/packages/{id}`, `GET /api/ato/flights/{id}/package`).
+  They are shown as "over (archived)", without orders or briefing. An enemy
+  flight is only shown while it is a radar track: the engine does not give
+  away the enemy's ATO.
 - **Units:** "Units" switches between SI and kts/ft/NM, and the choice is
   remembered in `localStorage`. It applies to briefings, SAM ranges, waypoint
   altitudes and the map scale. The default comes from the campaign

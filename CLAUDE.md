@@ -34,7 +34,7 @@ Motore headless di **campagna militare dinamica** ("DynaCamp"):
   simboli NATO APP-6.
 
 Documentazione completa:
-- [README.md](README.md): tutto, compresa la "Storia del progetto" in 21 passi;
+- [README.md](README.md): tutto, compresa la "Storia del progetto" in 24 passi;
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): design;
 - [docs/API.md](docs/API.md): endpoint;
 - [web/README.md](web/README.md): UI;
@@ -44,7 +44,8 @@ Documentazione completa:
 
 ```bash
 uv sync --extra miz --group dev --group docs     # tutto (pydcs serve solo per .miz/loadouts/radio)
-uv run pytest -q -W ignore::SyntaxWarning        # ~134 test, 16–75 s (pydcs emette SyntaxWarning)
+uv run pytest -q -W ignore::SyntaxWarning        # ~189 test in parallelo (xdist, -n auto), ~9 s; -n 0 = seriale
+tools/watch-tests.sh                             # watcher: rilancia i test a ogni modifica (pytest-watcher)
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 cd web && npx tsc --noEmit -p . && npm run build # UI; `npm run gen:api` dopo ogni modifica all'API
 uv run --group docs sphinx-build -q -b html docs/sphinx docs/sphinx/_build/html   # deve uscire senza avvisi
@@ -76,8 +77,15 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **`state.emit(kind, **data)`:** non usare chiavi chiamate `kind`, perché
   collidono con il primo argomento. Si usano per esempio `player_kind` e
   `delivery`.
-- **Coordinate:** `pos` = [est, nord] sul piano del teatro = [DCS z, DCS x].
-  Proiezioni: `projection.py`.
+- **Quote:** solo da `air.waypoint_altitudes` / `air.flight_altitude`
+  (briefing, rotta DCS, SAM, sensori). Non usare `cruise_alt_m` direttamente
+  per la quota di un volo.
+- **Coordinate:** nei file degli scenari (TOML e `.roads.json` formato 2)
+  solo `ll = [lat, lon]` WGS84, letti da `scenario.point` e `roads.load`.
+  Dentro il motore `pos`/`Vec2` = [est, nord] sul piano del teatro = [DCS z,
+  DCS x]. `pos` negli scenari solo per teatri senza proiezione (test).
+  Proiezioni: `projection.py`, la cui andata e ritorno nel Caucaso perde
+  ~6 m (serie troncate), mentre in Siria è al centimetro.
 - **Unità di misura:** i calcoli sono sempre in SI. I testi per i giocatori
   usano `dynacamp/units.py` (`imperial` = kts/ft/NM, il default, oppure
   `metric`).
@@ -103,10 +111,39 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   diventa `null` finché MapLibre non lo ricostruisce: in quel periodo `map`
   vale `null` per gli effetti React. Dettagli in `web/README.md` ("When the
   base map fails").
+- **Test in parallelo** (`pytest-xdist`, `-n auto` di default): ogni test
+  deve essere indipendente. Niente porte fisse (porta 0), file solo in
+  `tmp_path`, niente stato globale lasciato sporco.
+- **Insegne degli squadroni:** in `web/public/insignia/`, solo con licenza
+  libera (pubblico dominio, CC0), e ogni file ha la sua riga in `CREDITS.md`,
+  controllato da un test. Lo scenario le collega con `insignia = "<file>"` in
+  `[[squadrons]]`. Mancano, perché su Wikipedia sono solo "fair use" o non ci
+  sono: 31 e 47 Sqn RAF, EC 1/2, EC 1/12, 111 Filo, 338 Mira, NATO E-3A, VMA-223
+  e 31° reggimento russo (questi ultimi due bloccati dal limite di Commons:
+  da riprovare).
+- **Bullseye:** `Faction.bullseye` (Vec2, obbligatorio) è fisso per tutta la
+  campagna. Per le chiamate si usa solo `dynacamp.bullseye.label` /
+  `bearing_range` (magnetiche, grande cerchio); la UI ha `bullsLabel`, che
+  deve restare identica. Se cambia il bullseye di uno scenario, rigenerare i
+  `.miz` (lo controlla `test_shipped_missions_have_the_scenario_bullseyes`).
+  Da verificare in DCS: la declinazione approssimata
+  (`MAGNETIC_VARIATION_DEG`) contro quella che DCS calcola dalla data.
+- **Postazioni SAM:** un sito fermo sta nella sua `site` (centro della
+  provincia, oppure 3 km lungo una strada, vedi `air_defense.place_sites`),
+  non nel centro. Se crei siti fuori da scenario e sistema ADA, chiama
+  `place_sites`.
+- **Archivio ATO:** i package conclusi escono da `state.packages`/`flights`
+  ma restano in `state.archive`/`archived_flights` (ultimi
+  `air.ARCHIVE_MAX`). Così gli eventi della UI restano cliccabili
+  (`GET /api/ato/packages/{id}`, `.../flights/{id}/package`). Chi cerca un volo
+  per id dagli eventi deve guardare in entrambi.
+- **Nuovi campi di `CampaignState`:** i salvataggi vecchi li ricevono al
+  default (`persistence._add_missing_fields`). Bumpare `FORMAT_VERSION`
+  solo per i cambi incompatibili (rinomine, tipi diversi).
 - **Python 3.14:** il motore gira in un solo thread con `Engine.lock` (RLock);
   l'API legge sotto lock.
 
-## Stato attuale (2026-11-24, sera)
+## Stato attuale (2026-11-25)
 
 Tutto funziona in simulazione, ma **non è ancora stato provato in un DCS
 vero**. Funzionalità implementate:
@@ -119,7 +156,21 @@ vero**. Funzionalità implementate:
   - IA di teatro: retrovie, fianchi, fronte, offensive, riserve.
 - **Aviazione:**
   - 64 tipi di aereo;
-  - ATO con CAS, BAI, STRIKE, CAP, SEAD/DEAD e scorte;
+  - ATO con CAS, BAI, STRIKE, CAP, DEAD e scorte;
+  - rotte attorno ai SAM noti (`systems/routing.py`, grafo di visibilità,
+    deviazione max 1,6×), stazioni con l'intera orbita fuori dagli ombrelli,
+    reazione in volo quando spara un SAM sconosciuto (`flight_rerouted`);
+  - quello che non si evita chiede il SEAD, che fa da jammer per il package
+    (ECM: in DCS non ci sono jammer IA). DEAD = STRIKE sul sito 2 min dopo il
+    SEAD; `Task.DEAD` esiste solo come task di *package*. Le scorte tengono
+    una barriera sul bordo del primo ombrello;
+  - **scramble** (`systems/scramble.py`): un aereo nemico *noto* entro 30 NM
+    da una base, o da un asset entro 20 NM da una base, fa partire 2
+    intercettori in 5 min. Sono voli CAP con `target_kind == "flight"`
+    (`target_id` = l'intruso), che non contano tra le stazioni CAP dell'ATO.
+    Inseguono l'ultima posizione nota (`scramble.pursue`) e non entrano nei
+    SAM noti. Escluse dall'allarme: i caccia nemici, gli intrusi già coperti
+    da un nostro caccia e quelli già intercettati da meno di un'ora;
   - supporto: AWACS, tanker, trasporti con ponte aereo e rifornimento in
     elicottero;
   - giocatori nei voli dal menu F10;
@@ -183,9 +234,16 @@ vero**. Funzionalità implementate:
    - token per fazione, se serviranno.
 5. **Aria:** mancano
    - missioni di ricognizione per rinfrescare il quadro informativo;
-   - rotte attorno ai SAM;
    - OCA sulle basi;
-   - decollo dal parcheggio nelle bolle.
+   - decollo dal parcheggio nelle bolle;
+   - scramble: solo il 10–15% raggiunge l'intruso (5 min di allarme,
+     inseguimento puro); consumano sortite, e in Siria i package BAI calano
+     di ~30%. Possibili: rotta d'intercetto anticipata, pool di allerta
+     separato dal budget;
+   - modello aria-aria poco letale (`A2A_KILL` 0,1 + 15 min di pausa per
+     volo): un caccia lascia scappare un bombardiere che rientra;
+   - da verificare in DCS: opzione ECM (`ECM_USING` = 13, `ALWAYS` = 3) dei
+     voli SEAD e rotte con molti waypoint.
 6. **DCS:**
    - i contatti scoperti in gioco non tornano al quadro informativo;
    - IADS coordinato (Skynet);

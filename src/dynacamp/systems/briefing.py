@@ -26,10 +26,10 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .. import callsigns, loadouts
+from .. import bullseye, callsigns, loadouts
 from .. import units as U
-from ..units import Units
-from ..air import Flight, Task
+from ..units import UnitDomain, Units
+from ..air import Flight, Task, waypoint_altitudes
 from ..air_defense import SamRole
 from ..events import clock
 from ..geo import Vec2
@@ -37,9 +37,6 @@ from ..projection import to_latlon
 from ..state import CampaignState
 
 ROUTE_SAMPLE_M = 5_000.0
-ATTACK_ALT_M = {Task.CAS: 1_500.0, Task.BAI: 1_500.0, Task.STRIKE: 6_000.0, Task.SEAD: 6_000.0, Task.ESCORT: 7_500.0}
-CAP_ALT_M = 7_500.0
-HELO_ALT_M = 50.0
 
 MISSION_TEXT = {
     Task.CAS: "Close air support: destroy enemy forces engaged with our troops at the target. Expect friendlies within {friendly_range}.",
@@ -51,8 +48,15 @@ MISSION_TEXT = {
     Task.AWACS: "Airborne early warning: hold the orbit, build the air picture and control the fighters.",
     Task.TANKER: "Air refuelling: hold the track and refuel receivers on request.",
     Task.TRANSPORT: "Airlift: deliver the cargo to the landing zone and return.",
+    Task.SCRAMBLE: "Scramble: intercept the intruder and shoot it down. Ground control vectors you on its last known position; return home when it is gone.",
+    Task.DEAD: "DEAD: destroy the SAM site. The package's SEAD flight goes in two minutes ahead to put its radars down; stay with its ECM cover."
 }
-STATION_NAME = {Task.CAP: "CAP STATION", Task.AWACS: "AWACS ORBIT", Task.TANKER: "TANKER TRACK"}
+
+STATION_NAME = {
+    Task.CAP: "CAP STATION",
+    Task.AWACS: "AWACS ORBIT",
+    Task.TANKER: "TANKER TRACK"
+}
 
 
 # ---------------------------------------------------------------- helpers
@@ -73,7 +77,7 @@ def ddm(ll: tuple[float, float] | None) -> str:
     return f"{part(lat, 'N', 'S', 2)} {part(lon, 'E', 'W', 3)}"
 
 
-def bearing_range(a: Vec2, b: Vec2, units: Units = "metric") -> str:
+def bearing_range(a: Vec2, b: Vec2, units: Units = UnitDomain.METRIC) -> str:
     """True bearing and range from ``a`` to ``b`` (``"087° 64 km"`` / ``"087° 35 NM"``)."""
     return f"{math.degrees(a.heading_to(b)) % 360:03.0f}° {U.distance(a.distance_to(b), units)}"
 
@@ -116,7 +120,7 @@ def waypoint_names(f: Flight) -> list[str]:
     names = ["WP"] * n
     names[0], names[-1] = "TAKEOFF", "LAND"
     if f.task.orbits:
-        names[f.target_index] = STATION_NAME[f.task]
+        names[f.target_index] = "INTERCEPT" if f.target_kind == "flight" else STATION_NAME[f.task]
     elif f.task is Task.TRANSPORT:
         names[f.target_index] = "DELIVERY"
     else:
@@ -128,7 +132,7 @@ def waypoint_names(f: Flight) -> list[str]:
     return names
 
 
-def waypoint_plan(state: CampaignState, f: Flight) -> list[dict[str, Any]]:
+def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -> list[dict[str, Any]]:
     """Named waypoints with ETA (counted from the TOT), altitude and speed.
 
     Returns:
@@ -146,7 +150,7 @@ def waypoint_plan(state: CampaignState, f: Flight) -> list[dict[str, Any]]:
         return sum(wps[k].distance_to(wps[k + 1]) for k in range(lo, hi))
 
     station_s = max(0.0, f.station_until - f.tot) if f.task.orbits else 0.0
-    attack_alt = HELO_ALT_M if ac.helo else ATTACK_ALT_M.get(f.task, ac.cruise_alt_m)
+    alts = waypoint_altitudes(f)  # the same profile the AI flies in the game
     plan = []
     for i, p in enumerate(wps):
         if i <= ti:
@@ -154,18 +158,9 @@ def waypoint_plan(state: CampaignState, f: Flight) -> list[dict[str, Any]]:
         else:
             eta = f.tot + station_s + dist(ti, i) / speed
         name = names[i]
-        if name == "TAKEOFF" or name == "LAND":
-            alt = 0.0
-        elif ac.helo:
-            alt = HELO_ALT_M
-        elif name == "CAP STATION":
-            alt = CAP_ALT_M
-        elif name in ("AWACS ORBIT", "TANKER TRACK", "DELIVERY"):
-            alt = ac.cruise_alt_m if name != "DELIVERY" else (HELO_ALT_M if ac.helo else 0.0)
-        elif name in ("TARGET", "EGRESS") or (name == "IP" and f.task in (Task.CAS, Task.BAI)):
-            alt = attack_alt
-        else:
-            alt = ac.cruise_alt_m
+        # on the ground at takeoff, landing and (fixed-wing) delivery
+        on_ground = name in ("TAKEOFF", "LAND") or (name == "DELIVERY" and not ac.helo)
+        alt = 0.0 if on_ground else alts[i]
         note = {
             "TAKEOFF": "start up, take off and join up",
             "IP": "push: weapons hot, descend for the attack" if f.task in (Task.CAS, Task.BAI) else "push to target",
@@ -187,6 +182,7 @@ def waypoint_plan(state: CampaignState, f: Flight) -> list[dict[str, Any]]:
                 "alt_m": round(alt),
                 "speed_kmh": round(ac.cruise_kmh * (0.9 if name in ("IP", "TARGET") and not ac.helo else 1.0)),
                 "note": note,
+                "bulls": bullseye.label(state, f.faction, p, units or state.units),
             }
         )
     return plan
@@ -207,7 +203,7 @@ def waypoint_marks(state: CampaignState, f: Flight, units: Units | None = None) 
 # ---------------------------------------------------------------- target, threats
 
 
-def target_info(state: CampaignState, f: Flight, units: Units = "metric") -> dict[str, Any]:
+def target_info(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -> dict[str, Any]:
     """What the flight is sent against."""
     t = state.theater
     point = f.target_point
@@ -222,6 +218,7 @@ def target_info(state: CampaignState, f: Flight, units: Units = "metric") -> dic
         "ll": _ll(state, point),
         "coordinates": ddm(to_latlon(t.name, point)),
         "from_base": f"{bearing_range(base.position, point, units)} from {base.name}",
+        "bulls": bullseye.label(state, f.faction, point, units),
     }
     if f.target_kind == "battle" and f.target_id in state.battles:
         b = state.battles[f.target_id]
@@ -255,12 +252,18 @@ def target_info(state: CampaignState, f: Flight, units: Units = "metric") -> dic
         info["description"] = f"Resupply {d.name} ({d.supply_ratio:.0%} supply) in the field: land near the brigade."
     elif f.task in (Task.AWACS, Task.TANKER):
         info["description"] = f"{'Orbit' if f.task is Task.AWACS else 'Refuelling track'} behind the front, clear of known enemy SAMs."
+    elif f.target_kind == "flight":
+        from . import intel
+
+        c = intel.knows(state, f.faction, f.target_id)
+        what = (c.detail.get("aircraft_name") if c else None) or "unidentified aircraft"
+        info["description"] = f"Intruder: {what}" + (f", heading {c.detail['heading_deg']:03d}." if c else ", contact lost.")
     elif f.task is Task.CAP:
         info["description"] = f"CAP station over {t.provinces[f.target_id].name if f.target_id in t.provinces else 'the front'}."
     return info
 
 
-def threats(state: CampaignState, f: Flight, units: Units = "metric") -> list[dict[str, Any]]:
+def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -> list[dict[str, Any]]:
     """Enemy air defences along the route and fighters able to reach the target.
 
     SAM sites are those the faction *knows about* (systems.intel), at their last
@@ -330,6 +333,8 @@ def threats(state: CampaignState, f: Flight, units: Units = "metric") -> list[di
                 }
             )
     order = {"high": 0, "medium": 1, "low": 2}
+    for x in out:
+        x["bulls"] = bullseye.label(state, f.faction, Vec2(*x["pos"]), units)
     return sorted(out, key=lambda x: (order[x["severity"]], x["kind"], x["name"]))
 
 
@@ -364,10 +369,16 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
     if friends:
         situation.append(f"FRIENDLY forces within {U.distance(15_000, units)} of the target: " + ", ".join(d.name for d in friends[:4]) + ". Positive identification required.")
     flights = [state.flights[i] for i in (pkg.flights if pkg else []) if i in state.flights]
+    bulls = state.factions[f.faction].bullseye
     return {
         "units": units,
         "package_number": pkg.number if pkg else "",
         "support": support(state, f, units),
+        "bullseye": {
+            "pos": [round(bulls.x), round(bulls.y)],
+            "ll": _ll(state, bulls),
+            "coordinates": ddm(to_latlon(t.name, bulls)),
+        },
         "flight_id": f.id,
         "callsign": f.callsign,
         "radio_callsign": radio.label if (radio := callsigns.radio_callsign(state, f)) else "",
@@ -376,10 +387,16 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
         "aircraft": f.aircraft_type.name,
         "size": f.size,
         "squadron": sq.name,
+        "squadron_insignia": f"/insignia/{sq.insignia}" if sq.insignia else "",
         "base": base.name,
         "takeoff": {"t": round(f.takeoff_time, 1), "label": clock(f.takeoff_time)},
         "tot": {"t": round(f.tot, 1), "label": clock(f.tot)},
-        "mission": MISSION_TEXT.get(f.task, "").format(friendly_range=U.distance(3_000, units)),
+        "mission": (
+            MISSION_TEXT[Task.DEAD] if f.task is Task.STRIKE and f.target_kind == "sam"
+            else MISSION_TEXT[Task.SCRAMBLE] if f.target_kind == "flight" else MISSION_TEXT.get(f.task, "")
+        ).format(
+            friendly_range=U.distance(3_000, units)
+        ),
         "situation": situation or ["No contact reported near the target."],
         "target": target_info(state, f, units),
         "threats": threats(state, f, units),
@@ -388,7 +405,7 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
             "Unarmed." if f.task.support else "Ordnance as set in the aircraft template (mission editor)."
         ),
         "comms": frequencies(f, state),
-        "waypoints": waypoint_plan(state, f),
+        "waypoints": waypoint_plan(state, f, units),
         "package": [
             {
                 "callsign": o.callsign,
@@ -446,13 +463,14 @@ def render(b: dict[str, Any], now: float | None = None) -> str:
         f"{b['callsign']}: {b['size']}x {b['aircraft']} ({b['squadron']}) from {b['base']}, task {b['task']}",
         f"Takeoff {b['takeoff']['label']}{rel(b['takeoff']['t'])} - TOT {b['tot']['label']}{rel(b['tot']['t'])}",
         f"MISSION: {b['mission']}",
-        f"TARGET: {b['target']['name']} at {b['target']['coordinates']} ({b['target']['from_base']})",
+        f"TARGET: {b['target']['name']} at {b['target']['coordinates']} ({b['target']['from_base']}), BULLS {b['target']['bulls']}",
+        f"BULLSEYE: {b['bullseye']['coordinates']} (bearings magnetic)",
     ]
     if b["target"]["description"]:
         lines.append(f"  {b['target']['description']}")
     lines += [f"SITUATION: {s}" for s in b["situation"]]
     if b["threats"]:
-        lines.append("THREATS: " + "; ".join(f"{x['name']} ({x['severity']})" for x in b["threats"][:6]))
+        lines.append("THREATS: " + "; ".join(f"{x['name']} BULLS {x['bulls']} ({x['severity']})" for x in b["threats"][:6]))
     else:
         lines.append("THREATS: none known")
     if b["loadout"]:
@@ -464,10 +482,10 @@ def render(b: dict[str, Any], now: float | None = None) -> str:
         lines.append(f"RADIO CALLSIGN: {b['radio_callsign']} (the AI and the radio menus call you so)")
     for s in b.get("support", []):
         lines.append(f"SUPPORT: {s['task']} {s['callsign']} ({s['aircraft']}) at {s['position']}, {s['frequency']}, until {s['until']['label'][3:]}")
-    lines.append("WAYPOINTS (ETA / alt / speed):")
+    lines.append("WAYPOINTS (ETA / alt / speed / BULLS):")
     for wp in b["waypoints"]:
         alt = U.altitude(wp["alt_m"], units) if wp["alt_m"] else "-"
-        lines.append(f"  WP{wp['index']} {wp['name']:<11} {wp['eta']['label'][3:]}  {alt:>8}  {U.speed(wp['speed_kmh'], units)}")
+        lines.append(f"  WP{wp['index']} {wp['name']:<11} {wp['eta']['label'][3:]}  {alt:>8}  {U.speed(wp['speed_kmh'], units)}  {wp['bulls']}")
     others = [p for p in b["package"] if not p["you"]]
     if others:
         lines.append("PACKAGE: " + "; ".join(f"{p['callsign']} {p['size']}x {p['aircraft']} {p['task']}" for p in others))

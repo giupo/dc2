@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Division, Flight } from "../api/client";
+import type { CampaignEvent, Division, Flight, Package } from "../api/client";
 import {
   CATEGORY_ICON,
   describeEvent,
@@ -29,6 +29,10 @@ export interface PanelProps {
   viewpoint: string;
   /** Display units (SI or kts/ft/NM). */
   units: Units;
+  /** Packages over and gone from the ATO, fetched when an event about them is clicked. */
+  archive: Package[];
+  /** Fetch a finished package (or a finished flight's) into ``archive`` and select it. */
+  openArchived: (s: { kind: "flight" | "package"; id: string }) => void;
 }
 
 /** Inline NATO symbol (APP-6) for lists. */
@@ -381,7 +385,36 @@ export function AtoPanel(props: PanelProps) {
 
 const CATEGORIES: EventCategory[] = ["ground", "fires", "logistics", "air", "players", "system", "orders"];
 
-export function EventsPanel({ data }: PanelProps) {
+type EventRef = { sel: { kind: "flight" | "package"; id: string }; ll?: number[] | null; callsign?: string; live: boolean };
+
+/** Packages and flights an event is about (``package``, ``flight`` or
+ * ``flights`` in its data). ``live`` ones are in the ATO (or the air picture)
+ * now; the others are over and are fetched from the archive when clicked. */
+function eventRefs(e: CampaignEvent, data: CampaignData, archive: Package[]): EventRef[] {
+  const d = e.data as Record<string, unknown>;
+  const packages = data.ato?.packages ?? [];
+  const flights = [...packages.flatMap((p) => p.flights), ...(data.ato?.tracks ?? [])];
+  const kept = archive.flatMap((p) => p.flights);
+  const out: EventRef[] = [];
+  // (flight id, callsign named by the event): ``flight`` + ``callsign``, or ``flights`` + ``callsigns``
+  const named: [unknown, unknown][] = Array.isArray(d.flights)
+    ? d.flights.map((id, i) => [id, Array.isArray(d.callsigns) ? d.callsigns[i] : undefined])
+    : [[d.flight, d.callsign]];
+  named.forEach(([id, name]) => {
+    if (typeof id !== "string") return;
+    const live = flights.find((x) => x.id === id);
+    const f = live ?? kept.find((x) => x.id === id);
+    const callsign = f?.callsign ?? (typeof name === "string" ? name : undefined);
+    out.push({ sel: { kind: "flight", id }, ll: f?.ll, callsign, live: !!live });
+  });
+  if (typeof d.package === "string") {
+    const p = packages.find((x) => x.id === d.package) ?? archive.find((x) => x.id === d.package);
+    out.push({ sel: { kind: "package", id: d.package }, ll: p?.ll, live: !!packages.find((x) => x.id === d.package) });
+  }
+  return out;
+}
+
+export function EventsPanel({ data, selected, select, archive, openArchived }: PanelProps) {
   const [shown, setShown] = useState<Set<EventCategory>>(new Set(["ground", "air", "players", "system"]));
   const events = useMemo(
     () => [...data.events].reverse().filter((e) => shown.has(eventCategory(e.kind))),
@@ -394,6 +427,7 @@ export function EventsPanel({ data }: PanelProps) {
       else n.add(c);
       return n;
     });
+  const open = (r: EventRef) => (r.live ? select(r.sel, r.ll) : openArchived(r.sel));
   return (
     <div className="panel">
       <div className="tabs small">
@@ -403,13 +437,28 @@ export function EventsPanel({ data }: PanelProps) {
           </button>
         ))}
       </div>
-      {events.map((e) => (
-        <div key={e.seq} className={`event ev-${eventCategory(e.kind)}`}>
-          <span className="ev-time">{e.time.label.slice(3)}</span>
-          <span className="ev-icon">{CATEGORY_ICON[eventCategory(e.kind)]}</span>
-          <span className="ev-text">{describeEvent(e, data.campaign, data.map)}</span>
-        </div>
-      ))}
+      {events.map((e) => {
+        const refs = eventRefs(e, data, archive);
+        const first = refs[0];
+        const on = refs.some((r) => isSel(selected, r.sel.kind, r.sel.id));
+        const title = first ? `Show the ${first.sel.kind}${first.live ? "" : " (mission over)"}` : undefined;
+        return (
+          <div key={e.seq} className={`event ev-${eventCategory(e.kind)} ${first ? "clickable" : ""} ${on ? "sel" : ""}`}
+               title={title} onClick={first ? () => open(first) : undefined}>
+            <span className="ev-time">{e.time.label.slice(3)}</span>
+            <span className="ev-icon">{CATEGORY_ICON[eventCategory(e.kind)]}</span>
+            <span className="ev-text">
+              {describeEvent(e, data.campaign, data.map)}
+              {refs.length > 1 && refs.filter((r) => r.sel.kind === "flight" && r.callsign).map((r) => (
+                <button key={r.sel.id} className={`ev-ref ${isSel(selected, r.sel.kind, r.sel.id) ? "on" : ""}`}
+                        onClick={(ev) => { ev.stopPropagation(); open(r); }}>
+                  {r.callsign}
+                </button>
+              ))}
+            </span>
+          </div>
+        );
+      })}
       {!events.length && <p className="muted">Waiting for events…</p>}
     </div>
   );

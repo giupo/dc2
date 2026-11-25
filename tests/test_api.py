@@ -377,3 +377,43 @@ def test_save_disabled_or_failing(demo, tmp_path, monkeypatch):
         r = c.post("/api/save")
         assert r.status_code == 500 and "disk full" in r.json()["detail"]
         assert saver.last is None
+
+
+def test_finished_packages_stay_readable_for_the_event_log(demo):
+    from fastapi.testclient import TestClient
+
+    from dynacamp.api import create_app
+
+    engine = Engine(demo)
+    engine.run_for(12 * 3600, dt=300)
+    done = [e for e in demo.events if e.kind == "package_complete"]
+    assert done and demo.archive
+    pid = done[0].data["package"]
+    pkg = demo.archive[pid]
+    assert pid not in demo.packages
+    with TestClient(create_app(engine)) as c:
+        view = c.get(f"/api/ato/packages/{pid}").json()
+        assert view["archived"] is True and view["number"] == pkg.number
+        assert [f["id"] for f in view["flights"]] == pkg.flights
+        fid = pkg.flights[0]
+        assert c.get(f"/api/ato/flights/{fid}/package").json()["id"] == pid
+        # a live package is there too, not archived
+        live = next(iter(demo.packages))
+        assert c.get(f"/api/ato/packages/{live}").json()["archived"] is False
+        # fog of war: the enemy does not read our ATO
+        enemy = next(f for f in demo.factions if demo.at_war(f, pkg.faction))
+        assert c.get(f"/api/ato/packages/{pid}?faction={enemy}").status_code == 404
+        assert c.get(f"/api/ato/packages/{pid}?faction={pkg.faction}").status_code == 200
+        assert c.get("/api/ato/packages/nope").status_code == 404
+        assert c.get("/api/ato/flights/nope/package").status_code == 404
+
+
+def test_archive_is_bounded(line, monkeypatch):
+    from dynacamp.air import Package, Task
+    from dynacamp.systems import air
+
+    monkeypatch.setattr(air, "ARCHIVE_MAX", 3)
+    for i in range(5):
+        line.packages[f"p{i}"] = Package(f"p{i}", "blue", Task.CAP, "t", Vec2(0, 0), 0)
+        air._cleanup(line)
+    assert list(line.archive) == ["p2", "p3", "p4"] and not line.packages

@@ -43,6 +43,10 @@ UNIT_PREFIX = "DC"
 COALITION_SIDE = {1: "red", 2: "blue"}
 SIDE_COALITION = {v: k for k, v in COALITION_SIDE.items()}
 TEMPLATE_PREFIX = "DC_TPL"
+# AI.Option.Air.id.ECM_USING and its ALWAYS_USE value (DCS scripting API).
+# NOTE: verify in DCS that AI jamming follows it.
+ECM_USING = 13
+ECM_ALWAYS = 3
 CATEGORY_KIND = {0: PlayerKind.AIR, 1: PlayerKind.HELO, 2: PlayerKind.GROUND, 3: PlayerKind.GROUND}
 
 
@@ -304,9 +308,10 @@ class DcsTranslator:
         alt, speed = snap.altitude, snap.speed_kmh / 3.6
         points = [self._air_point(snap.position, alt, speed, helo, self._enroute_tasks(task))]
         target_index = int(a.get("target_index", -1))
+        alts = a.get("altitudes") or ()  # the briefing's profile, one per waypoint
         for i, wp in enumerate(snap.waypoints):
             tasks = self._target_tasks(task, a.get("target"), a.get("on_station_s", 0.0), helo) if i == target_index else []
-            points.append(self._air_point(wp, alt, speed, helo, tasks))
+            points.append(self._air_point(wp, alts[i] if i < len(alts) else alt, speed, helo, tasks))
         return points
 
     @staticmethod
@@ -340,7 +345,7 @@ class DcsTranslator:
             targets, dist = ["Air Defence"], 40_000
         else:
             return []
-        return [
+        tasks = [
             {
                 "number": 1,
                 "auto": False,
@@ -349,6 +354,16 @@ class DcsTranslator:
                 "params": {"targetTypes": targets, "maxDist": dist, "maxDistEnabled": True, "priority": 0},
             }
         ]
+        if task == "SEAD":
+            # The SEAD flight is the package's jammer: ECM always on.
+            tasks.append({
+                "number": 2,
+                "auto": False,
+                "enabled": True,
+                "id": "WrappedAction",
+                "params": {"action": {"id": "Option", "params": {"name": ECM_USING, "value": ECM_ALWAYS}}},
+            })
+        return tasks
 
     @staticmethod
     def _target_tasks(task: str, target: Vec2 | None, station_s: float, helo: bool) -> list[dict[str, Any]]:

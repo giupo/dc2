@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..air import ACTIVE_STATUSES, FlightStatus, Task
+from ..air import ACTIVE_STATUSES, FlightStatus, Task, flight_altitude
 from ..air_defense import AirDefenseUnit, SamRole, SamStatus
 from ..forces import Convoy, Division
 from ..geo import Vec2
@@ -290,7 +290,7 @@ def scan(state: CampaignState, fid: str) -> None:
         if not state.at_war(fid, f.faction) or f.status not in ACTIVE_STATUSES or f.ai_count + len(f.active_seats) <= 0:
             continue
         pos = _pos(state, f)
-        low = air_defense._altitude(f) <= LOW_ALT_M
+        low = flight_altitude(f) <= LOW_ALT_M
         seen_by, identify = None, False
         for spos, rng, skind, name, can_id in sensors:
             d = spos.distance_to(pos)

@@ -124,3 +124,14 @@ def test_saver_autosave_interval(line, tmp_path):
     record = saver.save(Engine(line), "auto")
     assert saver.last == record and not saver.due() and saver.path.exists()
     assert not persistence.Saver(tmp_path / "x", autosave_s=0, clock=lambda: 1e9).due()
+
+
+def test_saves_from_before_a_new_state_field_still_load(line, tmp_path):
+    path = persistence.save(line, tmp_path / "c.dcsave")
+    with gzip.open(path, "rb") as fh:
+        envelope = pickle.load(fh)
+    del envelope["state"].__dict__["archive"]  # as written before the field existed
+    with gzip.open(path, "wb") as fh:
+        pickle.dump(envelope, fh)
+    resumed, _ = persistence.load(path)
+    assert resumed.archive == {}

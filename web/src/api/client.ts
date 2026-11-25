@@ -119,6 +119,12 @@ export const api = {
   ato: (faction?: string | null) => get<Ato>("/api/ato" + fq(faction)),
   airDefense: (faction?: string | null) => get<AirDefense>("/api/airdefense" + fq(faction)),
   intel: (faction: string) => get<Intel>("/api/intel" + fq(faction)),
+  /** A package, also once it is over (archived). */
+  package: (packageId: string, faction?: string | null) =>
+    get<Package>(`/api/ato/packages/${encodeURIComponent(packageId)}${fq(faction)}`),
+  /** The package of a flight, also once it is over (archived). */
+  flightPackage: (flightId: string, faction?: string | null) =>
+    get<Package>(`/api/ato/flights/${encodeURIComponent(flightId)}/package${fq(faction)}`),
   briefing: (flightId: string, units?: "metric" | "imperial") =>
     get<Briefing>(`/api/ato/flights/${encodeURIComponent(flightId)}/briefing${units ? `?units=${units}` : ""}`),
   events: (since: number, limit = 500, faction?: string | null) =>

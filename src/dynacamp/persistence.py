@@ -172,6 +172,28 @@ def _info(envelope: dict[str, Any]) -> SaveInfo:
     )
 
 
+def _add_missing_fields(state: CampaignState) -> None:
+    """Give a campaign saved by an older version the state fields added since,
+    at their defaults (unpickling restores only the attributes it had), and
+    the factions their bullseye (the default one: centre of the side's provinces now)."""
+    import dataclasses
+
+    for f in dataclasses.fields(state):
+        if hasattr(state, f.name):
+            continue
+        if f.default_factory is not dataclasses.MISSING:
+            setattr(state, f.name, f.default_factory())
+        elif f.default is not dataclasses.MISSING:
+            setattr(state, f.name, f.default)
+    for faction in state.factions.values():
+        if not hasattr(faction, "bullseye"):  # saved before bullseyes: the default one
+            from . import bullseye
+
+            side = {o.id for o in state.factions.values() if o.side == faction.side}
+            held = [p.center for p in state.theater.provinces.values() if p.controller in side]
+            faction.bullseye = bullseye.centre(held or [p.center for p in state.theater.provinces.values()])
+
+
 def _detach_from_game(state: CampaignState) -> None:
     """Bring back under campaign control what a game held when the save was made."""
     from .systems import ato
@@ -204,6 +226,7 @@ def load(path: str | Path) -> tuple[CampaignState, SaveInfo]:
     """
     envelope = _read_envelope(path)
     state: CampaignState = envelope["state"]
+    _add_missing_fields(state)
     _detach_from_game(state)
     info = _info(envelope)
     state.emit("campaign_resumed", saved_by=info.version, saved_at=info.saved_at)

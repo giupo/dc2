@@ -147,7 +147,10 @@ guerra. Serve ad animare la mappa: il client interpola tra i campioni.
 ### `GET /api/campaign`
 Nome, teatro, orologio, `live` (true quando DCS sta simulando qualcosa: tempo
 1:1), giocatori connessi (posizione, lato, volo assegnato) e per fazione:
-province, victory points, divisioni, aerei, obiettivi (con `achieved`).
+province, victory points, divisioni, aerei, obiettivi (con `achieved`) e
+`bullseye` (`pos`, `ll`: il punto di riferimento delle chiamate BULLS del
+lato). `magnetic_variation_deg` è la declinazione del teatro (est positiva):
+una rotta BULLS è la rotta vera meno questo valore.
 
 ### `GET /api/map`
 - `provinces[]`: `id, name, pos, ll, terrain, infrastructure, victory_points,
@@ -196,13 +199,22 @@ org, supply` (0..1), `elements` (mezzi per tipo), `order {kind, target}`,
   `pos, ll`, `waypoints` (polilinea), `target_index, next_waypoint, target`,
   `authority`, `on_station_until` (CAP), `locked_waypoints` (waypoint iniziali
   che non si possono più spostare), `fuel_km` (rotta più lunga pianificabile).
-- ogni package ha anche `earliest_tot`, il TOT più presto a cui si può spostare.
+- ogni package ha anche `earliest_tot`, il TOT più presto a cui si può spostare,
+  e `archived` (sempre `false` qui; `true` per i package conclusi letti per id).
 - `squadrons[]`: forza, disponibili, impegnati, in turnaround, compiti.
 - `sortie_budget_left` per fazione, `flights_airborne`.
 - `boards[side]`: esattamente ciò che vedono i giocatori nel menu F10.
 
+### `GET /api/ato/packages/{package_id}` e `GET /api/ato/flights/{flight_id}/package`
+Un package (con i voli), come in `/api/ato`, letto per id o tramite uno dei
+suoi voli. Funziona anche **dopo la fine della missione**: i package conclusi
+lasciano l'ATO ma restano nell'archivio del motore (gli ultimi 2000), con
+`archived: true`. Servono alla UI per mostrare di cosa parla un evento.
+Con `?faction=` un package nemico è 404, come uno sconosciuto.
+
 ### `GET /api/ato/flights/{flight_id}/briefing`
-Mission package di un volo: `units`, `package_number`, `title`, `mission`, `situation[]`, `target`
+Mission package di un volo: `units`, `package_number`, `bullseye` (`pos`, `ll`,
+`coordinates`), `title`, `mission`, `situation[]`, `target`
 (descrizione, composizione, coordinate, rilevamento dalla base), `threats[]`
 (SAM lungo la rotta, SHORAD, caccia nemici, ciascuno con `severity`),
 `waypoints[]` (`index, name, eta, alt_m, speed_kmh, note, pos, ll`),
@@ -216,6 +228,9 @@ arriva al giocatore in DCS). Risponde 404 se il volo non esiste più.
 Senza parametro valgono le unità della campagna (`units` in `/api/campaign`,
 di default `imperial`). I campi numerici restano sempre in SI (`alt_m`,
 `speed_kmh`, `range_km`).
+Bersaglio, minacce e waypoint hanno anche `bulls`, per esempio `"045/32"`:
+rotta magnetica e distanza (NM in imperiale, km in metrico) dal bullseye del
+lato.
 
 ### Ordini all'ATO (`POST`, con token)
 
@@ -242,13 +257,14 @@ Le posizioni (`PointIn`) sono `{"ll": [lat, lon]}` oppure
   | BAI | `division`, `convoy` | contatto nel quadro informativo |
   | STRIKE | `depot` | provincia nemica con deposito |
   | SEAD | `sam` | contatto SAM |
+  | DEAD | `sam` | contatto SAM; `squadron` è quello degli attaccanti (deve fare STRIKE) |
   | CAP, AWACS, TANKER | `point` | — (serve `point`) |
   | TRANSPORT | `airlift`, `resupply` | base amica con deposito / brigata amica (elicotteri) |
 
   Senza `squadron` sceglie il migliore disponibile; senza `tot` il più presto
-  possibile. Rifiuta se il budget di sortite è esaurito, se il bersaglio è
-  sotto un SAM noto e nessuno può fare SEAD, se è fuori portata o se `tot` è
-  troppo presto. Risponde con il package (come in `/api/ato`) ed emette
+  possibile. Rifiuta se il budget di sortite è esaurito, se la rotta resta
+  sotto un SAM noto che non può aggirare e nessuno può fare SEAD (per un DEAD:
+  se nessuno può fare SEAD), se è fuori portata o se `tot` è troppo presto. Risponde con il package (come in `/api/ato`) ed emette
   `package_ordered`.
 - **`POST /api/ato/flights/{flight_id}/route`** sostituisce la rotta di un
   volo, dal decollo all'atterraggio:

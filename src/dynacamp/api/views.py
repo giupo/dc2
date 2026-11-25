@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import geometry
+from .. import bullseye, geometry
 from ..air import FlightStatus, Task
 from ..events import clock
 from ..forces import Convoy, Division, OrderKind
@@ -123,6 +123,7 @@ def campaign(
                 "victory_points": sum(p.victory_points for p in held),
                 "divisions": sum(1 for d in state.divisions.values() if d.faction == f.id),
                 "aircraft": sum(s.aircraft for s in state.squadrons.values() if s.faction == f.id),
+                "bullseye": _pt(state, f.bullseye),
                 "objectives": [
                     {
                         "province": o.province,
@@ -140,6 +141,7 @@ def campaign(
         "api_version": API_VERSION,
         "name": state.name,
         "theater": t.name,
+        "magnetic_variation_deg": bullseye.MAGNETIC_VARIATION_DEG.get(t.name.lower(), 0.0),
         "time": _time(state.time),
         "live": live,
         "players": players or [],
@@ -502,6 +504,11 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
     }
 
 
+def insignia_url(sq) -> str:
+    """URL path of a squadron's insignia, served with the web UI ("" = none)."""
+    return f"/insignia/{sq.insignia}" if sq.insignia else ""
+
+
 def flight_view(state: CampaignState, f) -> dict[str, Any]:
     """JSON view of a flight."""
     from ..systems import orders
@@ -510,11 +517,12 @@ def flight_view(state: CampaignState, f) -> dict[str, Any]:
     return {
         "id": f.id,
         "package": f.package,
-        "package_number": state.packages[f.package].number if f.package in state.packages else "",
+        "package_number": p.number if (p := state.packages.get(f.package) or state.archive.get(f.package)) else "",
         "callsign": f.callsign,
         "faction": f.faction,
         "squadron": sq.id,
         "squadron_name": sq.name,
+        "squadron_insignia": insignia_url(sq),
         "airbase": sq.airbase,
         "aircraft": f.aircraft_type.id,
         "aircraft_name": f.aircraft_type.name,
@@ -540,9 +548,11 @@ def flight_view(state: CampaignState, f) -> dict[str, Any]:
 
 
 def package_view(state: CampaignState, p) -> dict[str, Any]:
-    """JSON view of a package and its flights."""
+    """JSON view of a package and its flights (live or archived)."""
     from ..systems import orders
 
+    archived = p.id not in state.packages
+    flights = state.archived_flights if archived else state.flights
     return {
         "id": p.id,
         "number": p.number,
@@ -551,10 +561,23 @@ def package_view(state: CampaignState, p) -> dict[str, Any]:
         "target": p.target_label,
         **_pt(state, p.target_point),
         "tot": _time(p.tot),
-        "earliest_tot": _time(orders.earliest_tot(state, p)),
+        "earliest_tot": _time(p.tot if archived else orders.earliest_tot(state, p)),
         "created": _time(p.created),
-        "flights": [flight_view(state, state.flights[i]) for i in p.flights if i in state.flights],
+        "archived": archived,
+        "flights": [flight_view(state, flights[i]) for i in p.flights if i in flights],
     }
+
+
+def find_package(state: CampaignState, package_id: str = "", flight_id: str = "", viewer: str | None = None):
+    """A live or archived package, by its id or one of its flights' (None if
+    unknown or, in ``viewer``'s view, an enemy's)."""
+    if flight_id:
+        f = state.flights.get(flight_id) or state.archived_flights.get(flight_id)
+        package_id = f.package if f is not None else ""
+    p = state.packages.get(package_id) or state.archive.get(package_id)
+    if p is None or _enemy(state, viewer, p.faction):
+        return None
+    return p
 
 
 def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
@@ -577,6 +600,7 @@ def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
             "strength": s.aircraft,
             "available": s.available_at(state.time),
             "committed": s.committed,
+            "insignia": insignia_url(s),
             "servicing": sum(n for ready, n in s.servicing if ready > state.time),
         }
         for s in state.squadrons.values()

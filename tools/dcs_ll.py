@@ -3,7 +3,8 @@
 Usage:
     python tools/dcs_ll.py syria 34.73 36.71
     python tools/dcs_ll.py caucasus 42.27 42.70
-Prints DCS x (north) / z (east) and the scenario ``pos = [east, north]``.
+Prints DCS x (north) / z (east), to check a point in the mission editor, and the
+scenario line ``ll = [lat, lon]`` (scenarios give every position as lat/lon).
 """
 
 import sys
@@ -16,4 +17,4 @@ from dynacamp.projection import ll_to_dcs  # noqa: E402
 if __name__ == "__main__":
     theater, lat, lon = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
     x, z = ll_to_dcs(theater, lat, lon)
-    print(f"DCS x={x:.0f} z={z:.0f}   core pos = [{z:.0f}, {x:.0f}]")
+    print(f"DCS x={x:.0f} z={z:.0f}   scenario: ll = [{lat:.6f}, {lon:.6f}]")

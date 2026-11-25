@@ -286,6 +286,134 @@
         }
       }
     },
+    "/api/ato/packages/{package_id}": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Package",
+        "description": "A package and its flights, also once it is over (archived).",
+        "operationId": "get_package_api_ato_packages__package_id__get",
+        "parameters": [
+          {
+            "name": "package_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Package Id"
+            }
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown package (or an enemy's)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ato/flights/{flight_id}/package": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Flight Package",
+        "description": "The package of a flight, also once it is over (archived).",
+        "operationId": "get_flight_package_api_ato_flights__flight_id__package_get",
+        "parameters": [
+          {
+            "name": "flight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Flight Id"
+            }
+          },
+          {
+            "name": "faction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "faction whose fog-of-war view to give (omit for the umpire's view)",
+              "title": "Faction"
+            },
+            "description": "faction whose fog-of-war view to give (omit for the umpire's view)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown flight (or an enemy's)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ato/flights/{flight_id}/briefing": {
       "get": {
         "tags": [
@@ -1481,6 +1609,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -1534,6 +1663,47 @@
         "title": "BoardPackage",
         "description": "A package on the in-game board."
       },
+      "BriefingBullseye": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "coordinates": {
+            "type": "string",
+            "title": "Coordinates",
+            "description": "degrees and decimal minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "coordinates"
+        ],
+        "title": "BriefingBullseye",
+        "description": "The side's bullseye, reference of every ``bulls`` bearing/range."
+      },
       "BriefingFlight": {
         "properties": {
           "callsign": {
@@ -1550,6 +1720,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -1744,6 +1915,11 @@
             "type": "string",
             "title": "From Base",
             "description": "bearing and range from the home base"
+          },
+          "bulls": {
+            "type": "string",
+            "title": "Bulls",
+            "description": "magnetic bearing/range from the side's bullseye"
           }
         },
         "additionalProperties": false,
@@ -1757,7 +1933,8 @@
           "description",
           "composition",
           "coordinates",
-          "from_base"
+          "from_base",
+          "bulls"
         ],
         "title": "BriefingTarget",
         "description": "The target of a flight."
@@ -1816,6 +1993,11 @@
               "low"
             ],
             "title": "Severity"
+          },
+          "bulls": {
+            "type": "string",
+            "title": "Bulls",
+            "description": "magnetic bearing/range from the side's bullseye"
           }
         },
         "additionalProperties": false,
@@ -1827,7 +2009,8 @@
           "name",
           "detail",
           "range_km",
-          "severity"
+          "severity",
+          "bulls"
         ],
         "title": "BriefingThreat",
         "description": "A threat to the flight."
@@ -1845,6 +2028,9 @@
           "package_number": {
             "type": "string",
             "title": "Package Number"
+          },
+          "bullseye": {
+            "$ref": "#/components/schemas/BriefingBullseye"
           },
           "flight_id": {
             "type": "string",
@@ -1870,6 +2056,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -1890,6 +2077,12 @@
           "squadron": {
             "type": "string",
             "title": "Squadron"
+          },
+          "squadron_insignia": {
+            "type": "string",
+            "title": "Squadron Insignia",
+            "description": "URL path of the squadron's insignia image (\"\" = none)",
+            "default": ""
           },
           "base": {
             "type": "string",
@@ -1972,6 +2165,7 @@
         "required": [
           "units",
           "package_number",
+          "bullseye",
           "flight_id",
           "callsign",
           "title",
@@ -2045,6 +2239,11 @@
           "note": {
             "type": "string",
             "title": "Note"
+          },
+          "bulls": {
+            "type": "string",
+            "title": "Bulls",
+            "description": "magnetic bearing/range from the side's bullseye, e.g. 045/32 (NM or km)"
           }
         },
         "additionalProperties": false,
@@ -2057,7 +2256,8 @@
           "eta",
           "alt_m",
           "speed_kmh",
-          "note"
+          "note",
+          "bulls"
         ],
         "title": "BriefingWaypoint",
         "description": "A named waypoint of a flight plan."
@@ -2106,6 +2306,12 @@
           "theater": {
             "type": "string",
             "title": "Theater"
+          },
+          "magnetic_variation_deg": {
+            "type": "number",
+            "title": "Magnetic Variation Deg",
+            "description": "east positive; BULLS bearings are magnetic = true bearing minus this",
+            "default": 0.0
           },
           "time": {
             "$ref": "#/components/schemas/Time"
@@ -2875,6 +3081,10 @@
             },
             "type": "array",
             "title": "Objectives"
+          },
+          "bullseye": {
+            "$ref": "#/components/schemas/Located",
+            "description": "fixed reference point of the side's bearing/range calls (BULLS)"
           }
         },
         "additionalProperties": false,
@@ -2888,7 +3098,8 @@
           "victory_points",
           "divisions",
           "aircraft",
-          "objectives"
+          "objectives",
+          "bullseye"
         ],
         "title": "FactionView",
         "description": "A faction with its score."
@@ -3006,6 +3217,12 @@
             "type": "string",
             "title": "Squadron Name"
           },
+          "squadron_insignia": {
+            "type": "string",
+            "title": "Squadron Insignia",
+            "description": "URL path of the squadron's insignia image (\"\" = none)",
+            "default": ""
+          },
           "airbase": {
             "type": "string",
             "title": "Airbase"
@@ -3028,6 +3245,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -3484,6 +3702,41 @@
         "title": "LinkView",
         "description": "A road/track/rail link with its geometry."
       },
+      "Located": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll"
+        ],
+        "title": "Located",
+        "description": "Something with a position."
+      },
       "LogisticsView": {
         "properties": {
           "depots": {
@@ -3674,6 +3927,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -3765,6 +4019,7 @@
               "CAP",
               "ESCORT",
               "SEAD",
+              "DEAD",
               "CAS",
               "BAI",
               "STRIKE",
@@ -3787,6 +4042,12 @@
           },
           "created": {
             "$ref": "#/components/schemas/Time"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "description": "the package is over and kept only for the record",
+            "default": false
           },
           "flights": {
             "items": {
@@ -4681,6 +4942,7 @@
                 "CAP",
                 "ESCORT",
                 "SEAD",
+                "DEAD",
                 "CAS",
                 "BAI",
                 "STRIKE",
@@ -4707,6 +4969,12 @@
           "servicing": {
             "type": "integer",
             "title": "Servicing"
+          },
+          "insignia": {
+            "type": "string",
+            "title": "Insignia",
+            "description": "URL path of the insignia image (\"\" = none)",
+            "default": ""
           }
         },
         "additionalProperties": false,

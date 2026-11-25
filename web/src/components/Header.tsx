@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AuthError, api, token, type Auth, type SaveStatus } from "../api/client";
 import { factionColor } from "../lib/format";
 
@@ -113,7 +113,24 @@ function TimeControls({ data }: { data: CampaignData }) {
   useEffect(() => {
     api.auth().then(setAuth).catch(() => undefined);
   }, [data.connected]);
-  if (!c) return null;
+  // Space toggles pause, like the play button (latest state through a ref: the
+  // listener is installed once).
+  const toggle = useRef<() => void>(undefined);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
+      e.preventDefault(); // no page scroll, no click on the focused button
+      toggle.current?.();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+  if (!c) {
+    toggle.current = undefined;
+    return null;
+  }
   const locked = !!auth && auth.required && !auth.authenticated;
   const authFailed = () => {
     token.clear();
@@ -128,15 +145,20 @@ function TimeControls({ data }: { data: CampaignData }) {
   const live = data.live;
   const title = live ? "A game is live: time runs 1:1" : locked ? "Locked: enter the API token" : undefined;
   const disabled = live || locked;
+  toggle.current = disabled ? undefined : () => change({ paused: !c.paused });
   return (
     <div className="time-controls" title={error ?? title}>
-      <button className={`play ${c.paused ? "" : "on"}`} disabled={disabled} onClick={() => change({ paused: !c.paused })} title={c.paused ? "Resume" : "Pause"}>
+      <button className={`play ${c.paused ? "" : "on"}`} disabled={disabled} onClick={() => change({ paused: !c.paused })} title={c.paused ? "Resume (Space)" : "Pause (Space)"}>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           {c.paused ? <path d="M2 1 L9 5 L2 9 Z" fill="currentColor" /> : <path d="M2 1 H4 V9 H2 Z M6 1 H8 V9 H6 Z" fill="currentColor" />}
         </svg>
       </button>
       {SPEEDS.map((s) => (
-        <button key={s} className={!c.paused && c.compression === s ? "on" : ""} disabled={disabled} onClick={() => change({ paused: false, compression: s })} title={`${s} s of campaign per second`}>
+        <button key={s}
+	  className={!c.paused && c.compression === s ? "on" : ""}
+	  disabled={disabled}
+	  onClick={() => change({ paused: false, compression: s })}
+	  title={`${s} s of campaign per second`}>
           {s}×
         </button>
       ))}

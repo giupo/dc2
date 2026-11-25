@@ -54,9 +54,15 @@ def test_no_engagement_out_of_range_above_ceiling_or_while_moving():
     assert not [e for e in state.events if e.kind == "sam_engagement"]
 
     state = world(sam="avenger")  # ceiling 3800 m: cruising jets are out of reach
-    flight(state, Vec2(60_000, 5_000), target=Vec2(300_000, 0))
+    f = flight(state, Vec2(60_000, 5_000), target=Vec2(300_000, 0))
+    home, ip, target = f.waypoints[0], Vec2(280_000, 0), Vec2(300_000, 0)
+    f.waypoints, f.target_index = [home, ip, target, Vec2(300_000, 20_000), home], 2  # flying to its IP
+    f.tot = state.time + 3600  # still on its way (not timed out)
     Engine(state).step(1)
     assert not [e for e in state.events if e.kind == "sam_engagement"]
+    f.wp_index = 2  # past the IP: down to 1500 m for the attack run (as the briefing says)
+    Engine(state).step(1)
+    assert [e for e in state.events if e.kind == "sam_engagement"]
 
     state = world()
     flight(state, Vec2(60_000, 10_000))
@@ -177,3 +183,33 @@ def test_every_system_has_dcs_types(system):
     from dynacamp.adapters.dcs import catalog
 
     assert set(SYSTEMS[system].elements) <= set(catalog.SAM_TYPES[system])
+
+
+def test_sites_sharing_a_province_stand_apart_and_keep_their_place():
+    from dynacamp.air_defense import SITE_SPACING_M, place_sites
+
+    state = world(sam="buk", at="d")
+    t = state.theater
+    state.air_defense["e1"] = AirDefenseUnit(id="e1", name="EWR", faction="red", location="d", system=SYSTEMS["ewr_55g6"])
+    state.air_defense["o1"] = AirDefenseUnit(id="o1", name="Osa", faction="red", location="d", system=SYSTEMS["osa"])
+    place_sites(state.air_defense.values(), t)
+    s1, e1, o1 = (state.air_defense[i] for i in ("s1", "e1", "o1"))
+    assert s1.position(t) == t.provinces["d"].center  # the first one holds the centre
+    pts = [u.position(t) for u in (s1, e1, o1)]
+    assert all(a.distance_to(b) > SITE_SPACING_M * 0.5 for i, a in enumerate(pts) for b in pts[i + 1:])
+    assert e1.site[1] == "e"  # friendly road first (e is red, c is blue)
+    # the centre's site leaves: the others stay where they are
+    state.route_entity(s1, "e")
+    place_sites(state.air_defense.values(), t)
+    assert e1.position(t) == pts[1] and o1.position(t) == pts[2] and s1.site is None
+
+
+def test_scenario_sites_are_never_stacked():
+    from pathlib import Path
+
+    from dynacamp import scenario
+
+    for path in sorted(Path(__file__).parent.parent.glob("scenarios/*.toml")):
+        state = scenario.load(path)
+        pts = [u.position(state.theater) for u in state.air_defense.values()]
+        assert all(a.distance_to(b) > 1_000 for i, a in enumerate(pts) for b in pts[i + 1:]), path.name

@@ -24,13 +24,18 @@ class Task(StrEnum):
     CAP = "CAP"  # combat air patrol over a point
     ESCORT = "ESCORT"  # fighter escort of a package
     SEAD = "SEAD"  # suppression of enemy air defences
+    # Destruction of enemy air defences: a *package* task only. Its flights are
+    # strikers (STRIKE) on the site, SEAD with ECM keeping the radars down, and
+    # fighter escort; no squadron flies "DEAD" as such.
+    DEAD = "DEAD"
     CAS = "CAS"  # close air support over a battle
     BAI = "BAI"  # battlefield interdiction: divisions / convoys behind the front
     STRIKE = "STRIKE"  # fixed targets (depots)
     AWACS = "AWACS"  # airborne early warning: the main sensor of the air picture
     TANKER = "TANKER"  # air-to-air refuelling track
     TRANSPORT = "TRANSPORT"  # airlift of supply
-
+    SCRAMBLE = "SCRAMBLE"
+    
     @property
     def air_to_air(self) -> bool:
         """True for fighter tasks (CAP, escort)."""
@@ -229,6 +234,8 @@ class Squadron:
         committed: Airframes assigned to flights now.
         establishment: Authorised strength replacements fill up to.
         servicing: (ready time, count) of airframes being turned around.
+        insignia: File of the unit's insignia in the web UI's ``insignia/``
+            folder (credits in ``CREDITS.md`` there), "" if it has none.
     """
     id: str
     name: str
@@ -242,6 +249,7 @@ class Squadron:
     establishment: int = 0  # authorised strength: replacements fill up to this (0 = initial strength)
     # (ready_time, count): airframes back from a mission, being turned around
     servicing: list[tuple[float, int]] = field(default_factory=list)
+    insignia: str = ""  # file in web/public/insignia/ ("" = none)
     _callsign_counter: int = 0
 
     def __post_init__(self) -> None:
@@ -418,6 +426,53 @@ class Flight(MobileEntity):
         if self.wp_index < len(self.waypoints):
             return self.pos.heading_to(self.waypoints[self.wp_index])
         return 0.0
+
+
+# ---------------------------------------------------------------- altitude profile
+#
+# One profile per flight, used by everyone: the players' briefing, the AI's
+# route in the game, and the SAM model of the campaign (who can reach whom).
+# The altitude of a waypoint is the one to fly *towards* it, as DCS AI does:
+# CAS/BAI reach the IP at cruise and go down for the attack run to the
+# target, stay low to the egress point and climb back home.
+
+ATTACK_ALT_M = {Task.CAS: 1_500.0, Task.BAI: 1_500.0, Task.STRIKE: 6_000.0, Task.SEAD: 6_000.0, Task.ESCORT: 7_500.0}
+CAP_ALT_M = 7_500.0
+
+
+def waypoint_altitudes(f: Flight) -> list[float]:
+    """Planned altitude at each waypoint of a flight, in metres.
+
+    Cruise everywhere, except the CAP station (``CAP_ALT_M``) and, for attack
+    sorties, the target and egress points (``ATTACK_ALT_M`` of the task).
+    Helicopters stay at their (low) cruise altitude. Takeoff and landing
+    points carry the cruise altitude too: the briefing shows them as 0.
+    """
+    ac = f.aircraft_type
+    n = len(f.waypoints)
+    alts = [ac.cruise_alt_m] * n
+    if ac.helo or n == 0:
+        return alts
+    ti = f.target_index
+    if f.task is Task.CAP:
+        alts[ti] = CAP_ALT_M
+    elif not f.task.orbits and f.task is not Task.TRANSPORT:
+        attack = ATTACK_ALT_M.get(f.task, ac.cruise_alt_m)
+        alts[ti] = attack
+        if ti + 1 < n - 1:  # the egress point (not the landing one)
+            alts[ti + 1] = attack
+    return alts
+
+
+def flight_altitude(f: Flight) -> float:
+    """Altitude the flight is at now: its station's while on station, else that
+    of the waypoint it is flying to (see :func:`waypoint_altitudes`)."""
+    alts = waypoint_altitudes(f)
+    if not alts:
+        return f.aircraft_type.cruise_alt_m
+    if f.status is FlightStatus.ON_STATION:
+        return alts[f.target_index]
+    return alts[min(f.wp_index, len(alts) - 1)]
 
 
 

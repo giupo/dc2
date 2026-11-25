@@ -296,7 +296,7 @@ export function PackageOrders({ pkg, flight }: { pkg: Package; flight?: Flight }
 
 // ---------------------------------------------------------------- new package
 
-const TASKS = ["CAS", "BAI", "STRIKE", "SEAD", "CAP", "AWACS", "TANKER", "TRANSPORT"] as const;
+const TASKS = ["CAS", "BAI", "STRIKE", "SEAD", "DEAD", "CAP", "AWACS", "TANKER", "TRANSPORT"] as const;
 type Kind = PackageRequest["target"]["kind"];
 
 interface TargetOption {
@@ -325,6 +325,7 @@ function targetOptions(task: string, faction: string, data: CampaignData, contac
     case "STRIKE":
       return (data.logistics?.depots ?? []).filter((d) => d.controller !== faction).map((d) => ({ kind: "depot", id: d.province, label: `Depot ${d.name}`, ll: d.ll }));
     case "SEAD":
+    case "DEAD":
       return contacts.filter((c) => c.kind === "sam").map((c) => ({ kind: "sam", id: c.id, label: `${c.detail.system_name ?? "SAM"} · ${ago(c)}`, ll: c.ll }));
     case "TRANSPORT":
       return [
@@ -370,7 +371,7 @@ export function NewPackage({ data, select }: { data: CampaignData; select: (s: S
   const byPoint = ORBITS.has(task);
   const options = byPoint ? [] : targetOptions(task, faction, data, contacts);
   const chosen = options.find((o) => `${o.kind}:${o.id}` === target);
-  const squadrons = (data.ato?.squadrons ?? []).filter((s) => s.faction === faction && (s.tasks as string[]).includes(task));
+  const squadrons = (data.ato?.squadrons ?? []).filter((s) => s.faction === faction && (s.tasks as string[]).includes(task === "DEAD" ? "STRIKE" : task)); // DEAD: pick the strikers
   const ready = byPoint ? !!point : !!chosen;
 
   const submit = () => {
@@ -437,7 +438,7 @@ export function NewPackage({ data, select }: { data: CampaignData; select: (s: S
           ))}
         </select>
       </label>
-      <p className="muted">SEAD and escort are added when the target calls for them; TOT is the earliest possible (move it afterwards).</p>
+      <p className="muted">Routes go around known SAMs when they can; SEAD (with ECM) and escort are added when the target or the route calls for them. DEAD = strikers on a SAM site behind a SEAD flight. TOT is the earliest possible (move it afterwards).</p>
       {error && <div className="error">{error}</div>}
       <button className="primary" disabled={!ready || busy} onClick={submit}>
         {busy ? "Planning…" : "Order package"}
