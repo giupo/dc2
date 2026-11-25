@@ -97,6 +97,12 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   `/stream`.
 - **Marker MapLibre:** usano `subpixelPositioning: true`, altrimenti
   l'animazione va a scatti di 1 px. L'animazione non passa da React.
+- **Mappa base fragile:** viene da `tiles.openfreemap.org`, che uBlock Origin
+  può bloccare in parte (`/planet`). `MapView` mostra un avviso; se lo stile
+  non arriva, passa a uno sfondo neutro. Se si perde WebGL, `map.style`
+  diventa `null` finché MapLibre non lo ricostruisce: in quel periodo `map`
+  vale `null` per gli effetti React. Dettagli in `web/README.md` ("When the
+  base map fails").
 - **Python 3.14:** il motore gira in un solo thread con `Engine.lock` (RLock);
   l'API legge sotto lock.
 

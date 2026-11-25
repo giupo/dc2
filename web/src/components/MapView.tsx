@@ -1,4 +1,4 @@
-import { LngLatBounds, Map as MLMap, Marker, NavigationControl, ScaleControl, setWorkerUrl, type GeoJSONSource, type LngLatLike } from "maplibre-gl";
+import { LngLatBounds, Map as MLMap, Marker, NavigationControl, ScaleControl, setWorkerUrl, type GeoJSONSource, type LngLatLike, type StyleSpecification } from "maplibre-gl";
 // MapLibre loads its web worker from a file next to its own module, which does not
 // exist once bundled: let Vite ship the worker as an asset and point MapLibre at it.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
@@ -18,6 +18,33 @@ setWorkerUrl(workerUrl);
 const STYLE: string = import.meta.env.VITE_MAP_STYLE ?? "https://tiles.openfreemap.org/styles/dark";
 const FONT = ["Noto Sans Regular"];
 const FIRE_FADE_MS = 12_000;
+/** Host serving the base map (style, tiles, fonts): named in the notices. */
+const BASEMAP_HOST = (() => {
+  try {
+    return new URL(STYLE, window.location.href).host;
+  } catch {
+    return STYLE;
+  }
+})();
+/** Plain background used when the base map style cannot be loaded at all. No
+ * glyphs: the label layers are skipped, everything else still works offline. */
+const FALLBACK_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: "background", type: "background", paint: { "background-color": "#141b27" } }],
+};
+/** Give up on the base map style after this long (a hung request, not a refused one). */
+const STYLE_TIMEOUT_MS = 10_000;
+/** Our own layers that draw text: dropped when the fonts cannot be loaded. */
+const LABEL_LAYERS = ["wp-label", "province-label"];
+
+/** Something wrong with the map rendering, shown as a notice over it.
+ *
+ * - ``fallback``: the base map style did not load, a plain background replaces it;
+ * - ``tiles``: the style loaded but its tiles or fonts are refused (ad blocker...);
+ * - ``webgl``: the browser took the WebGL context away, the map stops drawing.
+ */
+type MapProblem = "fallback" | "tiles" | "webgl";
 
 type LL = number[] | null | undefined;
 const lngLat = (ll: LL): [number, number] | null => (ll ? [ll[1], ll[0]] : null);
@@ -48,6 +75,16 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
 
   const scaleRef = useRef<ScaleControl | null>(null);
   useEffect(() => scaleRef.current?.setUnit(units === "imperial" ? "nautical" : "metric"), [units, map]);
+  const [problems, setProblems] = useState<Set<MapProblem>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<MapProblem>>(new Set());
+  const report = (p: MapProblem, on = true) =>
+    setProblems((s) => {
+      if (s.has(p) === on) return s;
+      const next = new Set(s);
+      if (on) next.add(p);
+      else next.delete(p);
+      return next;
+    });
   // ---- create the map once
   useEffect(() => {
     if (!container.current) return;
@@ -56,7 +93,62 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     const scale = new ScaleControl({ unit: "metric" });
     scaleRef.current = scale;
     m.addControl(scale, "bottom-right");
+
+    // ---- resilience: the base map comes from a third-party host that ad
+    // blockers, firewalls or an outage can cut off. Our own layers are inline
+    // GeoJSON (no URL), so every failed request is the base map's.
+    // ``style.load`` = the style document arrived; ``load`` additionally waits
+    // for its sources, so a hung tile server would hold our layers back forever.
+    let styleParsed = false;
+    let loaded = false;
+    let fellBack = false;
+    const fallBack = () => {
+      if (loaded || fellBack) return;
+      fellBack = true;
+      report("fallback");
+      m.setStyle(FALLBACK_STYLE);
+    };
+    const styleTimer = window.setTimeout(fallBack, STYLE_TIMEOUT_MS);
+    m.on("style.load", () => (styleParsed = true));
+    m.on("error", (e) => {
+      // Failed requests are AJAXErrors, which carry the URL.
+      const url = (e.error as { url?: string } | undefined)?.url;
+      if (!url) return;
+      if (!styleParsed) {
+        fallBack();
+        return;
+      }
+      report("tiles");
+      // Text needs the fonts: a geojson tile whose glyphs fail is dropped whole,
+      // dots and all, so give up on our labels rather than lose the symbols.
+      if (url.includes("/fonts/") || url.includes("glyph")) {
+        for (const id of LABEL_LAYERS) if (m.getLayer(id)) m.removeLayer(id);
+      }
+    });
+    // A lost context destroys the style (map.style = null) until MapLibre rebuilds
+    // it from a snapshot on restore: hide the map from the effects meanwhile, and
+    // hand it back once the rebuilt style is in, so they refill every source.
+    m.on("webglcontextlost", () => {
+      report("webgl");
+      setMap(null);
+    });
+    m.on("webglcontextrestored", () => {
+      report("webgl", false);
+      if (!loaded) return;
+      let back = false;
+      const ready = () => {
+        if (back) return;
+        back = true;
+        setMap(m);
+      };
+      m.once("style.load", ready);
+      m.once("idle", ready);
+    });
+
     m.on("load", () => {
+      loaded = true;
+      window.clearTimeout(styleTimer);
+      const hasGlyphs = !!m.getStyle().glyphs;
       for (const id of ["territory", "links", "fronts", "routes", "flightpaths", "provinces", "fires", "ad-rings", "iads", "wps"]) {
         m.addSource(id, { type: "geojson", data: fc([]) });
       }
@@ -82,9 +174,9 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
       m.addLayer({ id: "fire-arc", type: "line", source: "fires", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": "#f97316", "line-width": 2, "line-opacity": ["*", 0.9, ["get", "opacity"]], "line-dasharray": [2, 1.2] } });
       m.addLayer({ id: "fire-impact", type: "circle", source: "fires", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": ["+", 4, ["*", 8, ["-", 1, ["get", "opacity"]]]], "circle-color": "#fb923c", "circle-blur": 0.4, "circle-opacity": ["*", 0.85, ["get", "opacity"]], "circle-stroke-color": "#fed7aa", "circle-stroke-width": 1.5, "circle-stroke-opacity": ["get", "opacity"] } });
       m.addLayer({ id: "wp-dot", type: "circle", source: "wps", paint: { "circle-radius": 5, "circle-color": "#0b0f17", "circle-stroke-color": "#fcd34d", "circle-stroke-width": 2 } });
-      m.addLayer({ id: "wp-label", type: "symbol", source: "wps", layout: { "text-field": ["get", "label"], "text-font": FONT, "text-size": 11, "text-offset": [0, -1.2], "text-anchor": "bottom", "text-allow-overlap": true }, paint: { "text-color": "#fde68a", "text-halo-color": "#05070b", "text-halo-width": 1.5 } });
+      if (hasGlyphs) m.addLayer({ id: "wp-label", type: "symbol", source: "wps", layout: { "text-field": ["get", "label"], "text-font": FONT, "text-size": 11, "text-offset": [0, -1.2], "text-anchor": "bottom", "text-allow-overlap": true }, paint: { "text-color": "#fde68a", "text-halo-color": "#05070b", "text-halo-width": 1.5 } });
       m.addLayer({ id: "province-dot", type: "circle", source: "provinces", paint: { "circle-radius": ["+", 3, ["*", 0.6, ["get", "vp"]]], "circle-color": ["get", "color"], "circle-stroke-color": ["case", ["get", "depot"], "#facc15", "#0b0f17"], "circle-stroke-width": ["case", ["get", "depot"], 2.5, 1] } });
-      m.addLayer({ id: "province-label", type: "symbol", source: "provinces", layout: { "text-field": ["get", "name"], "text-font": FONT, "text-size": 12, "text-offset": [0, 1.2], "text-anchor": "top", "text-allow-overlap": false }, paint: { "text-color": "#e5e7eb", "text-halo-color": "#05070b", "text-halo-width": 1.4 } });
+      if (hasGlyphs) m.addLayer({ id: "province-label", type: "symbol", source: "provinces", layout: { "text-field": ["get", "name"], "text-font": FONT, "text-size": 12, "text-offset": [0, 1.2], "text-anchor": "top", "text-allow-overlap": false }, paint: { "text-color": "#e5e7eb", "text-halo-color": "#05070b", "text-halo-width": 1.4 } });
 
       const pick = (layer: string, kind: NonNullable<Selection>["kind"]) => {
         m.on("click", layer, (e: { features?: { properties?: Record<string, unknown> }[] }) => {
@@ -99,7 +191,10 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
       // Handle for debugging / automated screenshots (window.dynacampMap.jumpTo(...)).
       (window as unknown as { dynacampMap?: MLMap }).dynacampMap = m;
     });
-    return () => m.remove();
+    return () => {
+      window.clearTimeout(styleTimer);
+      m.remove();
+    };
   }, []);
 
   // ---- fit to the theater once geometry is known
@@ -377,7 +472,55 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
   useHtmlMarkers(map, battleMarkers, onSelect);
   useHtmlMarkers(map, airMarkers, onSelect, feed);
 
-  return <div ref={container} className="map" />;
+  const shown = [...problems].filter((p) => !dismissed.has(p));
+  return (
+    <>
+      <div ref={container} className="map" />
+      {shown.length > 0 && (
+        <div className="map-notices">
+          {shown.map((p) => (
+            <div key={p} className={`map-notice ${p}`} role="alert">
+              <div>{noticeText(p)}</div>
+              <div className="map-notice-buttons">
+                {p === "webgl" && <button onClick={() => window.location.reload()}>Reload</button>}
+                <button title="Dismiss" onClick={() => setDismissed((s) => new Set(s).add(p))}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** What a map problem means for the user, and what to do about it. */
+function noticeText(p: MapProblem) {
+  const host = <code>{BASEMAP_HOST}</code>;
+  switch (p) {
+    case "fallback":
+      return (
+        <>
+          <b>Base map unavailable</b> — requests to {host} fail, so a plain background is shown and province names are
+          hidden. Usually an ad blocker (uBlock Origin, Privacy Badger…) or strict tracking protection: allow {host} for
+          this page and reload. Campaign layers work regardless.
+        </>
+      );
+    case "tiles":
+      return (
+        <>
+          <b>Base map incomplete</b> — some requests to {host} are blocked or failing (tiles or fonts). Usually an ad
+          blocker such as uBlock Origin: allow {host} for this page and reload. Campaign layers work regardless.
+        </>
+      );
+    case "webgl":
+      return (
+        <>
+          <b>Map rendering stopped</b> — the browser took the WebGL context away (GPU driver reset, too many 3D tabs…).
+          It may come back by itself; otherwise reload. If it keeps happening, check <code>about:support</code> →
+          Graphics (Firefox) or <code>chrome://gpu</code>.
+        </>
+      );
+  }
 }
 
 // ---------------------------------------------------------------- helpers

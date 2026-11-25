@@ -149,3 +149,21 @@ npm run gen:api
 |---|---|---|
 | `VITE_MAP_STYLE` | `https://tiles.openfreemap.org/styles/dark` | any MapLibre style URL |
 | `VITE_API_BASE` | same origin | API base URL if served elsewhere |
+
+## When the base map fails
+
+The base map (style, tiles, fonts) comes from a third-party host, which ad
+blockers (uBlock Origin has been seen blocking `tiles.openfreemap.org/planet`),
+strict tracking protection or an outage can cut off. The campaign layers are
+inline GeoJSON and HTML markers, so they do not depend on it. `MapView` handles:
+
+| problem | what the map does | notice |
+|---|---|---|
+| style document refused or not loaded in 10 s | switches to a plain background; province labels hidden (no fonts) | *Base map unavailable* |
+| tiles or fonts refused after the style loaded | keeps going; drops our label layers if the fonts fail | *Base map incomplete* |
+| WebGL context lost (GPU reset, too many 3D tabs) | effects pause (`map` = null) until MapLibre rebuilds the style, then refill every source | *Map rendering stopped*, with Reload |
+
+Notices can be dismissed. To test: block `*tiles.openfreemap.org*` in DevTools
+(Network → Block request URL), or call
+`dynacampMap.getCanvas().getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()`
+in the console (`restoreContext()` on the same extension brings it back).
