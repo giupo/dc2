@@ -95,7 +95,9 @@ Il quadro informativo di una fazione:
   `first_seen`, `age_s`, `stale`, `identified`, `detail` (quello che si sa:
   nome, tipo, forza stimata, rotta per gli aerei...);
 - `sensors[]`: i sensori di ricerca aerea della fazione (`awacs`, `aircraft`,
-  `ground_radar`) con posizione e portata;
+  `ground_radar`) con posizione e portata. Il radar di un aereo è un cono:
+  `heading_deg` e `half_angle_deg` (null per i sensori che guardano tutto
+  intorno);
 - `counts`: numero di contatti per tipo.
 
 Il parametro `faction` è obbligatorio.
@@ -170,8 +172,10 @@ aggiornare solo `controller` (da `/api/campaign` o dagli eventi
   confini condivisi tra territori di fazioni in guerra.
 - `sectors[]`: per fazione e provincia di fronte, potenza propria e nemica
   adiacente (per heatmap di pressione) e divisioni presenti.
-- `battles[]`: `id, province, pos, ll, attacker, defender, attackers[],
-  defenders[], started, hours, delegated` (true se la combatte DCS).
+- `battles[]`: `id, province, kind, pos, ll, attacker, defender, attackers[],
+  defenders[], started, hours, delegated` (true se la combatte DCS). `kind` è
+  `assault` (per la provincia) o `meeting` (scontro d'incontro sulla strada:
+  `province` è la più vicina, `pos`/`ll` il punto dello scontro).
 
 ### `GET /api/forces`
 `divisions[]`: `id, name, faction, template, location, pos, ll, strength,
@@ -309,7 +313,11 @@ Eventi in ordine, a pagine: `{"events": [...], "next": N}`. Si richiama con
 `province_captured`, `battle_started/ended`, `division_retreated/destroyed`,
 `convoy_dispatched/delivered/destroyed`, `package_planned`, `flight_takeoff`,
 `air_strike`, `air_engagement`, `aircraft_lost`, `seat_taken`,
-`player_joined/left` e `handoff`.
+`player_joined/left` e `handoff`. `battle_started/ended` hanno `battle_kind`
+(`assault`/`meeting`); `contact_broken` è una brigata che si sgancia da uno
+scontro d'incontro. `air_engagement` ha `phase` (`BVR`/`WVR`), `shots` e
+`losses` (tiratore, bersaglio); `flight_rtb` ha `reason` (`bingo fuel`,
+`winchester`, `losses`, `end of station`).
 
 ### `GET /api/stream?since=N`
 Server-Sent Events. Manda `event: event` (stesso formato di `/api/events`,

@@ -178,6 +178,8 @@ class BattleView(Located):
     id: str
     province: str
     name: str
+    kind: Literal["assault", "meeting"] = Field(
+        "assault", description="assault on the province's defence line, or meeting engagement on the road (province = nearest)")
     attacker: str
     defender: str
     attackers: list[str]
@@ -598,6 +600,8 @@ class SensorView(Located):
     kind: Literal["awacs", "aircraft", "ground_radar"]
     name: str
     range_km: float
+    heading_deg: float | None = Field(None, description="aircraft radars: direction of the cone (null: all round)")
+    half_angle_deg: float | None = Field(None, description="aircraft radars: half width of the cone")
 
 
 class IntelView(Model):

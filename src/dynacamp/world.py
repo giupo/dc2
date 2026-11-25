@@ -363,11 +363,13 @@ class Theater:
         start: str,
         goal: str,
         passable: Callable[[str], bool] | None = None,
+        penalty: Callable[[str, str], float] | None = None,
     ) -> list[str] | None:
         """Dijkstra on travel cost. Returns the provinces after ``start`` up to ``goal``.
 
         ``passable`` filters intermediate provinces; ``goal`` itself is always allowed
-        so that a path can end on a hostile province (an attack).
+        so that a path can end on a hostile province (an attack). ``penalty(a, b)``
+        multiplies the cost of a link (e.g. a road the enemy is known to cover).
         """
         if start == goal:
             return []
@@ -383,7 +385,7 @@ class Theater:
             for nxt in self._links[pid]:
                 if nxt != goal and passable is not None and not passable(nxt):
                     continue
-                nd = d + self.travel_cost(pid, nxt)
+                nd = d + self.travel_cost(pid, nxt) * (penalty(pid, nxt) if penalty else 1.0)
                 if nd < dist.get(nxt, float("inf")):
                     dist[nxt] = nd
                     prev[nxt] = pid

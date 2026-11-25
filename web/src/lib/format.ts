@@ -69,9 +69,15 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
     case "province_captured":
       return `${fac(d.faction)} captured ${prov(d.province)}`;
     case "battle_started":
-      return `Battle for ${prov(d.province)}: ${fac(d.attacker)} attacks`;
+      return d.battle_kind === "meeting"
+        ? `Meeting engagement near ${prov(d.province)}: ${fac(d.attacker)} runs into ${fac(d.defender)}`
+        : `Battle for ${prov(d.province)}: ${fac(d.attacker)} attacks`;
     case "battle_ended":
-      return `Battle for ${prov(d.province)} over: ${fac(d.winner)} holds the field (${d.hours} h)`;
+      return d.battle_kind === "meeting"
+        ? `Meeting engagement near ${prov(d.province)} over: ${fac(d.winner)} holds the road (${d.hours} h)`
+        : `Battle for ${prov(d.province)} over: ${fac(d.winner)} holds the field (${d.hours} h)`;
+    case "contact_broken":
+      return `${d.division} breaks contact and falls back`;
     case "division_retreated":
       return `${d.division} retreats from ${prov(d.origin)} to ${prov(d.destination)}`;
     case "division_destroyed":
@@ -124,6 +130,8 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
       return `${d.callsign} airborne (${d.task})`;
     case "flight_landed":
       return `${d.callsign} landed`;
+    case "flight_rtb":
+      return `${d.callsign} heads home: ${d.reason}`;
     case "flight_aborted":
       return `${d.callsign} aborts: ${d.reason}`;
     case "scramble":
@@ -135,7 +143,7 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
     case "flight_complete":
       return `${d.callsign} mission complete (${d.survivors} aircraft back)`;
     case "air_engagement":
-      return `Air combat ${(d.callsigns as string[]).join(" vs ")} — losses ${(d.losses as number[]).join(":")}`;
+      return `Air combat ${(d.callsigns as string[]).join(" vs ")}${d.phase ? ` (${d.phase})` : ""} — losses ${(d.losses as number[]).join(":")}`;
     case "air_strike": {
       const hits = d.divisions ? `on ${(d.divisions as string[]).join(", ") || "nothing"}` : d.convoy ? `on convoy ${d.convoy}` : d.depot ? `on depot ${prov(d.depot)}` : "";
       return `${d.task} strike ${hits}${d.lost ? `, ${d.lost} lost to air defence` : ""}`;
@@ -204,4 +212,9 @@ export function bullsLabel(bulls: number[], at: number[], variationDeg: number, 
   const km = 2 * 6371.0088 * Math.asin(Math.sqrt(a));
   const dist = units === "imperial" ? km / 1.852 : km;
   return `${String(Math.round(brg) % 360).padStart(3, "0")}/${Math.round(dist)}`;
+}
+
+/** Title of a battle: an assault on a province, or a meeting engagement on the road near one. */
+export function battleTitle(b: { kind?: string; name: string }): string {
+  return b.kind === "meeting" ? `Meeting engagement near ${b.name}` : `Battle for ${b.name}`;
 }

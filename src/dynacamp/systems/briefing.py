@@ -356,9 +356,14 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
     base = state.airbases[sq.airbase]
     stores = loadouts.summary(f.aircraft_type.id, f.task.value)
     situation = []
-    near = [b for b in state.battles.values() if t.provinces[b.province].center.distance_to(f.target_point) <= 40_000]
+    from .combat import battle_point
+
+    near = [b for b in state.battles.values() if battle_point(state, b).distance_to(f.target_point) <= 40_000]
     for b in near:
-        situation.append(f"Battle in progress for {t.provinces[b.province].name}: {len(b.attackers)} attacking vs {len(b.defenders)} defending brigades.")
+        if b.kind == "meeting":
+            situation.append(f"Meeting engagement on the road near {t.provinces[b.province].name}: {len(b.attackers)} vs {len(b.defenders)} brigades.")
+        else:
+            situation.append(f"Battle in progress for {t.provinces[b.province].name}: {len(b.attackers)} attacking vs {len(b.defenders)} defending brigades.")
     enemies = sorted(
         (d for d in state.divisions.values() if state.at_war(f.faction, d.faction) and d.position(t).distance_to(f.target_point) <= 30_000),
         key=lambda d: d.position(t).distance_to(f.target_point),

@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
+from .. import sensors
 from ..air_defense import RADAR_ELEMENTS, AirDefenseUnit, SamRole, SamStatus, place_sites
 from ..forces import Authority
 from ..geo import Vec2
@@ -37,8 +38,6 @@ NETWORK_PK_BONUS = 1.15
 SEAD_PK_FACTOR = 0.7  # SEAD aircraft fly defensively (ECM, low, notching)
 # The package's SEAD flight jams for everyone near it (its ECM pods stand in for
 # a dedicated jammer: DCS has no AI EA-6B or EA-18G).
-ECM_SCREEN_FACTOR = 0.6
-ECM_SCREEN_RANGE_M = 40_000.0
 DEFENSIVE_FACTOR = 0.5  # chaff, ECM and manoeuvring against every engagement
 PAIR_COOLDOWN_S = 10 * 60.0  # one site engages the same flight at most this often
 HARM_RANGE_M = 60_000.0
@@ -110,13 +109,14 @@ def network_node(state: CampaignState, u: AirDefenseUnit) -> AirDefenseUnit | No
     return None
 
 
-def detects(state: CampaignState, u: AirDefenseUnit, pos: Vec2) -> bool:
-    """True if site ``u`` sees ``pos`` with its own radar or through its IADS node."""
+def detects(state: CampaignState, u: AirDefenseUnit, pos: Vec2, jamming: float = 1.0) -> bool:
+    """True if site ``u`` sees ``pos`` with its own radar or through its IADS
+    node (against a target jamming by ``jamming``, see :func:`dynacamp.sensors.jam`)."""
     t = state.theater
-    if u.position(t).distance_to(pos) <= u.system.detection_m:
+    if u.position(t).distance_to(pos) <= sensors.reach(u.system.detection_m, jamming):
         return True
     node = network_node(state, u)
-    return node is not None and node.position(t).distance_to(pos) <= node.system.detection_m
+    return node is not None and node.position(t).distance_to(pos) <= sensors.reach(node.system.detection_m, jamming)
 
 
 def covering(state: CampaignState, attacker: str, point: Vec2, roles=(SamRole.LONG, SamRole.MEDIUM)) -> list[AirDefenseUnit]:
@@ -153,6 +153,7 @@ def _engage(state: CampaignState) -> None:
     ]
     if not flying:
         return
+    jams = {f.id: sensors.jam(state, f) for f in flying}
     for u in state.air_defense.values():
         if (
             not u.system.engages or u.status is not SamStatus.ACTIVE or not u.operational
@@ -166,7 +167,7 @@ def _engage(state: CampaignState) -> None:
             and state.timers.get(f"sam:{u.id}:{f.id}", 0.0) <= state.time
             and f.pos.distance_to(here) <= u.system.range_m
             and flight_altitude(f) <= u.system.ceiling_m
-            and detects(state, u, f.pos)
+            and detects(state, u, f.pos, jams[f.id])
         ]
         if not targets:
             continue
@@ -177,7 +178,7 @@ def _engage(state: CampaignState) -> None:
             u.system.pk * DEFENSIVE_FACTOR
             * (NETWORK_PK_BONUS if networked else 1.0)
             * (SEAD_PK_FACTOR if f.task is Task.SEAD else 1.0)
-            * (ECM_SCREEN_FACTOR if ecm_screened(state, f) else 1.0)
+            * sensors.jam_pk(jams[f.id], f)
         )
         fired = int(min(SALVO, u.missiles))
         kills = min(f.ai_count, sum(1 for _ in range(fired) if state.rng.random() < pk))
@@ -199,18 +200,8 @@ def _engage(state: CampaignState) -> None:
 
 
 def ecm_screened(state: CampaignState, f: Flight) -> bool:
-    """True if another flight of ``f``'s package, a SEAD one with ECM, is close enough to jam for it."""
-    pkg = state.packages.get(f.package)
-    if pkg is None:
-        return False
-    for oid in pkg.flights:
-        o = state.flights.get(oid)
-        if (
-            o is not None and o is not f and o.task is Task.SEAD and o.ai_count > 0
-            and o.status in ACTIVE_STATUSES and o.pos.distance_to(f.pos) <= ECM_SCREEN_RANGE_M
-        ):
-            return True
-    return False
+    """True if a friendly SEAD flight is close enough to jam for ``f`` (see :mod:`dynacamp.sensors`)."""
+    return sensors.escort_jammer(state, f) is not None
 
 
 def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:

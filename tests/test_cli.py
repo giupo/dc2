@@ -47,20 +47,34 @@ def _events(argv, tmp_path, name):
     return out.read_text()
 
 
-def test_simulate_seed_flag_and_environment(monkeypatch, tmp_path):
+def test_simulate_seed_flag_environment_and_clock(monkeypatch, tmp_path, capsys):
+    import re
+
     from .conftest import DEMO
 
     monkeypatch.delenv("DYNACAMP_SEED", raising=False)
-    # the scenario with its seed rewritten = the scenario with --seed
-    text = DEMO.read_text()
-    assert "seed = 7" in text
-    rewritten = tmp_path / DEMO.name
-    rewritten.write_text(text.replace("seed = 7", "seed = 3", 1))
-    (tmp_path / DEMO.name.replace(".toml", ".roads.json")).write_text(
-        DEMO.with_name(DEMO.stem + ".roads.json").read_text())
     by_flag = _events([str(DEMO), "--seed", "3"], tmp_path, "flag")
-    assert by_flag == _events([str(rewritten)], tmp_path, "file")
-    assert by_flag != _events([str(DEMO)], tmp_path, "default")
+    assert by_flag == _events([str(DEMO), "--seed", "3"], tmp_path, "again")
+    assert by_flag != _events([str(DEMO), "--seed", "4"], tmp_path, "other")
     # the environment wins over the flag
     monkeypatch.setenv("DYNACAMP_SEED", "3")
     assert _events([str(DEMO), "--seed", "99"], tmp_path, "env") == by_flag
+    # neither: a seed from the clock, printed so the campaign can be repeated
+    monkeypatch.delenv("DYNACAMP_SEED")
+    monkeypatch.setattr("time.time", lambda: 1_764_000_000.5)
+    capsys.readouterr()
+    clocked = _events([str(DEMO)], tmp_path, "clock")
+    seed = int(re.search(r"Seed (\d+) from the clock", capsys.readouterr().out).group(1))
+    assert seed == 1_764_000_000
+    monkeypatch.undo()
+    monkeypatch.delenv("DYNACAMP_SEED", raising=False)
+    assert _events([str(DEMO), "--seed", str(seed)], tmp_path, "repeat") == clocked
+
+
+def test_shipped_scenarios_carry_no_seed():
+    import tomllib
+
+    from .conftest import ROOT
+
+    for path in sorted((ROOT / "scenarios").glob("*.toml")):
+        assert "seed" not in tomllib.loads(path.read_text()).get("campaign", {}), path.name

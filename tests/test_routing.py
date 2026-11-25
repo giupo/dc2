@@ -128,7 +128,9 @@ def test_sead_ecm_screens_the_package_flights_near_it():
     state.packages["pk"].flights.append("fl2")
     assert ada.ecm_screened(state, f)
     assert not ada.ecm_screened(state, sead)  # its own ECM is SEAD_PK_FACTOR
-    sead.pos = Vec2(50_000 + ada.ECM_SCREEN_RANGE_M + 1_000, 0)
+    from dynacamp import sensors
+
+    sead.pos = Vec2(50_000 + sensors.JAMMER_RANGE_M + 1_000, 0)
     assert not ada.ecm_screened(state, f)
 
 

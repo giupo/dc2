@@ -17,11 +17,12 @@ cut across the sea or through a forest, and spawn on roads in the game.
 from __future__ import annotations
 
 from ..forces import Division
+from ..sensors import EYEBALL_M
 from ..state import CampaignState
 
 DEFENSE_DEPTH_M = 6_000.0  # forward defence line at most this far out along the road...
 DEFENSE_DEPTH_FRACTION = 0.3  # ...and never beyond this fraction of the link
-DIRECT_CONTACT_M = 3_000.0  # tanks, IFVs, infantry: direct fire / visual range
+DIRECT_CONTACT_M = EYEBALL_M  # tanks, IFVs, infantry: direct fire / visual range
 INDIRECT_CONTACT_M = 12_000.0  # tube and rocket artillery firing from depth
 INDIRECT_SHARE = 0.4  # a division counts as artillery above this share of guns
 SEARCH_STEP_M = 100.0

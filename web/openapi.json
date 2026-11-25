@@ -1539,6 +1539,16 @@
             "type": "string",
             "title": "Name"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "assault",
+              "meeting"
+            ],
+            "title": "Kind",
+            "description": "assault on the province's defence line, or meeting engagement on the road (province = nearest)",
+            "default": "assault"
+          },
           "attacker": {
             "type": "string",
             "title": "Attacker"
@@ -4857,6 +4867,30 @@
           "range_km": {
             "type": "number",
             "title": "Range Km"
+          },
+          "heading_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading Deg",
+            "description": "aircraft radars: direction of the cone (null: all round)"
+          },
+          "half_angle_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Half Angle Deg",
+            "description": "aircraft radars: half width of the cone"
           }
         },
         "additionalProperties": false,

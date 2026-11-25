@@ -7,8 +7,9 @@
 #
 # Environment: DYNACAMP_COMPRESSION (starting time compression, 1-7200; the
 # --compression flag wins), DYNACAMP_API_TOKEN (fixed token for API commands),
-# DYNACAMP_SEED (random seed; it wins over --seed and the scenario's, and on a
-# resumed save it restarts the random sequence at every start).
+# DYNACAMP_SEED (random seed; it wins over --seed; without either a new
+# campaign seeds from the clock; on a resumed save it restarts the random
+# sequence at every start).
 #
 # UI on http://localhost:8080/, API on /api, docs on /docs. Port 50555 is the
 # DCS bridge (the mission's Lua script connects to it: set its host to this

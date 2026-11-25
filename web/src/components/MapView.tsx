@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection } from "geojson";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Flight } from "../api/client";
-import { ageLabel, bullsLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
+import { ageLabel, battleTitle, bullsLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
 import { useLiveFeed, type LiveFeed } from "../lib/livePositions";
 import { affiliation, airbaseSidc, airSidc, convoySidc, designation, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { CampaignData } from "../lib/useCampaign";
@@ -391,7 +391,7 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     if (!layers.fronts) return [];
     return (data.fronts?.battles ?? []).flatMap((b) => {
       const at = lngLat(b.ll);
-      return at ? [{ id: b.id, at, html: `<span>⚔</span>`, cls: `battle ${b.delegated ? "in-game" : ""} ${selectedIs(selected, "battle", b.id) ? "selected" : ""}`, title: `Battle for ${b.name} (${b.hours} h)`, select: { kind: "battle", id: b.id } as Selection }] : [];
+      return at ? [{ id: b.id, at, html: `<span>⚔</span>`, cls: `battle ${b.delegated ? "in-game" : ""} ${selectedIs(selected, "battle", b.id) ? "selected" : ""}`, title: `${battleTitle(b)} (${b.hours} h)`, select: { kind: "battle", id: b.id } as Selection }] : [];
     });
   }, [data.fronts, selected, layers.fronts]);
 

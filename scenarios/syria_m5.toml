@@ -10,7 +10,6 @@
 [campaign]
 name = "Syria - M5 Corridor"
 theater = "syria"
-seed = 11
 units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
 [[factions]]

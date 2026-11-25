@@ -28,6 +28,7 @@ from .units import UnitDomain
 NOTABLE = {
     "battle_started",
     "battle_ended",
+    "contact_broken",
     "province_captured",
     "division_retreated",
     "division_destroyed",
@@ -43,6 +44,7 @@ NOTABLE = {
     "air_engagement",
     "aircraft_lost",
     "flight_aborted",
+    "flight_rtb",
     "flight_rerouted",
     "scramble",
     "flight_cancelled",
@@ -100,7 +102,7 @@ def _load_campaign(path: str) -> tuple[CampaignState, persistence.SaveInfo | Non
 
 def campaign_seed(flag: int | None) -> tuple[int, str] | None:
     """Random seed asked for: ``$DYNACAMP_SEED`` first (it wins over everything),
-    else ``--seed``; None keeps the scenario's (or the save's random state).
+    else ``--seed``; None if neither is given.
 
     Args:
         flag: Value of ``--seed`` (None: not given).
@@ -123,12 +125,13 @@ def campaign_seed(flag: int | None) -> tuple[int, str] | None:
 
 
 def apply_seed(state: CampaignState, flag: int | None, resumed: bool) -> None:
-    """Re-seed the campaign's random generator if a seed is asked for (see
-    :func:`campaign_seed`), and record it in ``state.seed``.
+    """Seed the campaign's random generator and record it in ``state.seed``.
 
-    On a fresh scenario this is the same as writing ``seed`` in its
-    ``[campaign]`` (loading draws no random numbers). On a resumed save the
-    campaign goes on with the new random sequence instead of the saved one.
+    The seed is ``$DYNACAMP_SEED``, else ``--seed`` (see :func:`campaign_seed`),
+    else, for a new campaign, generated from the clock (Unix time in seconds)
+    and printed, so that the same campaign can be run again with ``--seed``.
+    Scenario files carry no seed. A resumed save without an explicit seed keeps
+    its saved random sequence; with one, it goes on with the new sequence.
 
     Args:
         state: The campaign just loaded.
@@ -137,7 +140,9 @@ def apply_seed(state: CampaignState, flag: int | None, resumed: bool) -> None:
     """
     asked = campaign_seed(flag)
     if asked is None:
-        return
+        if resumed:
+            return  # the save's own random sequence goes on
+        asked = int(time.time()), "the clock (repeat this campaign with --seed)"
     seed, source = asked
     state.seed = seed
     state.rng.seed(seed)
@@ -373,7 +378,7 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("--days", type=float, default=5)
     s.add_argument("--report-hours", type=float, default=24)
     s.add_argument("--seed", type=int,
-                   help="random seed (default: the scenario's; $DYNACAMP_SEED wins over this flag)")
+                   help="random seed (default: from the clock, printed at start; $DYNACAMP_SEED wins over this flag)")
     s.add_argument("--events", help="write the event log to this JSONL file")
     s.add_argument("--quiet", action="store_true", help="only print periodic summaries")
     s.add_argument("--verbose", action="store_true", help="print every event")
@@ -387,7 +392,7 @@ def main(argv: list[str] | None = None) -> None:
     v.add_argument("--compression", type=float,
                    help="time compression with no players (default: $DYNACAMP_COMPRESSION, else the save's, else 60)")
     v.add_argument("--seed", type=int,
-                   help="random seed (default: the scenario's; $DYNACAMP_SEED wins over this flag)")
+                   help="random seed (default: from the clock, printed at start; $DYNACAMP_SEED wins over this flag)")
     v.add_argument("--tick-hz", type=float, default=10.0,
                    help="engine steps per real second (smoother movement, more CPU)")
     v.add_argument("--units", choices=[UnitDomain.IMPERIAL, UnitDomain.METRIC],

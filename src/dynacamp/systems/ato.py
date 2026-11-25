@@ -36,6 +36,7 @@ SORTIE_RATE_PER_DAY = 2.5  # aircraft-sorties per airframe per day
 BURST_HOURS = 4.0  # sortie tokens accumulate up to this many hours of the daily rate
 CAP_STATIONS = 3  # concurrent CAP flights per faction
 CAP_STATION_S = 150 * 60.0
+CAP_FUEL_FOR_FIGHT = 0.75  # share of the spare fuel a CAP spends on station (the rest is for a fight)
 IP_DISTANCE_M = 25_000.0
 EGRESS_DISTANCE_M = 20_000.0
 MIN_ATTACK_LEG_M = 8_000.0  # below this the flight goes straight at the target
@@ -96,7 +97,12 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
     for b in state.battles.values():
         if fid in (b.attacker_faction, b.defender_faction):
             p = t.provinces[b.province]
-            out.append(Request(Task.CAS, 10 + p.victory_points, f"enemy forces at {p.name}", p.center, "battle", b.id))
+            if b.kind == "meeting":  # on the road, where the forces met
+                from .combat import battle_point
+
+                out.append(Request(Task.CAS, 9 + p.victory_points, f"enemy column near {p.name}", battle_point(state, b), "battle", b.id))
+            else:
+                out.append(Request(Task.CAS, 10 + p.victory_points, f"enemy forces at {p.name}", p.center, "battle", b.id))
 
     active_caps = [
         f for f in state.flights.values()
@@ -782,6 +788,12 @@ def _add_flight(
         target_id=r.target_id,
         station_until=_station_until(state, sq.faction, task, tot),
     )
+    air.ready(state, flight)  # fuel and missiles
+    if task is Task.CAP and not math.isinf(flight.fuel_m):
+        # Station time within the fuel: there and back, the reserve, and some for a fight.
+        back = waypoints[target_index].distance_to(home) * air.BINGO_MARGIN + air.BINGO_RESERVE_M
+        spare = (flight.fuel_m - to_target - back) * CAP_FUEL_FOR_FIGHT
+        flight.station_until = min(flight.station_until, tot + max(0.0, spare) / (air.ORBIT_FUEL * speed))
     flight.vhf_mhz = radio.allocate(flight.id, radio.FLIGHT_BAND, _taken_frequencies(state))
     sq.committed += size
     state.sortie_log.setdefault(sq.faction, []).append((state.time, size))

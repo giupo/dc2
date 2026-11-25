@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { factionColor, factionName, fmtAlt, fmtDist, pct, sideOf, intelLabel } from "../lib/format";
+import { battleTitle, factionColor, factionName, fmtAlt, fmtDist, pct, sideOf, intelLabel } from "../lib/format";
 import { affiliation, designation, symbol, unitSidc } from "../lib/symbols";
 import type { PanelProps } from "./Panels";
 import { Bar, DivisionRow } from "./Panels";
@@ -173,7 +173,7 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
     case "battle": {
       const b = fronts?.battles.find((x) => x.id === selected.id);
       if (!b) break;
-      title = `Battle for ${b.name}`;
+      title = battleTitle(b);
       color = "#f59e0b";
       const divs = (ids: string[]) => forces?.divisions.filter((d) => ids.includes(d.id)) ?? [];
       body = (

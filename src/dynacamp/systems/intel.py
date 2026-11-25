@@ -9,14 +9,20 @@ contact is shown at its last known position, and it is forgotten after a while.
 Sensors, scanned every ``SCAN_INTERVAL_S``:
 
 * **air picture** - AWACS on station, early-warning radars, SAM radars that are
-  on, and the radar of every friendly aircraft (including the players').
+  on, and the radar of every friendly aircraft (including the players'). An
+  aircraft's radar looks along a cone ahead of it (:mod:`dynacamp.sensors`, the
+  same that decides what fighters engage); players' are all round, as the
+  campaign does not know where they point.
   Low flyers (helicopters, strikers on their attack run) are much harder to see
   for ground radars and somewhat harder for AWACS and fighters. Aircraft seen
   by a friendly aircraft within ``IDENT_RANGE_M`` are identified;
 * **ground picture** - brigades see what is within reconnaissance range,
   convoys and SAM sites a little, friendly aircraft with their targeting pods
   and eyes, and every unit knows the enemy it is fighting;
-* **ELINT** - AWACS, SEAD aircraft and EWRs locate enemy radars *that emit*;
+* **ELINT** - AWACS, SEAD aircraft and EWRs locate enemy radars *that emit*,
+  and enemy jammers (SEAD flights), roughly (``JAM_FIX_ERROR_M``);
+* **jamming** - every radar (aircraft, AWACS, ground) sees a jammed aircraft
+  much later (:func:`dynacamp.sensors.jam`);
 * **events** - a SAM that fires reveals itself (:func:`reveal`).
 
 At the start each faction gets a pre-war intelligence picture of the enemy's
@@ -30,10 +36,13 @@ fights whom) stays true.
 
 from __future__ import annotations
 
+import math
+import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..air import ACTIVE_STATUSES, FlightStatus, Task, flight_altitude
+from .. import sensors as radar
+from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task, flight_altitude
 from ..air_defense import AirDefenseUnit, SamRole, SamStatus
 from ..forces import Convoy, Division
 from ..geo import Vec2
@@ -48,11 +57,12 @@ RECON_M = {"division": 12_000.0, "convoy": 3_000.0, "sam": 5_000.0}
 PLAYER_RADAR_M = 80_000.0
 PLAYER_EYES_M = 10_000.0
 IDENT_RANGE_M = 40_000.0  # friendly aircraft identify what they track this close
-LOW_ALT_M = 300.0
-LOW_FACTOR = {"ground_radar": 0.3, "awacs": 0.6, "aircraft": 0.7}
+LOW_ALT_M = radar.LOW_ALT_M
+LOW_FACTOR = {"ground_radar": 0.3, "awacs": 0.6, "aircraft": radar.LOOK_DOWN}
 ELINT_AWACS_M = 250_000.0
 ELINT_SEAD_M = 150_000.0
 ELINT_EWR_M = 120_000.0
+JAM_FIX_ERROR_M = 8_000.0  # how far off ELINT places a jammer
 
 
 @dataclass
@@ -233,26 +243,27 @@ def _expire(state: CampaignState, fid: str) -> None:
             del pic[eid]
 
 
-def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, str, bool]]:
-    """Friendly air-search sensors: (position, range, kind, name, can identify)."""
+def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, str, bool, Flight | None]]:
+    """Friendly air-search sensors: (position, range, kind, name, can identify,
+    the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`)."""
     t = state.theater
-    out: list[tuple[Vec2, float, str, str, bool]] = []
+    out: list[tuple[Vec2, float, str, str, bool, Flight | None]] = []
     for f in state.flights.values():
         if f.faction != fid or f.status not in ACTIVE_STATUSES or f.size <= 0:
             continue
         r = f.aircraft_type.air_radar_m
         if f.task is Task.AWACS and f.status is FlightStatus.ON_STATION:
-            out.append((_pos(state, f), r, "awacs", f"AWACS {f.callsign}", False))
+            out.append((_pos(state, f), r, "awacs", f"AWACS {f.callsign}", False, None))
         elif r > 0:
-            out.append((_pos(state, f), r, "aircraft", f.callsign, True))
+            out.append((_pos(state, f), r, "aircraft", f.callsign, True, f))
     for u in state.air_defense.values():
         if u.faction != fid or not u.operational or u.status is not SamStatus.ACTIVE or not u.system.radar:
             continue
-        out.append((_pos(state, u), u.system.detection_m, "ground_radar", f"{u.system.name} radar", False))
+        out.append((_pos(state, u), u.system.detection_m, "ground_radar", f"{u.system.name} radar", False, None))
     side = state.factions[fid].side
     for pid, (pside, pos, pkind) in state.player_positions.items():
-        if pside == side and pkind == "air":
-            out.append((pos, PLAYER_RADAR_M, "aircraft", f"player {pid}", True))
+        if pside == side and pkind == "air":  # heading unknown: all round
+            out.append((pos, PLAYER_RADAR_M, "aircraft", f"player {pid}", True, None))
     return out
 
 
@@ -291,10 +302,15 @@ def scan(state: CampaignState, fid: str) -> None:
             continue
         pos = _pos(state, f)
         low = flight_altitude(f) <= LOW_ALT_M
+        jamming = radar.jam(state, f)
         seen_by, identify = None, False
-        for spos, rng, skind, name, can_id in sensors:
+        for spos, rng, skind, name, can_id, carrier in sensors:
             d = spos.distance_to(pos)
-            if d <= rng * (LOW_FACTOR[skind] if low else 1.0):
+            if carrier is not None:
+                seen = radar.radar_sees(carrier, spos, f, pos, jamming=jamming)  # the cone ahead of the aircraft
+            else:
+                seen = d <= radar.reach(rng * (LOW_FACTOR[skind] if low else 1.0), jamming)
+            if seen:
                 seen_by = seen_by or name
                 if can_id and d <= IDENT_RANGE_M:
                     identify, seen_by = True, name
@@ -340,6 +356,26 @@ def scan(state: CampaignState, fid: str) -> None:
             if lpos.distance_to(pos) <= rng:
                 observe(state, fid, u, "sam", name)
                 break
+    # Jammers are loud: ELINT finds a SEAD flight jamming, roughly (a strobe, not a track).
+    for f in state.flights.values():
+        if not state.at_war(fid, f.faction) or f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or f.ai_count <= 0:
+            continue
+        c = picture(state, fid).get(f.id)
+        if c is not None and c.seen == state.time:
+            continue  # radar has it this sweep, precisely
+        pos = _pos(state, f)
+        for lpos, rng, name in listeners:
+            if lpos.distance_to(pos) <= rng:
+                observe(state, fid, f, "flight", f"jamming strobe ({name})", identified=False, pos=_strobe(state, f, pos))
+                break
+
+
+def _strobe(state: CampaignState, f, pos: Vec2) -> Vec2:
+    """Where ELINT puts a jammer: ``JAM_FIX_ERROR_M`` off its real position, in
+    a direction that changes every 10 minutes (stable for a given flight and time)."""
+    seed = zlib.crc32(f"{f.id}:{int(state.time // 600)}".encode())
+    a = (seed % 3600) / 3600 * 2 * math.pi
+    return Vec2(pos.x + JAM_FIX_ERROR_M * math.sin(a), pos.y + JAM_FIX_ERROR_M * math.cos(a))
 
 
 def known_covering(state: CampaignState, fid: str, point: Vec2, roles=(SamRole.LONG, SamRole.MEDIUM)) -> list[Contact]:

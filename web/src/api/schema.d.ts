@@ -609,6 +609,13 @@ export interface components {
             province: string;
             /** Name */
             name: string;
+            /**
+             * Kind
+             * @description assault on the province's defence line, or meeting engagement on the road (province = nearest)
+             * @default assault
+             * @enum {string}
+             */
+            kind: "assault" | "meeting";
             /** Attacker */
             attacker: string;
             /** Defender */
@@ -2002,6 +2009,16 @@ export interface components {
             name: string;
             /** Range Km */
             range_km: number;
+            /**
+             * Heading Deg
+             * @description aircraft radars: direction of the cone (null: all round)
+             */
+            heading_deg?: number | null;
+            /**
+             * Half Angle Deg
+             * @description aircraft radars: half width of the cone
+             */
+            half_angle_deg?: number | null;
         };
         /**
          * SnapshotView

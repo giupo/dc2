@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
 from .geo import Vec2
@@ -49,17 +49,21 @@ class Faction:
 
 @dataclass
 class Battle:
-    """A battle for a province.
+    """A battle: an assault on a province, or a meeting engagement on the road.
 
     Attributes:
         id: Battle id.
-        province: Province fought for.
+        province: Province fought for (assault), or the nearest one to where
+            the forces met (meeting engagement: terrain and labels).
         attacker_faction: Attacking faction.
         defender_faction: Defending faction.
         attackers: Attacking division ids.
         defenders: Defending division ids.
         started: Campaign time it began.
         attack_from: Attacker id -> province it attacks from.
+        kind: ``"assault"`` (on a province's defence line) or ``"meeting"``
+            (two forces ran into each other: no defensive line, no river crossing).
+        point: Where a meeting engagement happens (None for assaults).
     """
     id: str
     province: str
@@ -70,6 +74,8 @@ class Battle:
     started: float
     # attacker id -> province it attacks from (needed for river penalties / retreat)
     attack_from: dict[str, str] = field(default_factory=dict)
+    kind: str = "assault"
+    point: Vec2 | None = None
 
 
 @dataclass
@@ -247,6 +253,7 @@ class CampaignState:
             div.location,
             order.target,
             passable=lambda pid: self.friendly_province(div.faction, pid),
+            penalty=self.road_penalty(div.faction),
         )
         if path is None or (not hostile_ok and self.hostile_province(div.faction, order.target)):
             return False
@@ -261,12 +268,32 @@ class CampaignState:
         self.dirty.add(div.id)
         return True
 
+    CONTESTED_ROAD_S = 6 * 3600.0  # a road where we were ambushed is avoided this long
+    CONTESTED_ROAD_PENALTY = 20.0  # ...by making it this much costlier (still used if it is the only way)
+
+    def mark_contested(self, faction: str, a: str, b: str) -> None:
+        """``faction`` ran into the enemy on the road ``a``-``b``: avoid it for a while."""
+        self.timers[f"contested:{faction}:" + "|".join(sorted((a, b)))] = self.time + self.CONTESTED_ROAD_S
+
+    def road_penalty(self, faction: str) -> Callable[[str, str], float]:
+        """Link cost multiplier for ``faction``'s routes: roads it recently lost a
+        fight or a convoy on are avoided when another way exists."""
+        prefix = f"contested:{faction}:"
+        contested = {k[len(prefix):] for k, v in self.timers.items() if k.startswith(prefix) and v > self.time}
+
+        def penalty(a: str, b: str) -> float:
+            """Cost multiplier of the link a-b."""
+            return self.CONTESTED_ROAD_PENALTY if "|".join(sorted((a, b))) in contested else 1.0
+
+        return penalty
+
     def route_entity(self, ent: MobileEntity, target: str) -> bool:
         """Route a non-combat entity (e.g. a convoy) through friendly territory only."""
         if self.hostile_province(ent.faction, target):
             return False
         path = self.theater.shortest_path(
-            ent.location, target, passable=lambda pid: self.friendly_province(ent.faction, pid)
+            ent.location, target, passable=lambda pid: self.friendly_province(ent.faction, pid),
+            penalty=self.road_penalty(ent.faction),
         )
         if path is None:
             return False

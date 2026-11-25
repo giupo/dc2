@@ -5,7 +5,7 @@ import { Marker, type GeoJSONSource, type Map as MLMap } from "maplibre-gl";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { AuthError, api, type Contact, type Flight, type Package, type PackageRequest } from "../api/client";
 import type { CampaignData } from "../lib/useCampaign";
-import { fmtDist, type Units } from "../lib/format";
+import { battleTitle, fmtDist, type Units } from "../lib/format";
 import type { Selection } from "../lib/selection";
 
 type LngLat = [number, number];
@@ -312,7 +312,7 @@ function targetOptions(task: string, faction: string, data: CampaignData, contac
     case "CAS":
       return (data.fronts?.battles ?? [])
         .filter((b) => b.attacker === faction || b.defender === faction)
-        .map((b) => ({ kind: "battle", id: b.id, label: `Battle for ${b.name}`, ll: b.ll }));
+        .map((b) => ({ kind: "battle", id: b.id, label: battleTitle(b), ll: b.ll }));
     case "BAI":
       return contacts
         .filter((c) => c.kind === "division" || c.kind === "convoy")

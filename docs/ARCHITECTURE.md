@@ -94,6 +94,22 @@ a decine di km:
   partenza.
 
 Le distanze sono in linea d'aria e convertite in avanzamento lungo la strada.
+
+**Scontri d'incontro** (`combat._meeting_engagements`). Due brigate nemiche
+entro 3 km (`sensors.EYEBALL_M`, tiro diretto e vista), con almeno una in
+movimento, si fermano e combattono dove sono: sulla stessa strada o su strade
+che corrono vicine. È una `Battle` di tipo `meeting`, con un punto invece di
+una provincia (la provincia è la più vicina, per terreno ed etichette). Non c'è
+trinceramento né attraversamento di fiumi, e le brigate amiche vicine si
+uniscono. Chi cede rompe il contatto (`contact_broken`) e torna indietro lungo
+la sua strada; chi vince riprende l'ordine. Le stesse due brigate non si
+riscontrano per un'ora. Non vale quando una brigata sta attaccando proprio la
+provincia dell'altra: lì decide l'assalto sulla linea di difesa. Convogli e siti
+antiaerei entro 3 km da una brigata nemica sono travolti. Chi perde uno scontro
+o un convoglio su una strada la considera **contesa** per 6 ore
+(`state.mark_contested`): i suoi percorsi la evitano se c'è un'alternativa
+(costo x20), l'IA non vi lancia attacchi e le colonne amiche che la stanno
+percorrendo vengono richiamate.
 In DCS le due forze si materializzano quindi a contatto visivo.
 
 **Retrovie e fianchi.** Da ogni divisione nemica il motore fa un flood-fill
@@ -124,7 +140,9 @@ del server. Un lock proprio impedisce che due salvataggi si accavallino; ogni
 salvataggio emette `campaign_saved`.
 
 **Determinismo.** Senza giochi collegati, stesso scenario + stesso seed = stessa
-campagna (c'è un test). Con un gioco live gli input esterni entrano come eventi.
+campagna (c'è un test). Il seed non sta nello scenario: è `DYNACAMP_SEED`,
+altrimenti `--seed`, altrimenti l'ora Unix all'avvio, stampata per poter
+ripetere la campagna. Con un gioco live gli input esterni entrano come eventi.
 
 ## Aviazione e ATO
 
@@ -178,10 +196,31 @@ un volo IA dentro una bolla lo fa volare DCS.
 **Risoluzione astratta** (fuori dalle bolle): perdite contro la difesa aerea
 (SHORAD/AAA delle divisioni entro 15 km, ridotte se il SEAD del pacchetto è
 passato), danni a divisioni, convogli e depositi. BAI contro bersagli mobili fa
-ricognizione armata: segue la colonna. Aria-aria: un volo combatte un ingaggio
-alla volta, prima si risolvono le coppie caccia-caccia (così la scorta impegna
-gli intercettori). Gli attaccanti intercettati rientrano, i caccia rientrano
-se perdono metà della formazione.
+ricognizione armata: segue la colonna.
+
+**Carburante e armi.** Al decollo un volo riceve l'autonomia (2,2 volte il
+raggio d'azione, di più con un tanker in stazione; i pianificatori usano 2) e
+i missili aria-aria del suo armamento (`loadouts.air_to_air`: radar con la
+loro portata di lancio, infrarossi; i colpi da addestramento non contano). Il
+volo consuma autonomia, e in orbita il 60%. Quando gli resta solo il ritorno
+più la riserva rientra (*bingo fuel*). Un caccia che ha sparato tutto rientra
+(*winchester*). L'ATO pianifica il tempo in stazione delle CAP entro il
+carburante, lasciandone un quarto per un combattimento.
+
+**Aria-aria** (`systems/air.py`, `sensors.py`). Un caccia (CAP, scorta,
+scramble) che vede un nemico nel suo cono radar, entro la portata di
+inseguimento (60% della ricerca), o a cui l'AWACS lo indica entro 50 km, **deve**
+ingaggiarlo, salvo winchester, bingo o rientro. Lascia stazione o rotta e lo
+insegue. Spara una salva radar (al massimo 2 missili) alla portata di lancio,
+poi una a infrarossi, o il cannone, sotto i 10 km. Dopo il passaggio si sgancia
+e lascia stare quel bersaglio per 30 minuti. Pk: 0,07 radar, 0,12 infrarossi,
+0,03 cannone, scalate dalla qualità aria-aria dei due tipi e dall'AWACS. Un
+caccia sotto tiro si gira sull'attaccante; un attaccante colpito o in
+inferiorità rientra; un caccia che perde metà della formazione rientra. In
+mischia un attaccante con missili a infrarossi si difende. L'inseguimento
+finisce se il bersaglio sparisce, esce dal radar, entra sotto un SAM noto o
+porta una CAP a più di 100 km dalla stazione. Misura su 8 seed e 3 giorni:
+perdite aria-aria circa 2,3 volte quelle del modello precedente.
 
 **Scramble** (`systems/scramble.py`). Ogni minuto ogni fazione guarda gli aerei
 nemici del suo quadro informativo: se uno è entro **30 NM** da una sua base, o
@@ -282,8 +321,9 @@ devia attorno al sito sulla tratta corrente (`flight_rerouted`). I voli con
 giocatori seduti tengono la rotta del briefing; i voli SEAD restano.
 
 **SEAD, ECM e DEAD.** I voli SEAD colpiscono i radar accesi entro 60 km. Il
-SEAD di un package parte 2 minuti prima degli altri e fa anche da jammer: i
-voli del package entro 40 km da lui subiscono il 60% della Pk dei SAM. In DCS
+SEAD di un package parte 2 minuti prima degli altri e fa anche da jammer (vedi
+**Disturbo** più sotto): gli aerei amici entro 40 km da lui sono visti più
+tardi da ogni radar e subiscono il 60% della Pk dei missili radar. In DCS
 non esistono jammer IA (EA-6B, EA-18G), quindi i pod ECM dei voli SEAD li
 sostituiscono, con l'opzione ECM sempre accesa. I package **DEAD** sui siti a
 medio e lungo raggio che coprono il fronte mettono insieme SEAD (con ECM) che
@@ -303,6 +343,21 @@ punto si chiama "BULLS rrr/dd": la rotta vera è calcolata sul grande cerchio
 in lat/lon, perché la griglia DCS può distare 6° dal nord vero; si toglie la
 declinazione del teatro (`MAGNETIC_VARIATION_DEG`, approssimata) e si dà la
 distanza in NM o km. Briefing, testo in gioco e UI usano la stessa regola.
+
+**Disturbo (ECM)** (`sensors.jam`). Un aereo entro 40 km da un volo SEAD
+amico (il disturbatore del lato) è visto da **ogni radar**, cioè coni dei
+caccia, AWACS, radar a terra, EWR e siti SAM, a metà della portata normale. Un
+aereo con un pod di autoprotezione nell'armamento (ALQ-131/184, SPS-141) è
+visto al 70%. Entro 10 km i radar bucano comunque il disturbo (burn-through).
+I missili a guida radar, aria-aria e SAM, colpiscono un bersaglio disturbato
+con il 60% (disturbo di scorta) o l'80% (pod) della Pk; infrarossi e cannone
+no. Per i voli SEAD i pod sono già nella loro Pk contro i SAM. Il disturbatore
+si fa notare: l'ELINT nemico (AWACS, SEAD, EWR) individua un volo SEAD alla sua
+portata ELINT, non identificato e con un errore di 8 km ("jamming strobe"),
+se il radar non lo ha già in traccia. Misura su 8 seed: in Siria perdite blu
+ai SAM da 16 a 13 e più CAS che colpiscono; in Georgia differenze dentro il
+rumore. I disturbatori sono pochi, quindi l'effetto è forte sul singolo
+aereo e modesto sul totale.
 
 **Postazioni.** Più siti nella stessa provincia non stanno uno sopra
 l'altro, né sulla mappa né in DCS. Ogni sito fermo ha una postazione
@@ -350,7 +405,9 @@ dedicato, per esempio Skynet: in gioco ogni sito combatte da solo.
 - *quadro:* `state.intel[fazione][entità] = Contact(position, seen,
   first_seen, source, identified, detail)`;
 - *scansione:* `scan` ogni 60 s con tre gruppi di sensori (aria, terra,
-  ELINT), più `reveal` sugli eventi (lancio SAM);
+  ELINT), più `reveal` sugli eventi (lancio SAM). Il radar di un aereo guarda
+  in un cono davanti a sé (`sensors.radar_sees`, lo stesso che decide gli
+  ingaggi); AWACS, radar a terra e giocatori guardano tutto intorno;
 - *scadenza:* `_expire` toglie i contatti scaduti (`TTL_S`) o le entità
   sparite; `stale` usa `STALE_S`;
 - *giocatori:* l'`Engine` copia le loro posizioni in `state.player_positions`,

@@ -11,6 +11,7 @@ engine lock.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from .. import bullseye, geometry
@@ -240,6 +241,7 @@ def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
             "id": b.id,
             "province": b.province,
             "name": t.provinces[b.province].name,
+            "kind": b.kind,
             **_pt(state, battle_point(state, b)),
             "attacker": b.attacker_faction,
             "defender": b.defender_faction,
@@ -274,20 +276,10 @@ def _target_faction(state: CampaignState, entity_id: str) -> str | None:
 
 
 def battle_point(state: CampaignState, b) -> Vec2:
-    """Where the fighting is: between the attackers' and defenders' positions."""
-    t = state.theater
+    """Where the fighting is (see :func:`dynacamp.systems.combat.battle_point`)."""
+    from ..systems import combat
 
-    def centroid(ids: list[str]) -> Vec2 | None:
-        """Mean position of some divisions."""
-        pts = [state.divisions[i].position(t) for i in ids if i in state.divisions]
-        if not pts:
-            return None
-        return Vec2(sum(p.x for p in pts) / len(pts), sum(p.y for p in pts) / len(pts))
-
-    a, d = centroid(b.attackers), centroid(b.defenders)
-    if a and d:
-        return a.lerp(d, 0.5)
-    return a or d or t.provinces[b.province].center
+    return combat.battle_point(state, b)
 
 
 # ---------------------------------------------------------------- forces
@@ -857,8 +849,14 @@ def intel_view(state: CampaignState, viewer: str) -> dict[str, Any]:
         }
         for c in sorted(intel.picture(state, viewer).values(), key=lambda c: (c.kind, c.entity_id))
     ]
+    from .. import sensors as radar
+
     sensors = [
-        {"kind": kind, "name": name, **_pt(state, pos), "range_km": round(rng / 1000, 1)}
-        for pos, rng, kind, name, _ident in intel.air_sensors(state, viewer)
+        {
+            "kind": kind, "name": name, **_pt(state, pos), "range_km": round(rng / 1000, 1),
+            "heading_deg": round(math.degrees(radar.track(carrier)) % 360) if carrier else None,
+            "half_angle_deg": round(math.degrees(radar.SCAN_HALF_ANGLE_RAD)) if carrier else None,
+        }
+        for pos, rng, kind, name, _ident, carrier in intel.air_sensors(state, viewer)
     ]
     return {"faction": viewer, "contacts": contacts, "sensors": sensors, "counts": dict(Counter(c["kind"] for c in contacts))}

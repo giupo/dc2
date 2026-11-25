@@ -169,13 +169,15 @@ senza riscrivere gli argomenti del container. Vale questo ordine: il flag
 `--compression`, poi la variabile, poi la compressione del salvataggio, infine 60.
 Un valore non numerico o fuori da [1, 7200] ferma l'avvio con un messaggio.
 
-Il **seed** casuale si cambia con `--seed N` (in `simulate` e `serve`) o con
-`-e DYNACAMP_SEED=N`. Qui **la variabile vince su tutto**: prima viene
-`DYNACAMP_SEED`, poi `--seed`, poi il `seed` dello scenario. Su uno scenario
-nuovo è lo stesso che scrivere `seed = N` nel `[campaign]`. Su un salvataggio
-ripreso la sequenza casuale riparte da `N`, quindi la campagna prende
-un'altra strada. Se la variabile resta impostata nel container, questo
-succede a ogni riavvio. Un valore non intero ferma l'avvio.
+Il **seed** casuale non sta negli scenari. Si sceglie con `--seed N` (in
+`simulate` e `serve`) o con `-e DYNACAMP_SEED=N`, e **la variabile vince su
+tutto**. Senza nessuno dei due, una campagna nuova prende come seed l'ora
+corrente (secondi Unix) e lo stampa all'avvio ("Seed 1764000000 from the
+clock"): con `--seed` quel numero ripete la stessa campagna. Un salvataggio
+ripreso senza seed esplicito continua con la sua sequenza casuale. Con un
+seed esplicito la sequenza riparte da lì, e la campagna prende un'altra
+strada; se la variabile resta impostata nel container, succede a ogni
+riavvio. Un valore non intero ferma l'avvio.
 
 ```bash
 docker run -d --name dynacamp -p 8080:8080 -p 50555:50555 -v dynacamp-data:/data \
@@ -212,6 +214,17 @@ modello è di tipo HOI4: colpi assorbiti da difesa o sfondamento, organizzazione
 che cala in fretta e forza che cala lentamente, modificatori di terreno e
 fiumi, trinceramento. Chi cede si ritira lungo la strada; chi vince avanza con
 metà delle forze e l'altra metà tiene la linea di partenza.
+
+**Scontri d'incontro.** Le colonne non si attraversano: due brigate nemiche
+entro 3 km l'una dall'altra, con almeno una in movimento, combattono dove sono,
+senza linee preparate. Chi cede torna indietro, e quella strada resta contesa
+per 6 ore: i percorsi la evitano e l'IA non vi lancia attacchi. Convogli e
+siti antiaerei che finiscono a 3 km da una brigata nemica vengono travolti.
+
+**Sensori.** Il radar di un aereo guarda in un cono davanti a sé, con la
+portata del suo tipo. Un caccia che ha un nemico nel cono deve ingaggiarlo,
+salvo che abbia finito i missili o sia a corto di carburante: missili e
+autonomia vengono dall'armamento reale e dal raggio d'azione.
 
 **IA.** Retrovie e fianchi: dalle divisioni nemiche si calcola dove il nemico
 potrebbe entrare senza combattere (fino a 3 province) e si presidiano i colli
@@ -265,7 +278,10 @@ sulle battaglie, CAP fuori dalla copertura SAM nemica, BAI su colonne e
 convogli, STRIKE sui depositi, DEAD sui siti SAM. Le richieste diventano
 pacchetti con scorta e SEAD quando servono. Le rotte girano attorno ai SAM noti
 quando la deviazione è ragionevole; quello che non si può evitare chiede un
-volo SEAD, che con i suoi pod ECM protegge anche il resto del package. Un
+volo SEAD, che con i suoi pod ECM protegge anche il resto del package: ogni
+radar nemico vede gli aerei disturbati a metà portata (al 70% quelli con un pod
+di autoprotezione) e i missili radar li colpiscono meno, ma l'ELINT nemico
+localizza i disturbatori a grande distanza. Un
 aereo nemico noto entro 30 NM da una base, o da un asset vicino a una base,
 fa partire uno **scramble** di due intercettori dalla base. Il decollo è almeno 30 minuti dopo
 la pianificazione, per dare tempo ai giocatori. Fuori dalle bolle i voli sono
@@ -480,7 +496,7 @@ Gli scenari sono file TOML in `scenarios/`:
 
 | Sezione | Contenuto |
 |---|---|
-| `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `seed`, `start_hour` |
+| `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `start_hour` (il seed non sta qui: `--seed`, `DYNACAMP_SEED` o l'orologio) |
 | `[[factions]]` | `id`, `name`, `side` (`blue`/`red`), `enemies`, `objectives`, `bullseye` (id di provincia o `{ ll = [lat, lon] }`; senza: il centro delle province del lato; uno per lato) |
 | `[[provinces]]` | `id`, `name`, `ll = [lat, lon]`, `terrain`, `controller`, `infrastructure`, `victory_points`, `depot = {...}` |
 | `[[links]]` | `a`, `b`, `kind` (`road`/`track`/`rail`), `river` |
@@ -731,6 +747,16 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     scenario e scritto nel `.miz`. Briefing e mappa danno le posizioni come
     "BULLS 045/32" (rotta magnetica e distanza), calcolate in modo identico
     da motore e UI.
+25. **Scontri d'incontro e sensori.** Le brigate che si incontrano sulla
+    strada combattono lì (scontro d'incontro) e travolgono convogli e siti; chi
+    perde evita quella strada per 6 ore. Il radar degli aerei è un cono
+    (`sensors.py`), lo stesso per il quadro informativo e per il combattimento.
+    I caccia devono ingaggiare ciò che vedono, salvo bingo o winchester:
+    carburante e missili vengono da raggio d'azione e armamento. Il
+    combattimento aereo ha salve radar e a infrarossi per passaggi. Misura su
+    8 seed e 3 giorni: perdite aria-aria circa 2,3 volte quelle di prima, e meno
+    spirali in Georgia (massimo 14 province conquistate in 3 giorni invece
+    di 24).
 
 ## Limiti noti e prossimi passi
 

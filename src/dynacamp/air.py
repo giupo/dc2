@@ -345,6 +345,14 @@ class Flight(MobileEntity):
         joinable: Players may still take seats.
         orbit_angle: Position on the CAP orbit.
         vhf_mhz: Intra-flight frequency, clear of the airfields (see :mod:`dynacamp.radio`).
+        fuel_m: Distance the AI part can still fly, metres (-1: not fuelled yet;
+            ``inf``: not tracked, e.g. support aircraft).
+        aam_bvr: Radar-guided air-to-air missiles left on the AI aircraft (-1: not loaded yet).
+        aam_wvr: Heat-seeking air-to-air missiles left on the AI aircraft.
+        aam_range_m: Launch range of its radar-guided missiles.
+        aam_loaded: Missiles it took off with (0: guns only).
+        track: Direction it last flew, radians (0 = north): where its radar looks.
+        engaging: Hostile flight it is committed against ("" = none).
     """
     package: str
     squadron: str
@@ -369,6 +377,13 @@ class Flight(MobileEntity):
     cargo: float = 0.0  # supply carried (transports), for the whole flight
     vhf_mhz: float = 0.0  # intra-flight frequency (see dynacamp.radio), 0 = not assigned
     orbit_angle: float = 0.0  # position on the CAP orbit, radians
+    fuel_m: float = -1.0  # range left for the AI part (-1: not fuelled yet, inf: not tracked)
+    aam_bvr: int = -1  # radar missiles left on the AI aircraft (-1: not loaded yet)
+    aam_wvr: int = 0  # heat seekers left
+    aam_range_m: float = 0.0  # launch range of the radar missiles
+    aam_loaded: int = 0  # missiles at takeoff (0: guns only)
+    track: float = 0.0  # direction last flown, radians (0 = north): where the radar looks
+    engaging: str = ""  # hostile flight it is committed against
     kind: str = "flight"
 
     @property

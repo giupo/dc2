@@ -34,7 +34,7 @@ Motore headless di **campagna militare dinamica** ("DynaCamp"):
   simboli NATO APP-6.
 
 Documentazione completa:
-- [README.md](README.md): tutto, compresa la "Storia del progetto" in 24 passi;
+- [README.md](README.md): tutto, compresa la "Storia del progetto" in 25 passi;
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): design;
 - [docs/API.md](docs/API.md): endpoint;
 - [web/README.md](web/README.md): UI;
@@ -44,7 +44,7 @@ Documentazione completa:
 
 ```bash
 uv sync --extra miz --group dev --group docs     # tutto (pydcs serve solo per .miz/loadouts/radio)
-uv run pytest -q -W ignore::SyntaxWarning        # ~189 test in parallelo (xdist, -n auto), ~9 s; -n 0 = seriale
+uv run pytest -q -W ignore::SyntaxWarning        # ~220 test in parallelo (xdist, -n auto), ~9 s; -n 0 = seriale
 tools/watch-tests.sh                             # watcher: rilancia i test a ogni modifica (pytest-watcher)
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 cd web && npx tsc --noEmit -p . && npm run build # UI; `npm run gen:api` dopo ogni modifica all'API
@@ -128,6 +128,19 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   `.miz` (lo controlla `test_shipped_missions_have_the_scenario_bullseyes`).
   Da verificare in DCS: la declinazione approssimata
   (`MAGNETIC_VARIATION_DEG`) contro quella che DCS calcola dalla data.
+- **Sensori** (`dynacamp/sensors.py`): il cono radar degli aerei
+  (`radar_sees`, `track_only` per l'ingaggio) e `EYEBALL_M` a terra valgono
+  sia per l'intelligence sia per il combattimento. Non duplicare portate
+  altrove. Il **disturbo** (`jam`, `reach`, `jam_pk`) vale per ogni radar:
+  chi aggiunge un radar o un missile radar deve passarci (SEAD amico entro
+  40 km = portata 50% e Pk 60%; pod nell'armamento = 70% e 80%;
+  burn-through a 10 km).
+- **Battaglie:** `Battle.kind` è `assault` (per una provincia) o `meeting`
+  (sulla strada, con `point`). Chi cerca "la battaglia della provincia" deve
+  filtrare `kind == "assault"`; per il punto si usa `combat.battle_point`.
+- **Voli:** `fuel_m`, `aam_bvr`/`aam_wvr`, `engaging`, `track`. Vanno
+  inizializzati con `air.ready` (lo fa `ato._add_flight`); per rientrare si usa
+  `air.go_home(reason)`.
 - **Postazioni SAM:** un sito fermo sta nella sua `site` (centro della
   provincia, oppure 3 km lungo una strada, vedi `air_defense.place_sites`),
   non nel centro. Se crei siti fuori da scenario e sistema ADA, chiama
@@ -193,8 +206,10 @@ vero**. Funzionalità implementate:
 - **Deploy:** Dockerfile in un'immagine unica (~140 MB, utente non-root,
   healthcheck), con la campagna salvata nel volume `/data`.
   Variabili: `DYNACAMP_COMPRESSION` (compressione iniziale; vince `--compression`),
-  `DYNACAMP_API_TOKEN` e `DYNACAMP_SEED` (seed casuale; **vince su tutto**:
-  `--seed`, poi il seed dello scenario; richiesta esplicita dell'utente).
+  `DYNACAMP_API_TOKEN` e `DYNACAMP_SEED` (seed casuale; **vince su tutto**,
+  poi `--seed`; senza nessuno dei due le campagne nuove usano l'ora Unix,
+  stampata all'avvio. Gli scenari **non** hanno `seed`: richieste esplicite
+  dell'utente. `scenario.from_dict` accetta ancora `seed` per i test).
 - **Salvataggio e ripresa** (`persistence.py`): pickle gzip dell'intero
   `CampaignState`, con ripresa deterministica.
   - `simulate`/`serve` accettano un `.dcsave` al posto dello scenario.
@@ -241,8 +256,11 @@ vero**. Funzionalità implementate:
      inseguimento puro); consumano sortite, e in Siria i package BAI calano
      di ~30%. Possibili: rotta d'intercetto anticipata, pool di allerta
      separato dal budget;
-   - modello aria-aria poco letale (`A2A_KILL` 0,1 + 15 min di pausa per
-     volo): un caccia lascia scappare un bombardiere che rientra;
+   - combattimento aereo per sensori (cono radar, ingaggio obbligatorio,
+     missili e carburante): calibrato a ~2,3 volte le perdite di prima. Il
+     blu perde più del rosso, soprattutto in Siria. I package DEAD sono scesi da
+     44 a 20 in Siria (si perdono più aerei multiruolo). Da verificare se
+     regge su più giorni;
    - da verificare in DCS: opzione ECM (`ECM_USING` = 13, `ALWAYS` = 3) dei
      voli SEAD e rotte con molti waypoint.
 6. **DCS:**

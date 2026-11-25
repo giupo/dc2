@@ -1,5 +1,7 @@
 """Fog of war and support aircraft: AWACS, tankers, transports."""
 
+import math
+
 from dynacamp.air import AIRCRAFT, Airbase, Flight, FlightStatus, Package, Squadron, Task
 from dynacamp.air_defense import SYSTEMS, AirDefenseUnit, SamStatus
 from dynacamp.engine import Engine
@@ -64,9 +66,22 @@ def test_fighter_identifies_what_it_tracks_up_close():
     state = world()
     add_flight(state, "viper", "blue", "f16c", Task.CAP, Vec2(0, 0))
     add_flight(state, "bandit", "red", "su27", Task.CAP, Vec2(30_000, 0))
+    state.flights["viper"].track = math.pi / 2  # radar cone facing east, at the bandit
     Engine(state).step(1)
     c = intel.knows(state, "blue", "bandit")
     assert c is not None and c.identified and c.detail["aircraft"] == "su27"
+
+
+def test_an_aircraft_radar_only_looks_ahead():
+    state = world()
+    add_flight(state, "viper", "blue", "f16c", Task.CAP, Vec2(0, 0))
+    add_flight(state, "bandit", "red", "su27", Task.CAP, Vec2(30_000, 0))
+    state.flights["viper"].track = 3 * math.pi / 2  # facing west: the bandit is behind
+    state.timers["intel"] = 0.0
+    from dynacamp.systems import intel as intel_sys
+
+    intel_sys.scan(state, "blue")
+    assert intel.knows(state, "blue", "bandit") is None
 
 
 def test_contacts_age_and_are_forgotten():
@@ -74,6 +89,7 @@ def test_contacts_age_and_are_forgotten():
     eng = Engine(state)
     add_flight(state, "viper", "blue", "f16c", Task.CAP, Vec2(0, 0))
     add_flight(state, "bandit", "red", "su27", Task.CAP, Vec2(30_000, 0))
+    state.flights["viper"].track = math.pi / 2
     eng.step(1)
     state.flights["viper"].status = FlightStatus.DONE  # the only sensor goes home
     state.flights["bandit"].pos = Vec2(30_000, 400_000)

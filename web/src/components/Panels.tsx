@@ -73,7 +73,7 @@ export function FrontPanel({ data, selected, select }: PanelProps) {
           <span className="icon">⚔</span>
           <div className="grow">
             <div className="title">
-              {b.name} {b.delegated && <span className="chip game">IN GAME</span>}
+              {b.kind === "meeting" ? `${b.name} (on the road)` : b.name} {b.delegated && <span className="chip game">IN GAME</span>}
             </div>
             <div className="sub">
               <span style={{ color: factionColor(campaign, b.attacker) }}>{b.attackers.length} att.</span> vs{" "}

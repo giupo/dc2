@@ -245,6 +245,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
     targets: set[str] = {n for f in fronts for n in t.neighbors(f) if state.hostile_province(fid, n)}
     scored = sorted(targets, key=lambda pid: (-_objective_value(state, faction, pid), pid))
     committed: set[str] = set()
+    contested = state.road_penalty(fid)  # roads where we just ran into the enemy
     for target in scored:
         enemy = _power(intel.known_divisions_in(state, fid, target))
         candidates = [
@@ -255,6 +256,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
             and d.location in fronts
             and d.location in t.neighbors(target)
             and _ready(d)
+            and contested(d.location, target) == 1.0
         ]
         candidates = [d for d in candidates if _may_leave(state, d, target, committed)]
         if not candidates:

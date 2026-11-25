@@ -134,7 +134,12 @@ class BubbleManager:
             members = battle.attackers + battle.defenders
             held = any(_held_by_game(state.divisions[i]) for i in members if i in state.divisions)
             extra = self.config.hysteresis_m if held else 0.0
-            if any(i in wanted for i in members) or self.inside(t.provinces[battle.province].center, extra):
+            where = t.provinces[battle.province].center
+            if battle.kind == "meeting":
+                from .systems.combat import battle_point
+
+                where = battle_point(state, battle)
+            if any(i in wanted for i in members) or self.inside(where, extra):
                 wanted.update(i for i in members if i in state.divisions)
         return wanted
 

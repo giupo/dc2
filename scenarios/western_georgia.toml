@@ -8,7 +8,6 @@
 [campaign]
 name = "Western Georgia"
 theater = "caucasus"
-seed = 7
 units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
 [[factions]]
