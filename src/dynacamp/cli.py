@@ -212,9 +212,11 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     source = args.scenario
+
     if args.save and not args.new and Path(args.save).exists() and not persistence.is_save(source):
         # Never overwrite a running campaign with a fresh one by accident.
         source = args.save
+
     state, info = _load_campaign(source)
     apply_seed(state, args.seed, resumed=info is not None)
     compression = serve_compression(args.compression, info.compression if info else None)

@@ -80,6 +80,18 @@ export default function App() {
   }, [fogFaction, select]);
 
   const panelProps: PanelProps = { data, selected, select, viewpoint, units, archive, openArchived };
+  // On a phone (narrow screen, see styles.css) the panels are a sheet under the
+  // map, opened by tapping a tab and closed by tapping it again; the layer list
+  // folds behind a button. On a desktop both are always open.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const pickTab = (id: (typeof TABS)[number]["id"]) => {
+    if (id === tab) setSheetOpen((o) => !o);
+    else {
+      setTab(id);
+      setSheetOpen(true);
+    }
+  };
   const Active = TABS.find((t) => t.id === tab)!.Panel;
 
   return (
@@ -89,7 +101,11 @@ export default function App() {
       <main className="main">
         <section className="map-wrap">
           <MapView data={data} layers={layers} selected={selected} onSelect={(s) => setSelected(s)} focus={focus} viewpoint={viewpoint} briefing={briefing} units={units} />
-          <div className="layers">
+          <div className={`layers ${layersOpen ? "open" : ""}`}>
+            <button className="layers-toggle" onClick={() => setLayersOpen((o) => !o)} aria-expanded={layersOpen}>
+              {layersOpen ? "✕ Layers" : "☰ Layers"}
+            </button>
+            <div className="layers-body">
             {(Object.keys(LAYER_LABELS) as (keyof Layers)[]).map((k) => (
               <label key={k}>
                 <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} />
@@ -113,6 +129,7 @@ export default function App() {
               <button className={units === "metric" ? "on" : ""} onClick={() => chooseUnits("metric")}>SI</button>
               <button className={units === "imperial" ? "on" : ""} onClick={() => chooseUnits("imperial")}>kts/ft/NM</button>
             </div>
+            </div>
           </div>
           <RouteBar units={units} />
           <PickHint />
@@ -125,10 +142,10 @@ export default function App() {
             </div>
           )}
         </section>
-        <aside className="sidebar">
+        <aside className={`sidebar ${sheetOpen ? "open" : ""}`}>
           <nav className="tabs">
             {TABS.map((t) => (
-              <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
+              <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => pickTab(t.id)}>
                 {t.label}
                 {t.id === "front" && !!data.fronts?.battles.length && <span className="count">{data.fronts.battles.length}</span>}
                 {t.id === "ato" && !!data.ato?.packages.length && <span className="count">{data.ato.packages.length}</span>}

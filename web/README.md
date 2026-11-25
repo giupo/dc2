@@ -82,6 +82,14 @@ intelligence and a live event feed.
   scenario's `insignia` for each squadron. Sources and licences are in
   `public/insignia/CREDITS.md`: only free files (public domain, CC0) from
   Wikimedia Commons; rasters are scaled to 256 px WebP.
+- **Phones and narrow screens** (under 760 px, `@media` block at the end of
+  `styles.css`): the map fills the screen and the header packs into rows
+  (clock and speed controls scroll sideways, objectives are hidden). The tabs
+  sit under the map: tap one to open its panel as a sheet (45% of the screen,
+  and the map shrinks above it), tap it again to close it. The layer list folds
+  behind "☰ Layers". Details and the briefing card take the full width; the
+  briefing's flight plan scrolls sideways. The cursor's BULLS readout is hidden
+  (no cursor on a touch screen). Desktop layout is unchanged.
 - **Events tab:** an event about a package or a flight is clickable. It opens
   the package or flight details, centres the map, and highlights every event
   about the same flight. Air combat events show one button per callsign.

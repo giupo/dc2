@@ -127,6 +127,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
   display: flex; flex-direction: column; gap: 3px; font-size: 12px; backdrop-filter: blur(4px);
 }
+.layers-body { display: flex; flex-direction: column; gap: 3px; }
+.layers-toggle { display: none; }
 .layers label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 .viewpoint { display: flex; gap: 4px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 .viewpoint span { color: var(--muted); margin-right: 2px; }
@@ -377,3 +379,48 @@ canvas.picking, .maplibregl-canvas.picking { cursor: crosshair !important; }
 .briefing-insignia { width: 72px; height: 72px; object-fit: contain; flex: none; margin-right: 14px; }
 .briefing-head .briefing-title { flex: 1; }
 .kv-insignia { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; margin-right: 6px; }
+
+/* ---------------------------------------------------------------- phones and narrow screens
+   The map fills the screen; the header packs into rows; the panels are a sheet
+   under the map (tap a tab to open it, tap it again to close it: App.tsx); the
+   layer list folds behind a button; overlays take the full width. */
+@media (max-width: 760px) {
+  .header { flex-wrap: wrap; gap: 4px 10px; padding: 6px 8px; }
+  .brand { min-width: 0; flex-direction: row; align-items: baseline; gap: 8px; }
+  .brand .theater { display: none; }
+  .logo { font-size: 12px; letter-spacing: 0.12em; }
+  .scenario { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
+  .clock { width: 100%; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .clock .time { font-size: 17px; white-space: nowrap; }
+  .time-controls { margin-left: 0; }
+  .time-controls button { padding: 5px 8px; }
+  .scores { width: 100%; margin-left: 0; gap: 6px; }
+  .score { min-width: 0; flex: 1; padding: 2px 6px; }
+  .score .objectives { display: none; }
+  .score-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .score-stats { gap: 8px; font-size: 12px; }
+
+  .main { flex-direction: column; }
+  .sidebar { width: 100%; flex: none; border-left: 0; border-top: 1px solid var(--line); }
+  .sidebar .sidebar-body { display: none; }
+  .sidebar.open .sidebar-body { display: block; flex: none; height: 45vh; overflow-x: auto; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs button { flex: none; padding: 11px 12px; }
+
+  .layers { top: 8px; left: 8px; padding: 0; max-height: calc(100% - 16px); overflow-y: auto; }
+  .layers-toggle { display: block; background: none; border: 0; padding: 8px 12px; font-weight: 700; text-align: left; width: 100%; }
+  .layers .layers-body { display: none; padding: 0 12px 10px; }
+  .layers.open .layers-body { display: flex; }
+  .layers label { padding: 3px 0; }
+
+  .details { left: 6px; right: 6px; width: auto; bottom: 6px; max-height: 55%; z-index: 3; }  /* above the map's scale and credits */
+  .layers { z-index: 3; }
+  .route-bar { min-width: 0; width: calc(100% - 16px); max-width: none; }
+  .bulls-readout { display: none; }  /* no cursor on a touch screen */
+
+  .briefing-backdrop { padding: 0; }
+  .briefing { padding: 12px; border-radius: 0; min-height: 100%; }
+  .briefing-head { flex-wrap: wrap; gap: 10px; }
+  .briefing .two { grid-template-columns: 1fr; gap: 6px; }
+  .briefing .table.wp { display: block; overflow-x: auto; white-space: nowrap; }
+}
