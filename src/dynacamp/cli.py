@@ -28,7 +28,14 @@ from .events import clock as _clock
 
 
 def _summary(state: CampaignState) -> str:
-    """Text summary of the campaign: provinces, battles, convoys and every division."""
+    """Text summary of the campaign: provinces, battles, convoys and every division.
+
+    Args:
+        state: The campaign.
+
+    Returns:
+        The summary, one line per division after the header.
+    """
     ctrl = Counter(p.controller for p in state.theater.provinces.values())
     lines = [f"--- {_clock(state.time)}  provinces {dict(ctrl)}  battles {len(state.battles)}  convoys {len(state.convoys)}"]
 
@@ -44,9 +51,18 @@ def _summary(state: CampaignState) -> str:
 
 
 def _print_events(state: CampaignState, verbose: bool) -> None:
-    """Print notable (or all) events as they happen."""
+    """Print notable (or all) events as they happen.
+
+    Args:
+        state: The campaign whose event log to follow.
+        verbose: Print every event, not only the notable ones.
+    """
     def show(e) -> None:
-        """Print one event."""
+        """Print one event.
+
+        Args:
+            e: The event just emitted.
+        """
         if verbose or e.kind in NOTABLE:
             print(f"{_clock(e.time)}  {e.kind:20} {e.data}")
 
@@ -122,7 +138,11 @@ def apply_seed(state: CampaignState, flag: int | None, resumed: bool) -> None:
 
 
 def cmd_simulate(args: argparse.Namespace) -> None:
-    """``dynacamp simulate``: run a campaign headless as fast as possible."""
+    """``dynacamp simulate``: run a campaign headless as fast as possible.
+
+    Args:
+        args: Parsed command line of ``simulate``.
+    """
     state, info = _load_campaign(args.scenario)
     apply_seed(state, args.seed, resumed=info is not None)
 
@@ -177,7 +197,11 @@ def serve_compression(flag: float | None, saved: float | None) -> float:
 
 
 def cmd_serve(args: argparse.Namespace) -> None:
-    """``dynacamp serve``: real-time campaign with the DCS adapter, the API and the web UI."""
+    """``dynacamp serve``: real-time campaign with the DCS adapter, the API and the web UI.
+
+    Args:
+        args: Parsed command line of ``serve``.
+    """
     from .adapters.dcs import LUA_BRIDGE, DcsAdapter
     from .runtime import run_realtime
 
@@ -227,13 +251,22 @@ def cmd_serve(args: argparse.Namespace) -> None:
     log = logging.getLogger(__name__)
 
     def save_now(e: Engine, trigger: str) -> None:
-        """Save to ``--save`` and log it."""
+        """Save to ``--save`` and log it.
+
+        Args:
+            e: The engine.
+            trigger: What asked for the save (``auto``, ``exit``...), recorded in the save.
+        """
         assert saver is not None
         record = saver.save(e, trigger)
         log.info("campaign saved to %s at %s (%s)", saver.path, _clock(record.campaign_time), trigger)
 
     def on_tick(e: Engine) -> None:
-        """Print a summary every ``--report-hours``; autosave every ``--autosave-minutes``."""
+        """Print a summary every ``--report-hours``; autosave every ``--autosave-minutes``.
+
+        Args:
+            e: The engine, after a tick.
+        """
         if e.state.time - last_report[0] >= args.report_hours * 3600:
             last_report[0] = e.state.time
             print(_summary(e.state))
@@ -244,7 +277,12 @@ def cmd_serve(args: argparse.Namespace) -> None:
                 log.error("autosave to %s failed: %s", saver.path, exc)
 
     def stop(signum: int, _frame: object) -> None:
-        """SIGTERM (systemd, ``docker stop``) stops the server like Ctrl-C: cleanly, saving."""
+        """SIGTERM (systemd, ``docker stop``) stops the server like Ctrl-C: cleanly, saving.
+
+        Args:
+            signum: The signal received.
+            _frame: The interrupted stack frame (unused).
+        """
         raise KeyboardInterrupt(signal.Signals(signum).name)
 
     signal.signal(signal.SIGTERM, stop)
@@ -277,7 +315,11 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 
 def cmd_build_miz(args: argparse.Namespace) -> None:
-    """``dynacamp build-miz``: generate the DCS mission of each scenario."""
+    """``dynacamp build-miz``: generate the DCS mission of each scenario.
+
+    Args:
+        args: Parsed command line of ``build-miz``.
+    """
     try:
         from .adapters.dcs.miz import write_mission
 
@@ -295,7 +337,11 @@ def cmd_build_miz(args: argparse.Namespace) -> None:
 
 
 def cmd_radio(args: argparse.Namespace) -> None:
-    """``dynacamp radio``: regenerate the airfields' ATC frequencies from DCS' data."""
+    """``dynacamp radio``: regenerate the airfields' ATC frequencies from DCS' data.
+
+    Args:
+        args: Parsed command line of ``radio`` (no options).
+    """
     try:
         from .adapters.dcs.miz import generate_radio_data
     except ImportError as exc:
@@ -304,7 +350,11 @@ def cmd_radio(args: argparse.Namespace) -> None:
 
 
 def cmd_loadouts(args: argparse.Namespace) -> None:
-    """``dynacamp loadouts``: regenerate the aircraft loadouts from DCS' pylon tables."""
+    """``dynacamp loadouts``: regenerate the aircraft loadouts from DCS' pylon tables.
+
+    Args:
+        args: Parsed command line of ``loadouts`` (no options).
+    """
     try:
         from .adapters.dcs.miz import generate_loadouts
     except ImportError:
@@ -313,7 +363,11 @@ def cmd_loadouts(args: argparse.Namespace) -> None:
 
 
 def cmd_roads(args: argparse.Namespace) -> None:
-    """``dynacamp roads``: route scenario links on real roads."""
+    """``dynacamp roads``: route scenario links on real roads.
+
+    Args:
+        args: Parsed command line of ``roads``.
+    """
     from . import roads
 
     for path in args.scenarios:
@@ -323,7 +377,11 @@ def cmd_roads(args: argparse.Namespace) -> None:
 
 
 def cmd_openapi(args: argparse.Namespace) -> None:
-    """``dynacamp openapi``: print or save the OpenAPI schema."""
+    """``dynacamp openapi``: print or save the OpenAPI schema.
+
+    Args:
+        args: Parsed command line of ``openapi``.
+    """
     import json
 
     from .api import create_app

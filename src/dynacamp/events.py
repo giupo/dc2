@@ -161,6 +161,9 @@ def _upgraded(event: Event) -> Event:
 
     Args:
         event: An event, possibly unpickled from an older save.
+
+    Returns:
+        The same event, or a copy with an :class:`EventKind` kind.
     """
     if isinstance(event.kind, EventKind) or event.kind not in EventKind._value2member_map_:
         return event
@@ -183,6 +186,9 @@ class EventLog:
 
         Saves made before :class:`EventKind` hold plain strings: those naming a
         known kind become members, any other (a kind since retired) stays a string.
+
+        Args:
+            state: The pickled attributes.
         """
         self._events = [_upgraded(e) for e in state["_events"]]
         self._subscribers = []
@@ -221,6 +227,9 @@ class EventLog:
 
         Args:
             seq: First sequence number to return.
+
+        Returns:
+            The events, oldest first.
         """
         return self._events[seq:]
 
@@ -229,6 +238,9 @@ class EventLog:
 
         Args:
             kind: Event type.
+
+        Returns:
+            The events of that type, oldest first.
         """
         return [e for e in self._events if e.kind == kind]
 
@@ -252,6 +264,13 @@ class EventLog:
 
 
 def clock(seconds: float) -> str:
-    """Campaign time as 'D<day> HH:MM' (day 1 starts at 00:00)."""
+    """Campaign time as 'D<day> HH:MM' (day 1 starts at 00:00).
+
+    Args:
+        seconds: Campaign time in seconds.
+
+    Returns:
+        The formatted time, e.g. ``D2 06:30``.
+    """
     d, rem = divmod(int(seconds), 86400)
     return f"D{d + 1} {rem // 3600:02d}:{rem % 3600 // 60:02d}"

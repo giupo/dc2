@@ -44,7 +44,7 @@ Documentazione completa:
 
 ```bash
 uv sync --extra miz --group dev --group docs     # tutto (pydcs serve solo per .miz/loadouts/radio)
-uv run pytest -q -W ignore::SyntaxWarning        # ~220 test in parallelo (xdist, -n auto), ~9 s; -n 0 = seriale
+uv run pytest -q -W ignore::SyntaxWarning        # ~250 test in parallelo (xdist, -n auto), ~10 s; -n 0 = seriale
 tools/watch-tests.sh                             # watcher: rilancia i test a ogni modifica (pytest-watcher)
 lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
 cd web && npx tsc --noEmit -p . && npm run build # UI; `npm run gen:api` dopo ogni modifica all'API
@@ -68,7 +68,18 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 ## Convenzioni e trappole note
 
 - **Docstring** in stile Google, compatibili con Sphinx (napoleon), su ogni
-  funzione e classe, comprese quelle annidate e private.
+  funzione e classe, comprese quelle annidate e private. Ogni parametro ha la
+  sua voce in `Args:` e chi restituisce un valore ha `Returns:` (`Yields:` per
+  i generatori): lo controlla `tests/test_docstrings.py`. Mai una docstring che
+  comincia con `Args:` (serve prima la riga di sommario, o napoleon non la
+  legge). Negli endpoint FastAPI le sezioni vanno dopo una riga `\f`: FastAPI
+  taglia lì la descrizione, così l'OpenAPI non cambia.
+- **Costanti** (`UPPER_CASE`, di modulo o di classe): in cima al modulo dopo
+  gli import (le tabelle indicizzate da una classe del modulo subito dopo la
+  classe), raggruppate per tema con intestazioni `# -- Tema --`, ognuna con un
+  commento `#:` subito sopra (Sphinx lo pubblica; i commenti in coda alla riga
+  no). Lo controlla `tests/test_docstrings.py`. Non duplicarle con alias
+  (`X = altro.X`): si importa l'originale.
 - **Bridge Lua:** se cambia, **rigenerare i `.miz`**. Lo controlla
   `test_shipped_missions_embed_the_current_bridge`. Il Lua deve girare con
   lua5.1, come DCS. I commenti lunghi si scrivono con `--[==[ ... ]==]`.

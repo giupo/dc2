@@ -40,7 +40,9 @@ from .systems import PIPELINE, air, ato, combat, movement
 
 
 
+#: Slowest time compression (real time).
 MIN_COMPRESSION = 1.0
+#: Fastest time compression (two hours per second).
 MAX_COMPRESSION = 7200.0
 
 
@@ -62,6 +64,10 @@ class TimeControl:
 
     def set(self, paused: bool | None = None, compression: float | None = None) -> None:
         """Change pause and/or compression.
+
+        Args:
+            paused: New pause state (None = unchanged).
+            compression: New time compression (None = unchanged).
 
         Raises:
             ValueError: If the compression is outside
@@ -115,7 +121,9 @@ class Engine:
         config: EngineConfig | None = None,
         wall_clock: Callable[[], float] = _time.monotonic,
     ) -> None:
-        """Args:
+        """Wrap a campaign in an engine.
+
+        Args:
             state: The campaign.
             adapter: Optional game adapter.
             config: Engine settings (defaults if None).
@@ -159,7 +167,11 @@ class Engine:
             self._step(dt)
 
     def _step(self, dt: float) -> None:
-        """Body of :meth:`step`: reports, handoffs, systems in substeps, commands."""
+        """Body of :meth:`step`: reports, handoffs, systems in substeps, commands.
+
+        Args:
+            dt: Campaign seconds to advance.
+        """
         if self.adapter is not None:
             for report in self.adapter.poll():
                 self._handle(report)
@@ -174,6 +186,7 @@ class Engine:
             p.id: (p.side, p.position, "air" if p.kind.value in ("air", "helo") else "ground")
             for p in self.bubbles.players.values()
         }
+        
         remaining = dt
         while remaining > 0:
             sub = min(remaining, self.config.max_substep_s)
@@ -226,7 +239,11 @@ class Engine:
                     self._reclaim(ent)
 
     def _reclaim(self, ent: MobileEntity) -> None:
-        """Take an entity back with its last known state, whatever the game says."""
+        """Take an entity back with its last known state, whatever the game says.
+
+        Args:
+            ent: The entity to take back.
+        """
         ent.authority = Authority.CAMPAIGN
         ent.game_position = None
         ent.handoff_started = None
@@ -237,7 +254,11 @@ class Engine:
         self._in_game.discard(ent.id)
 
     def _reclaim_all(self, reason: str) -> None:
-        """The game is gone: take every entity back and forget the players."""
+        """The game is gone: take every entity back and forget the players.
+
+        Args:
+            reason: Why the game went away (recorded in the ``game_disconnected`` event).
+        """
         for ent in self.state.entities():
             if ent.authority is not Authority.CAMPAIGN:
                 ent.authority = Authority.CAMPAIGN
@@ -255,7 +276,11 @@ class Engine:
     # ------------------------------------------------------------ reports
 
     def _handle(self, r: Report) -> None:
-        """Apply one report from the adapter."""
+        """Apply one report from the adapter.
+
+        Args:
+            r: The report.
+        """
         state = self.state
         match r:
             case PlayerSeen():
@@ -388,7 +413,13 @@ class Engine:
         return n
 
     def _observe_flight(self, f: Flight, pos, elements: dict[str, float]) -> None:
-        """Apply a game observation to a delegated flight (losses, position, waypoints)."""
+        """Apply a game observation to a delegated flight (losses, position, waypoints).
+
+        Args:
+            f: The delegated flight.
+            pos: Position reported by the game (None if no unit is alive).
+            elements: Alive elements reported by the game (``aircraft``).
+        """
         if "aircraft" in elements:
             alive = int(round(elements["aircraft"]))
             if alive < f.ai_count:
@@ -478,7 +509,14 @@ class Engine:
     # ------------------------------------------------------------ outgoing
 
     def _snapshot(self, ent: MobileEntity) -> EntitySnapshot:
-        """Describe an entity for the adapter (:class:`EntitySnapshot`)."""
+        """Describe an entity for the adapter (:class:`EntitySnapshot`).
+
+        Args:
+            ent: The entity to hand to the game.
+
+        Returns:
+            The snapshot.
+        """
         t = self.state.theater
         faction = self.state.factions[ent.faction]
 
@@ -517,7 +555,15 @@ class Engine:
         )
 
     def _road_behind(self, ent: MobileEntity, length: float = 3_000.0) -> list:
-        """The road behind the entity (nearest point first), to line its vehicles up on."""
+        """The road behind the entity (nearest point first), to line its vehicles up on.
+
+        Args:
+            ent: The entity.
+            length: How much road to return, in metres.
+
+        Returns:
+            Points along the road behind the entity, nearest first (empty if it has no road).
+        """
         t = self.state.theater
 
         if ent.movement and ent.movement.path:
@@ -550,7 +596,14 @@ class Engine:
         return out
 
     def _flight_snapshot(self, f: Flight) -> EntitySnapshot:
-        """Snapshot of a flight's AI part."""
+        """Snapshot of a flight's AI part.
+
+        Args:
+            f: The flight.
+
+        Returns:
+            The snapshot, with the DCS attributes of the flight in ``attrs``.
+        """
         faction = self.state.factions[f.faction]
         return EntitySnapshot(
             id=f.id,
@@ -585,11 +638,25 @@ class Engine:
 
     @staticmethod
     def _route_start(f: Flight) -> int:
-        """First waypoint of a flight still to send to the game (the station while on it)."""
+        """First waypoint of a flight still to send to the game (the station while on it).
+
+        Args:
+            f: The flight.
+
+        Returns:
+            Index of the first waypoint to send.
+        """
         return f.target_index if f.status is FlightStatus.ON_STATION else f.wp_index
 
     def _waypoints(self, ent: MobileEntity):
-        """Remaining route of an entity as points (province centres or flight waypoints)."""
+        """Remaining route of an entity as points (province centres or flight waypoints).
+
+        Args:
+            ent: The entity.
+
+        Returns:
+            The remaining route points.
+        """
         t = self.state.theater
         if isinstance(ent, Flight):
             return tuple(ent.waypoints[self._route_start(ent):])
@@ -624,16 +691,20 @@ class Engine:
                 self._in_game.discard(eid)
 
         pending = set()
+
         for eid in sorted(state.dirty):
             ent = state.entity(eid)
             if ent is None:
                 continue
+
             if ent.authority is Authority.MATERIALIZING:
                 pending.add(eid)  # the spawn may carry the old route: resend once the game holds it
+
             elif ent.authority is Authority.DELEGATED:
                 if isinstance(ent, Flight):
                     snap = self._flight_snapshot(ent)
                     self._outbox.append(UpdateRoute(eid, snap.waypoints, snap.speed_kmh, snapshot=snap))
+
                 else:
                     speed = ent.template.speed_kmh if isinstance(ent, Division) else getattr(ent, "speed_kmh", 30.0)
                     self._outbox.append(UpdateRoute(eid, self._waypoints(ent), speed))

@@ -154,6 +154,9 @@ class CampaignState:
 
         Args:
             prefix: Id prefix, e.g. ``"bt"``.
+
+        Returns:
+            The id, ``prefix`` followed by a campaign-wide counter.
         """
         self._counter += 1
         return f"{prefix}{self._counter}"
@@ -170,7 +173,11 @@ class CampaignState:
     # ------------------------------------------------------------ queries
 
     def entities(self) -> Iterator[MobileEntity]:
-        """Iterate over every mobile entity (divisions, convoys, flights, air defence)."""
+        """Iterate over every mobile entity (divisions, convoys, flights, air defence).
+
+        Yields:
+            Divisions, convoys, flights and air defence units, in that order.
+        """
         yield from self.divisions.values()
         yield from self.convoys.values()
         yield from self.flights.values()
@@ -188,15 +195,39 @@ class CampaignState:
         return self.divisions.get(eid) or self.convoys.get(eid) or self.flights.get(eid) or self.air_defense.get(eid)
 
     def at_war(self, a: str, b: str) -> bool:
-        """True if factions ``a`` and ``b`` are at war."""
+        """True if factions ``a`` and ``b`` are at war.
+
+        Args:
+            a: Faction id.
+            b: Faction id.
+
+        Returns:
+            Whether either lists the other as an enemy.
+        """
         return b in self.factions[a].enemies or a in self.factions[b].enemies
 
     def hostile_province(self, faction: str, pid: str) -> bool:
-        """True if ``pid`` is held by a faction at war with ``faction``."""
+        """True if ``pid`` is held by a faction at war with ``faction``.
+
+        Args:
+            faction: Faction id.
+            pid: Province id.
+
+        Returns:
+            Whether the province's controller is at war with ``faction``.
+        """
         return self.at_war(faction, self.theater.provinces[pid].controller)
 
     def friendly_province(self, faction: str, pid: str) -> bool:
-        """True if ``pid`` is not hostile to ``faction``."""
+        """True if ``pid`` is not hostile to ``faction``.
+
+        Args:
+            faction: Faction id.
+            pid: Province id.
+
+        Returns:
+            Whether the province is friendly or neutral to ``faction``.
+        """
         return not self.hostile_province(faction, pid)
 
     def divisions_in(self, pid: str, faction: str | None = None) -> list[Division]:
@@ -204,6 +235,13 @@ class CampaignState:
 
         A division closing in to attack out of ``pid`` still holds it (it is
         between the enemy and the province); one marching or withdrawing does not.
+
+        Args:
+            pid: Province id.
+            faction: Keep only this faction's divisions (None = all).
+
+        Returns:
+            The divisions holding the province.
         """
         return [
             d
@@ -218,11 +256,26 @@ class CampaignState:
         ]
 
     def hostile_divisions_in(self, faction: str, pid: str) -> list[Division]:
-        """Divisions at war with ``faction`` holding province ``pid``."""
+        """Divisions at war with ``faction`` holding province ``pid``.
+
+        Args:
+            faction: Faction id.
+            pid: Province id.
+
+        Returns:
+            The enemy divisions holding the province.
+        """
         return [d for d in self.divisions_in(pid) if self.at_war(faction, d.faction)]
 
     def front_provinces(self, faction: str) -> list[str]:
-        """Provinces held by ``faction`` that border a hostile one."""
+        """Provinces held by ``faction`` that border a hostile one.
+
+        Args:
+            faction: Faction id.
+
+        Returns:
+            Ids of the faction's front provinces.
+        """
         t = self.theater
         return [
             pid
@@ -235,13 +288,25 @@ class CampaignState:
 
         Args:
             side: ``"blue"`` or ``"red"``.
+
+        Returns:
+            The first faction of that side, or None.
         """
         return next((f for f in self.factions.values() if f.side == side), None)
 
     # ------------------------------------------------------------ orders
 
     def set_order(self, div: Division, order: Order) -> bool:
-        """Give an order and plan the route. Returns False if no route exists."""
+        """Give an order and plan the route. Returns False if no route exists.
+
+        Args:
+            div: The division.
+            order: The new order (``HOLD`` or no target clears it).
+
+        Returns:
+            Whether the order was accepted (False if there is no route, or a non-attack order
+            targets a hostile province).
+        """
         if order.kind is OrderKind.HOLD or order.target is None:
             div.order = Order()
             if div.movement and div.movement.progress == 0:
@@ -268,27 +333,58 @@ class CampaignState:
         self.dirty.add(div.id)
         return True
 
-    CONTESTED_ROAD_S = 6 * 3600.0  # a road where we were ambushed is avoided this long
-    CONTESTED_ROAD_PENALTY = 20.0  # ...by making it this much costlier (still used if it is the only way)
+    #: A road where a faction was ambushed is avoided this long, seconds.
+    CONTESTED_ROAD_S = 6 * 3600.0
+    #: ...by making it this much costlier (still used if it is the only way).
+    CONTESTED_ROAD_PENALTY = 20.0
 
     def mark_contested(self, faction: str, a: str, b: str) -> None:
-        """``faction`` ran into the enemy on the road ``a``-``b``: avoid it for a while."""
+        """``faction`` ran into the enemy on the road ``a``-``b``: avoid it for a while.
+
+        Args:
+            faction: Faction that met the enemy.
+            a: One end of the road.
+            b: The other end.
+        """
         self.timers[f"contested:{faction}:" + "|".join(sorted((a, b)))] = self.time + self.CONTESTED_ROAD_S
 
     def road_penalty(self, faction: str) -> Callable[[str, str], float]:
         """Link cost multiplier for ``faction``'s routes: roads it recently lost a
-        fight or a convoy on are avoided when another way exists."""
+        fight or a convoy on are avoided when another way exists.
+
+        Args:
+            faction: Faction id.
+
+        Returns:
+            A function giving the cost multiplier of the link between two provinces.
+        """
         prefix = f"contested:{faction}:"
         contested = {k[len(prefix):] for k, v in self.timers.items() if k.startswith(prefix) and v > self.time}
 
         def penalty(a: str, b: str) -> float:
-            """Cost multiplier of the link a-b."""
+            """Cost multiplier of the link a-b.
+
+            Args:
+                a: One end of the link.
+                b: The other end.
+
+            Returns:
+                ``CONTESTED_ROAD_PENALTY`` on a contested road, else 1.
+            """
             return self.CONTESTED_ROAD_PENALTY if "|".join(sorted((a, b))) in contested else 1.0
 
         return penalty
 
     def route_entity(self, ent: MobileEntity, target: str) -> bool:
-        """Route a non-combat entity (e.g. a convoy) through friendly territory only."""
+        """Route a non-combat entity (e.g. a convoy) through friendly territory only.
+
+        Args:
+            ent: The entity.
+            target: Destination province id.
+
+        Returns:
+            Whether a route was found (False also for a hostile target).
+        """
         if self.hostile_province(ent.faction, target):
             return False
         path = self.theater.shortest_path(
@@ -307,7 +403,11 @@ class CampaignState:
     # ------------------------------------------------------------ snapshot
 
     def snapshot(self) -> dict:
-        """Plain-data view of the campaign (for the API / web UI)."""
+        """Plain-data view of the campaign (for the API / web UI).
+
+        Returns:
+            Provinces, divisions and other campaign data as JSON-ready dictionaries.
+        """
         t = self.theater
         return {
             "name": self.name,

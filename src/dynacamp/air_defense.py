@@ -29,7 +29,8 @@ from .forces import Authority, MobileEntity
 from .geo import Vec2
 from .world import Theater
 
-SITE_SPACING_M = 3_000.0  # between sites sharing a province
+#: Distance along the road between sites sharing a province.
+SITE_SPACING_M = 3_000.0
 
 
 class SamRole(StrEnum):
@@ -84,6 +85,7 @@ SYSTEMS: dict[str, SamSystem] = catalog.build(
 )
 """Every air defence system, from ``data/catalog/air_defense.toml``."""
 
+#: Elements of a site that are radars (what anti-radiation missiles hit).
 RADAR_ELEMENTS = ("radar", "search_radar")
 
 
@@ -162,6 +164,9 @@ class AirDefenseUnit(MobileEntity):
 
         Args:
             theater: The map.
+
+        Returns:
+            The unit's position on the campaign plane.
         """
         if self.movement or (self.game_position is not None and self.authority is not Authority.CAMPAIGN):
             return super().position(theater)

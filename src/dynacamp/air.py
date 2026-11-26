@@ -117,6 +117,9 @@ def _tasks(value: object) -> frozenset[Task]:
     Args:
         value: The TOML list, e.g. ``["CAP", "ESCORT"]``.
 
+    Returns:
+        The tasks.
+
     Raises:
         TypeError: If it is not a list of strings.
         ValueError: On an unknown task name.
@@ -152,6 +155,9 @@ class Airbase:
 
         Args:
             theater: The map (for the province controller).
+
+        Returns:
+            The owning faction id, or None for a neutral base.
         """
         if self.province is not None:
             return theater.provinces[self.province].controller
@@ -212,12 +218,21 @@ class Squadron:
         return self.aircraft - self.committed - servicing
 
     def release(self, count: int, ready_time: float) -> None:
-        """Aircraft back from a mission: committed -> servicing until ``ready_time``."""
+        """Aircraft back from a mission: committed -> servicing until ``ready_time``.
+
+        Args:
+            count: Aircraft returning.
+            ready_time: Campaign time when they are mission-ready again.
+        """
         self.committed -= count
         self.servicing = [(r, n) for r, n in self.servicing if r > ready_time - 86400] + [(ready_time, count)]
 
     def next_callsign(self) -> str:
-        """Next flight callsign, cycling ``<callsign> 1`` .. ``<callsign> 9``."""
+        """Next flight callsign, cycling ``<callsign> 1`` .. ``<callsign> 9``.
+
+        Returns:
+            The callsign, e.g. ``Lobo 3``.
+        """
         self._callsign_counter = self._callsign_counter % 9 + 1
         return f"{self.callsign} {self._callsign_counter}"
 
@@ -232,6 +247,7 @@ class FlightStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+#: Statuses of a flight in the air.
 ACTIVE_STATUSES = (FlightStatus.AIRBORNE, FlightStatus.ON_STATION, FlightStatus.RTB)
 
 
@@ -371,13 +387,23 @@ class Flight(MobileEntity):
 
         Args:
             theater: The map (unused, for the :class:`MobileEntity` interface).
+
+        Returns:
+            The flight's position on the campaign plane.
         """
         if self.game_position is not None and not self.simulated_by_campaign:
             return self.game_position
         return self.pos
 
     def heading(self, theater: Theater) -> float:
-        """Heading towards the next waypoint (radians)."""
+        """Heading towards the next waypoint (radians).
+
+        Args:
+            theater: The map (unused, for the :class:`MobileEntity` interface).
+
+        Returns:
+            The heading in radians, 0 once past the last waypoint.
+        """
         if self.wp_index < len(self.waypoints):
             return self.pos.heading_to(self.waypoints[self.wp_index])
         return 0.0
@@ -391,7 +417,9 @@ class Flight(MobileEntity):
 # CAS/BAI reach the IP at cruise and go down for the attack run to the
 # target, stay low to the egress point and climb back home.
 
+#: Altitude of the attack run, by task (the target and egress waypoints).
 ATTACK_ALT_M = {Task.CAS: 1_500.0, Task.BAI: 1_500.0, Task.STRIKE: 6_000.0, Task.SEAD: 6_000.0, Task.ESCORT: 7_500.0}
+#: Altitude of a CAP station.
 CAP_ALT_M = 7_500.0
 
 
@@ -402,6 +430,12 @@ def waypoint_altitudes(f: Flight) -> list[float]:
     sorties, the target and egress points (``ATTACK_ALT_M`` of the task).
     Helicopters stay at their (low) cruise altitude. Takeoff and landing
     points carry the cruise altitude too: the briefing shows them as 0.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        One altitude per waypoint, in metres.
     """
     ac = f.aircraft_type
     n = len(f.waypoints)
@@ -421,7 +455,14 @@ def waypoint_altitudes(f: Flight) -> list[float]:
 
 def flight_altitude(f: Flight) -> float:
     """Altitude the flight is at now: its station's while on station, else that
-    of the waypoint it is flying to (see :func:`waypoint_altitudes`)."""
+    of the waypoint it is flying to (see :func:`waypoint_altitudes`).
+
+    Args:
+        f: The flight.
+
+    Returns:
+        The altitude in metres.
+    """
     alts = waypoint_altitudes(f)
     if not alts:
         return f.aircraft_type.cruise_alt_m
@@ -436,6 +477,12 @@ def package_number(package_id: str) -> str:
 
     Looks random but is deterministic and unique for the first 9000 packages:
     the id's counter is multiplied by a prime coprime with 9000.
+
+    Args:
+        package_id: Package id ending with a counter, e.g. ``pk42``.
+
+    Returns:
+        The package number as a string.
     """
     n = int("".join(c for c in package_id if c.isdigit()) or 0)
     return str((n * 7919) % 9000 + 1000)

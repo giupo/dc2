@@ -25,6 +25,7 @@ from ..world import point_along, polyline_length
 from ..systems import ato as ato_sys
 from ..systems import supply as supply_sys
 
+#: Version of the API views, reported by ``/api`` and in the OpenAPI schema.
 API_VERSION = 1
 
 # Every view takes an optional ``viewer`` faction id. Without it the view is the
@@ -34,19 +35,45 @@ API_VERSION = 1
 
 
 def _enemy(state: CampaignState, viewer: str | None, faction: str) -> bool:
-    """True if ``faction``'s entities are subject to fog of war for ``viewer``."""
+    """True if ``faction``'s entities are subject to fog of war for ``viewer``.
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view is given (None: the umpire's).
+        faction: Faction owning the entity.
+
+    Returns:
+        Whether the viewer sees the entity only through its contacts.
+    """
     return viewer is not None and state.at_war(viewer, faction)
 
 
 def _contact(state: CampaignState, viewer: str, entity_id: str):
-    """The viewer's contact on an entity (None if unknown)."""
+    """The viewer's contact on an entity (None if unknown).
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view is given.
+        entity_id: The entity.
+
+    Returns:
+        The contact, or None.
+    """
     from ..systems import intel
 
     return intel.picture(state, viewer).get(entity_id)
 
 
 def _intel(state: CampaignState, c) -> dict[str, Any]:
-    """The ``intel`` block of an enemy entity."""
+    """The ``intel`` block of an enemy entity.
+
+    Args:
+        state: The campaign.
+        c: The viewer's contact on the entity.
+
+    Returns:
+        Source, time seen, age, staleness and identification of the contact.
+    """
     return {
         "source": c.source,
         "seen": _time(c.seen),
@@ -57,13 +84,29 @@ def _intel(state: CampaignState, c) -> dict[str, Any]:
 
 
 def _pt(state: CampaignState, v: Vec2) -> dict[str, Any]:
-    """``pos`` and ``ll`` of a point."""
+    """``pos`` and ``ll`` of a point.
+
+    Args:
+        state: The campaign.
+        v: The point.
+
+    Returns:
+        ``{"pos": [east, north], "ll": [lat, lon] or None}``.
+    """
     ll = to_latlon(state.theater.name, v)
     return {"pos": [round(v.x), round(v.y)], "ll": None if ll is None else [round(ll[0], 6), round(ll[1], 6)]}
 
 
 def _line(state: CampaignState, pts: list[Vec2]) -> dict[str, Any]:
-    """``pos`` and ``ll`` of a polyline."""
+    """``pos`` and ``ll`` of a polyline.
+
+    Args:
+        state: The campaign.
+        pts: The polyline.
+
+    Returns:
+        ``{"pos": [...], "ll": [...] or None}``.
+    """
     lls = [to_latlon(state.theater.name, p) for p in pts]
     return {
         "pos": [[round(p.x), round(p.y)] for p in pts],
@@ -72,7 +115,14 @@ def _line(state: CampaignState, pts: list[Vec2]) -> dict[str, Any]:
 
 
 def time_view(t: float) -> dict[str, Any]:
-    """A campaign time as ``{t, label}``."""
+    """A campaign time as ``{t, label}``.
+
+    Args:
+        t: Campaign time in seconds.
+
+    Returns:
+        The time and its label.
+    """
     return {"t": round(t, 1), "label": clock(t)}
 
 
@@ -83,7 +133,14 @@ _time = time_view
 
 
 def players(engine) -> list[dict[str, Any]]:
-    """Players the engine currently sees (needs the engine for the bubbles)."""
+    """Players the engine currently sees (needs the engine for the bubbles).
+
+    Args:
+        engine: The engine.
+
+    Returns:
+        One entry per player, with position and seat.
+    """
     state = engine.state
     return [
         {
@@ -109,6 +166,9 @@ def campaign(
         live: The engine is in live (1:1) mode.
         players: Player views (see :func:`players`).
         clock: Pause and speed (see :func:`control`).
+
+    Returns:
+        The campaign view.
     """
     t = state.theater
     factions = []
@@ -155,7 +215,14 @@ def campaign(
 
 
 def map_view(state: CampaignState) -> dict[str, Any]:
-    """Provinces (with territory polygons), links and airbases."""
+    """Provinces (with territory polygons), links and airbases.
+
+    Args:
+        state: The campaign.
+
+    Returns:
+        The map view.
+    """
     t = state.theater
     cells = geometry.cells(t)
     provinces = []
@@ -201,7 +268,15 @@ def map_view(state: CampaignState) -> dict[str, Any]:
 def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     """Front lines, front sectors, battles and recent fire missions. In a
     faction's view: only its sectors (enemy power as estimated by its
-    intelligence) and fire missions it fired or received."""
+    intelligence) and fire missions it fired or received.
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The fronts view.
+    """
     from ..systems import intel
     t = state.theater
     lines = []
@@ -270,13 +345,29 @@ def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
 
 
 def _target_faction(state: CampaignState, entity_id: str) -> str | None:
-    """Faction of a (possibly gone) entity."""
+    """Faction of a (possibly gone) entity.
+
+    Args:
+        state: The campaign.
+        entity_id: The entity.
+
+    Returns:
+        Its faction, or None if it no longer exists.
+    """
     e = state.entity(entity_id)
     return None if e is None else e.faction
 
 
 def battle_point(state: CampaignState, b) -> Vec2:
-    """Where the fighting is (see :func:`dynacamp.systems.combat.battle_point`)."""
+    """Where the fighting is (see :func:`dynacamp.systems.combat.battle_point`).
+
+    Args:
+        state: The campaign.
+        b: The battle.
+
+    Returns:
+        The point of the fighting.
+    """
     from ..systems import combat
 
     return combat.battle_point(state, b)
@@ -286,7 +377,15 @@ def battle_point(state: CampaignState, b) -> Vec2:
 
 
 def _route(state: CampaignState, ent) -> dict[str, Any] | None:
-    """Remaining route along the roads, from the entity's position."""
+    """Remaining route along the roads, from the entity's position.
+
+    Args:
+        state: The campaign.
+        ent: The moving entity.
+
+    Returns:
+        The route, or None when it is not moving.
+    """
     if not ent.movement or not ent.movement.path:
         return None
     t = state.theater
@@ -305,7 +404,16 @@ def _route(state: CampaignState, ent) -> dict[str, Any] | None:
 
 
 def division_view(state: CampaignState, d: Division, contact=None) -> dict[str, Any]:
-    """JSON view of a division (as seen through ``contact`` if given)."""
+    """JSON view of a division (as seen through ``contact`` if given).
+
+    Args:
+        state: The campaign.
+        d: The division.
+        contact: The viewer's contact on it (None: the truth).
+
+    Returns:
+        The division view.
+    """
     if contact is not None:
         det = contact.detail
         return {
@@ -348,7 +456,15 @@ def division_view(state: CampaignState, d: Division, contact=None) -> dict[str, 
 
 
 def forces(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
-    """Divisions and battles (known enemies only in a faction's view)."""
+    """Divisions and battles (known enemies only in a faction's view).
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The forces view.
+    """
     divs = []
     for d in state.divisions.values():
         if not _enemy(state, viewer, d.faction):
@@ -362,7 +478,16 @@ def forces(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
 
 
 def convoy_view(state: CampaignState, c: Convoy, contact=None) -> dict[str, Any]:
-    """JSON view of a convoy (as seen through ``contact`` if given)."""
+    """JSON view of a convoy (as seen through ``contact`` if given).
+
+    Args:
+        state: The campaign.
+        c: The convoy.
+        contact: The viewer's contact on it (None: the truth).
+
+    Returns:
+        The convoy view.
+    """
     if contact is not None:
         return {
             "id": c.id,
@@ -396,7 +521,15 @@ def convoy_view(state: CampaignState, c: Convoy, contact=None) -> dict[str, Any]
 def logistics(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     """Depots, convoys, supply network reach and division supply (in a
     faction's view: enemy depots without stock, known enemy convoys only, and
-    only its own network and brigades)."""
+    only its own network and brigades).
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The logistics view.
+    """
     t = state.theater
     mine = lambda fid: not _enemy(state, viewer, fid)  # noqa: E731
     depots = [
@@ -460,7 +593,16 @@ def logistics(state: CampaignState, viewer: str | None = None) -> dict[str, Any]
 
 
 def track_view(state: CampaignState, f, c) -> dict[str, Any]:
-    """An enemy flight as a radar track: identified or not, at its last known position."""
+    """An enemy flight as a radar track: identified or not, at its last known position.
+
+    Args:
+        state: The campaign.
+        f: The enemy flight.
+        c: The viewer's contact on it.
+
+    Returns:
+        The flight view as a track (type only if identified).
+    """
     det = c.detail
     ident = c.identified
     return {
@@ -497,12 +639,27 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
 
 
 def insignia_url(sq) -> str:
-    """URL path of a squadron's insignia, served with the web UI ("" = none)."""
+    """URL path of a squadron's insignia, served with the web UI ("" = none).
+
+    Args:
+        sq: The squadron.
+
+    Returns:
+        The URL path, or ``""``.
+    """
     return f"/insignia/{sq.insignia}" if sq.insignia else ""
 
 
 def flight_view(state: CampaignState, f) -> dict[str, Any]:
-    """JSON view of a flight."""
+    """JSON view of a flight.
+
+    Args:
+        state: The campaign.
+        f: The flight (live or archived).
+
+    Returns:
+        The flight view.
+    """
     from ..systems import orders
 
     sq = state.squadrons[f.squadron]
@@ -540,7 +697,15 @@ def flight_view(state: CampaignState, f) -> dict[str, Any]:
 
 
 def package_view(state: CampaignState, p) -> dict[str, Any]:
-    """JSON view of a package and its flights (live or archived)."""
+    """JSON view of a package and its flights (live or archived).
+
+    Args:
+        state: The campaign.
+        p: The package (live or archived).
+
+    Returns:
+        The package view.
+    """
     from ..systems import orders
 
     archived = p.id not in state.packages
@@ -562,7 +727,17 @@ def package_view(state: CampaignState, p) -> dict[str, Any]:
 
 def find_package(state: CampaignState, package_id: str = "", flight_id: str = "", viewer: str | None = None):
     """A live or archived package, by its id or one of its flights' (None if
-    unknown or, in ``viewer``'s view, an enemy's)."""
+    unknown or, in ``viewer``'s view, an enemy's).
+
+    Args:
+        state: The campaign.
+        package_id: The package id ("" when looking up by flight).
+        flight_id: Id of a flight of the package ("" when looking up by package).
+        viewer: Faction whose view is given (None: the umpire's).
+
+    Returns:
+        The package, or None.
+    """
     if flight_id:
         f = state.flights.get(flight_id) or state.archived_flights.get(flight_id)
         package_id = f.package if f is not None else ""
@@ -575,7 +750,15 @@ def find_package(state: CampaignState, package_id: str = "", flight_id: str = ""
 def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     """Packages, squadrons, sortie budget and in-game join boards. In a
     faction's view: only its own (and allies') air tasking, plus the enemy
-    flights it has detected as ``tracks``."""
+    flights it has detected as ``tracks``.
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The ATO view.
+    """
     mine = lambda fid: not _enemy(state, viewer, fid)  # noqa: E731
     packages = [
         package_view(state, p) for p in sorted(state.packages.values(), key=lambda p: (p.tot, p.id)) if mine(p.faction)
@@ -624,7 +807,15 @@ def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
 
 def air_defense(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     """SAM sites and EWRs with their state, and IADS links (known enemy sites
-    only, without their internals, in a faction's view)."""
+    only, without their internals, in a faction's view).
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The air defence view.
+    """
     from ..systems import air_defense as ada
 
     t = state.theater
@@ -694,7 +885,16 @@ def air_defense(state: CampaignState, viewer: str | None = None) -> dict[str, An
 
 def visible_event(state: CampaignState, viewer: str | None, e) -> bool:
     """True if ``viewer`` would know about event ``e``: its own and allies'
-    events and the public ones (battles, captures, engagements, losses)."""
+    events and the public ones (battles, captures, engagements, losses).
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view is given (None: the umpire's, who sees everything).
+        e: The event.
+
+    Returns:
+        Whether the event is visible.
+    """
     if viewer is None or e.kind in PUBLIC:
         return True
     owner = e.data.get("faction")
@@ -712,6 +912,9 @@ def events(
         kinds: Keep only these kinds.
         limit: Page size.
         viewer: Faction whose view to give (None = umpire).
+
+    Returns:
+        The events and the ``next`` sequence number to ask for.
     """
     out = []
     for e in state.events.since(max(0, since)):
@@ -730,7 +933,18 @@ def snapshot(
     state: CampaignState, live: bool = False, players: list[dict] | None = None, viewer: str | None = None,
     clock: dict | None = None,
 ) -> dict[str, Any]:
-    """All views in one document (a faction's view if ``viewer`` is given)."""
+    """All views in one document (a faction's view if ``viewer`` is given).
+
+    Args:
+        state: The campaign.
+        live: Whether a game is connected.
+        players: The :func:`players` entries (None: none).
+        viewer: Faction whose view to give (None: the umpire's).
+        clock: The :func:`control` entry (None: not given).
+
+    Returns:
+        Campaign, map, fronts, forces, logistics, ATO, air defence and events.
+    """
     return {
         "campaign": campaign(state, live, players, clock),
         "map": map_view(state),
@@ -743,7 +957,14 @@ def snapshot(
 
 
 def save_view(saver) -> dict[str, Any]:
-    """Saving status of a :class:`~dynacamp.persistence.Saver` (None = saving disabled)."""
+    """Saving status of a :class:`~dynacamp.persistence.Saver` (None = saving disabled).
+
+    Args:
+        saver: The saver, or None.
+
+    Returns:
+        Whether saving is on, the file, the autosave interval and the last save.
+    """
     if saver is None:
         return {"enabled": False, "file": None, "autosave_minutes": None, "last": None}
     last = saver.last
@@ -758,7 +979,14 @@ def save_view(saver) -> dict[str, Any]:
 
 
 def control(engine) -> dict[str, Any]:
-    """Pause and speed of an engine's clock."""
+    """Pause and speed of an engine's clock.
+
+    Args:
+        engine: The engine.
+
+    Returns:
+        Pause, compression and the allowed compression range.
+    """
     from ..engine import MAX_COMPRESSION, MIN_COMPRESSION
 
     c = engine.control
@@ -778,6 +1006,13 @@ def positions(state: CampaignState, viewer: str | None = None) -> dict[str, Any]
     convoys, flights (airborne, own, and enemy tracks in a faction's view) and
     air defence sites, each ``id -> [lat, lon]``. Enemy entities in a faction's
     view are at their last known position, and only if known.
+
+    Args:
+        state: The campaign.
+        viewer: Faction whose view to give (None: the umpire's).
+
+    Returns:
+        The positions.
     """
     from ..air import ACTIVE_STATUSES
 
@@ -785,12 +1020,25 @@ def positions(state: CampaignState, viewer: str | None = None) -> dict[str, Any]
     pic = {} if viewer is None else _picture(state, viewer)
 
     def ll(p: Vec2) -> list[float] | None:
-        """``[lat, lon]`` rounded to ~1 m."""
+        """``[lat, lon]`` rounded to ~1 m.
+
+        Args:
+            p: The point.
+
+        Returns:
+            Latitude and longitude, or None.
+        """
         v = to_latlon(t.name, p)
         return None if v is None else [round(v[0], 5), round(v[1], 5)]
 
     def put(out: dict, ent, pos_of) -> None:
-        """Add ``ent`` with its (true or known) position."""
+        """Add ``ent`` with its (true or known) position.
+
+        Args:
+            out: The id -> position table to fill.
+            ent: The entity.
+            pos_of: Gives an entity's true position.
+        """
         if _enemy(state, viewer, ent.faction):
             c = pic.get(ent.id)
             if c is None:
@@ -816,14 +1064,30 @@ def positions(state: CampaignState, viewer: str | None = None) -> dict[str, Any]
 
 
 def _picture(state: CampaignState, viewer: str) -> dict:
-    """The viewer's intelligence picture (entity id -> contact)."""
+    """The viewer's intelligence picture (entity id -> contact).
+
+    Args:
+        state: The campaign.
+        viewer: Faction id.
+
+    Returns:
+        The picture.
+    """
     from ..systems import intel
 
     return intel.picture(state, viewer)
 
 
 def intel_view(state: CampaignState, viewer: str) -> dict[str, Any]:
-    """A faction's intelligence picture and its air-search sensors."""
+    """A faction's intelligence picture and its air-search sensors.
+
+    Args:
+        state: The campaign.
+        viewer: Faction id.
+
+    Returns:
+        The faction's contacts, counts by kind and its sensors.
+    """
     from collections import Counter
 
     from ..systems import intel

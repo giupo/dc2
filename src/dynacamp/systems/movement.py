@@ -10,7 +10,12 @@ from ..events import EventKind
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Advance every campaign-simulated entity along its route."""
+    """Advance every campaign-simulated entity along its route.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     for ent in list(state.entities()):
         if not ent.simulated_by_campaign or not ent.movement or not ent.movement.path:
             continue
@@ -22,7 +27,17 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def link_speed(state: CampaignState, ent: MobileEntity, a: str, b: str) -> float:
-    """Speed of ``ent`` on the link ``a -> b`` (link kind, terrain, infrastructure)."""
+    """Speed of ``ent`` on the link ``a -> b`` (link kind, terrain, infrastructure).
+
+    Args:
+        state: The campaign.
+        ent: The moving entity.
+        a: Start province id.
+        b: End province id.
+
+    Returns:
+        The speed in m/s.
+    """
     link = state.theater.link(a, b)
     dest = state.theater.provinces[b]
     base = ent.speed_ms  # type: ignore[attr-defined]
@@ -30,7 +45,13 @@ def link_speed(state: CampaignState, ent: MobileEntity, a: str, b: str) -> float
 
 
 def _advance(state: CampaignState, ent: MobileEntity, dt: float) -> None:
-    """Move along the route for ``dt`` seconds: withdraw, close in to attack, or travel."""
+    """Move along the route for ``dt`` seconds: withdraw, close in to attack, or travel.
+
+    Args:
+        state: The campaign.
+        ent: The moving entity.
+        dt: Seconds of movement.
+    """
     t = state.theater
     remaining = dt
     while remaining > 0 and ent.movement and ent.movement.path:
@@ -68,7 +89,12 @@ def _advance(state: CampaignState, ent: MobileEntity, dt: float) -> None:
 
 
 def arrive(state: CampaignState, ent: MobileEntity) -> None:
-    """Entity reaches the next province on its path. Also used for delegated entities."""
+    """Entity reaches the next province on its path. Also used for delegated entities.
+
+    Args:
+        state: The campaign.
+        ent: The entity, with a non-empty path.
+    """
     assert ent.movement and ent.movement.path
     nxt = ent.movement.path.pop(0)
     ent.location = nxt
@@ -88,7 +114,12 @@ def arrive(state: CampaignState, ent: MobileEntity) -> None:
 
 
 def _blocked(state: CampaignState, ent: MobileEntity) -> None:
-    """The next province turned hostile: re-route, turn back, or stop."""
+    """The next province turned hostile: re-route, turn back, or stop.
+
+    Args:
+        state: The campaign.
+        ent: The entity whose next province is hostile.
+    """
     if isinstance(ent, Convoy):
         supply.on_convoy_blocked(state, ent)
         return

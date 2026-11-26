@@ -242,7 +242,11 @@ class GameAdapter(ABC):
 
     @abstractmethod
     def send(self, commands: list[Command]) -> None:
-        """Deliver commands to the game (non-blocking)."""
+        """Deliver commands to the game (non-blocking).
+
+        Args:
+            commands: Commands to deliver, in order.
+        """
 
     @abstractmethod
     def poll(self) -> list[Report]:

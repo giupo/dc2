@@ -7,6 +7,8 @@ objects represent them when an entity is materialised inside a player bubble.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -180,6 +182,9 @@ class MobileEntity:
 
         Args:
             theater: The map.
+
+        Returns:
+            The position on the theater plane.
         """
         if self.game_position is not None and self.authority is not Authority.CAMPAIGN:
             return self.game_position
@@ -192,10 +197,13 @@ class MobileEntity:
 
         Args:
             theater: The map.
+
+        Returns:
+            The heading in radians.
         """
         if self.movement and self.movement.path:
             h = theater.heading_on_link(self.location, self.movement.path[0], self.movement.progress)
-            return (h + 3.141592653589793) % (2 * 3.141592653589793) if self.movement.back else h
+            return (h + math.pi) % (2 * math.pi) if self.movement.back else h
         return 0.0
 
 
@@ -239,6 +247,9 @@ class Division(MobileEntity):
 
         Args:
             theater: The map.
+
+        Returns:
+            The position on the theater plane.
         """
         if self.deployed_toward and not self.movement and self.authority is Authority.CAMPAIGN:
             if self.deployed_toward in theater.provinces and self.deployed_toward in theater.neighbors(self.location):
@@ -268,21 +279,36 @@ class Division(MobileEntity):
 
         Args:
             enemy_hardness: Target hardness 0..1.
+
+        Returns:
+            The firepower, soft and hard attacks weighted by the target's hardness.
         """
         soft = sum(ELEMENTS[k].soft_attack * n for k, n in self.elements.items())
         hard = sum(ELEMENTS[k].hard_attack * n for k, n in self.elements.items())
         return soft * (1.0 - enemy_hardness) + hard * enemy_hardness
 
     def defense(self) -> float:
-        """Attacks the division can absorb when defending."""
+        """Attacks the division can absorb when defending.
+
+        Returns:
+            The sum of the elements' defense.
+        """
         return sum(ELEMENTS[k].defense * n for k, n in self.elements.items())
 
     def breakthrough(self) -> float:
-        """Attacks the division can absorb when attacking."""
+        """Attacks the division can absorb when attacking.
+
+        Returns:
+            The sum of the elements' breakthrough.
+        """
         return sum(ELEMENTS[k].breakthrough * n for k, n in self.elements.items())
 
     def hardness(self) -> float:
-        """Average hardness of its combat elements (0..1)."""
+        """Average hardness of its combat elements (0..1).
+
+        Returns:
+            The count-weighted hardness, 0 with no combat elements.
+        """
         combat = {k: n for k, n in self.elements.items() if ELEMENTS[k].combat}
         total = sum(combat.values())
         if not total:
@@ -290,7 +316,11 @@ class Division(MobileEntity):
         return sum(ELEMENTS[k].hardness * n for k, n in combat.items()) / total
 
     def combat_power(self) -> float:
-        """Rough single number used by the AI to compare forces."""
+        """Rough single number used by the AI to compare forces.
+
+        Returns:
+            Firepower plus defense, scaled by organisation.
+        """
         return (self.firepower(0.3) + self.defense()) * (0.4 + 0.6 * self.org)
 
     def take_losses(self, fraction: float) -> None:

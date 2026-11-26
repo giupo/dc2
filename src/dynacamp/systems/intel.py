@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .. import sensors as radar
-from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task, flight_altitude
+from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task
 from ..air_defense import AirDefenseUnit, SamRole, SamStatus
 from ..forces import Convoy, Division
 from ..geo import Vec2
@@ -58,8 +58,9 @@ class ContactKind(StrEnum):
     SAM = "sam"
 
 
+#: Seconds between two sweeps of a faction's sensors.
 SCAN_INTERVAL_S = 60.0
-# Contacts are forgotten after this long without news...
+#: Contacts are forgotten after this long without news, by kind.
 TTL_S = {
     ContactKind.FLIGHT: 5 * 60.0,
     ContactKind.DIVISION: 12 * 3600.0,
@@ -67,7 +68,7 @@ TTL_S = {
     ContactKind.SAM: 48 * 3600.0
 }
 
-# ...and shown as stale (dashed) after this long.
+#: Contacts are shown as stale (dashed) after this long, by kind.
 STALE_S = {
     ContactKind.FLIGHT: 90.0,
     ContactKind.DIVISION: 3600.0,
@@ -75,27 +76,35 @@ STALE_S = {
     ContactKind.SAM: 6 * 3600.0
 }
 
+#: Range of ground observation, by kind of target.
 RECON_M = {
     ContactKind.DIVISION: 12_000.0,
     ContactKind.CONVOY: 3_000.0,
     ContactKind.SAM: 5_000.0
 }
 
+#: Air-search range credited to a player's aircraft, all round (its heading is not known).
 PLAYER_RADAR_M = 80_000.0
+#: Range at which any player, in the air or on the ground, spots enemy ground units.
 PLAYER_EYES_M = 10_000.0
-IDENT_RANGE_M = 40_000.0  # friendly aircraft identify what they track this close
-LOW_ALT_M = radar.LOW_ALT_M
+#: Friendly aircraft identify what they track this close.
+IDENT_RANGE_M = 40_000.0
 
+#: Range factor of each kind of air sensor against a target in the ground clutter.
 LOW_FACTOR = {
     "ground_radar": 0.3,
     "awacs": 0.6,
     "aircraft": radar.LOOK_DOWN
 }
 
+#: ELINT range of an AWACS on station: it locates emitting radars and jamming SEAD flights.
 ELINT_AWACS_M = 250_000.0
+#: ELINT range of a SEAD flight (emitting radars and jamming SEAD flights).
 ELINT_SEAD_M = 150_000.0
+#: ELINT range of an operational EWR (emitting radars and jamming SEAD flights).
 ELINT_EWR_M = 120_000.0
-JAM_FIX_ERROR_M = 8_000.0  # how far off ELINT places a jammer
+#: How far off its real position ELINT places a jammer.
+JAM_FIX_ERROR_M = 8_000.0
 
 
 @dataclass
@@ -125,11 +134,25 @@ class Contact:
     detail: dict[str, Any] = field(default_factory=dict)
 
     def age(self, now: float) -> float:
-        """Seconds since the last detection."""
+        """Seconds since the last detection.
+
+        Args:
+            now: Current campaign time.
+
+        Returns:
+            The age in seconds.
+        """
         return now - self.seen
 
     def stale(self, now: float) -> bool:
-        """True if the information is getting old."""
+        """True if the information is getting old.
+
+        Args:
+            now: Current campaign time.
+
+        Returns:
+            Whether it is older than its kind's ``STALE_S``.
+        """
         return self.age(now) > STALE_S[self.kind]
 
 
@@ -137,12 +160,30 @@ class Contact:
 
 
 def picture(state: CampaignState, fid: str) -> dict[str, Contact]:
-    """The intelligence picture of a faction (entity id -> contact)."""
+    """The intelligence picture of a faction (entity id -> contact).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        The faction's contacts, created empty if needed (a live dictionary).
+    """
     return state.intel.setdefault(fid, {})
 
 
 def known(state: CampaignState, fid: str, kind: ContactKind | None = None, max_age: float | None = None) -> list[Contact]:
-    """Contacts of a faction, optionally of one kind and not older than ``max_age``."""
+    """Contacts of a faction, optionally of one kind and not older than ``max_age``.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        kind: Contact kind (None = any).
+        max_age: Maximum age in seconds (None = any).
+
+    Returns:
+        The matching contacts.
+    """
     now = state.time
     return [
         c for c in picture(state, fid).values()
@@ -151,7 +192,17 @@ def known(state: CampaignState, fid: str, kind: ContactKind | None = None, max_a
 
 
 def knows(state: CampaignState, fid: str, entity_id: str, max_age: float | None = None) -> Contact | None:
-    """The contact on an entity, if the faction knows about it (recently enough)."""
+    """The contact on an entity, if the faction knows about it (recently enough).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        entity_id: The entity looked for.
+        max_age: Maximum age in seconds (None = any).
+
+    Returns:
+        The contact, or None.
+    """
     c = picture(state, fid).get(entity_id)
     if c is None or (max_age is not None and c.age(state.time) > max_age):
         return None
@@ -159,7 +210,17 @@ def knows(state: CampaignState, fid: str, entity_id: str, max_age: float | None 
 
 
 def known_divisions_in(state: CampaignState, fid: str, pid: str, max_age: float = 6 * 3600.0) -> list[Division]:
-    """Enemy brigades the faction believes to be in province ``pid``."""
+    """Enemy brigades the faction believes to be in province ``pid``.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        pid: Province id.
+        max_age: Maximum age of the contacts in seconds.
+
+    Returns:
+        The brigades last reported in the province.
+    """
     out = []
     for c in known(state, fid, ContactKind.DIVISION, max_age):
         if c.detail.get("province") == pid and c.entity_id in state.divisions:
@@ -171,7 +232,16 @@ def known_divisions_in(state: CampaignState, fid: str, pid: str, max_age: float 
 
 
 def _describe(state: CampaignState, ent, identified: bool) -> dict[str, Any]:
-    """What a detection tells about an entity."""
+    """What a detection tells about an entity.
+
+    Args:
+        state: The campaign.
+        ent: The detected entity.
+        identified: Whether the detection identifies it (type, name).
+
+    Returns:
+        The details for the contact.
+    """
     t = state.theater
     if isinstance(ent, Division):
         return {
@@ -217,7 +287,20 @@ def observe(
     identified: bool = True,
     pos: Vec2 | None = None
 ) -> Contact:
-    """Record a detection of ``ent`` by faction ``fid`` (at ``pos`` if already known)."""
+    """Record a detection of ``ent`` by faction ``fid`` (at ``pos`` if already known).
+
+    Args:
+        state: The campaign.
+        fid: Observing faction.
+        ent: The detected entity.
+        kind: Contact kind (None: from the entity).
+        source: Which sensor made the detection, for the picture.
+        identified: Whether the detection identifies the entity.
+        pos: Where it was seen (None: its true position).
+
+    Returns:
+        The new or updated contact.
+    """
     pic = picture(state, fid)
     if pos is None:
         pos = ent.position(state.theater)
@@ -238,14 +321,25 @@ def observe(
 
 
 def reveal(state: CampaignState, fid: str, ent, source: str) -> None:
-    """An event gave the entity away (a SAM launch, an attack): record it."""
+    """An event gave the entity away (a SAM launch, an attack): record it.
+
+    Args:
+        state: The campaign.
+        fid: Faction that learns about it.
+        ent: The entity.
+        source: What gave it away.
+    """
     kind = {item.value: item.value for item in ContactKind}.get(ent.kind, ent.kind)    
     observe(state, fid, ent, kind, source, identified=True)
 
 
 def seed_prewar(state: CampaignState) -> None:
     """Pre-war intelligence: every faction starts knowing the enemy's brigades and
-    air defence sites where they were deployed at the start."""
+    air defence sites where they were deployed at the start.
+
+    Args:
+        state: The campaign.
+    """
     for fid in state.factions:
         for division in state.divisions.values():
             if state.at_war(fid, division.faction):
@@ -272,7 +366,15 @@ def seed_prewar(state: CampaignState) -> None:
 
 
 def _pos(state: CampaignState, ent) -> Vec2:
-    """Position of an entity, computed once per scan."""
+    """Position of an entity, computed once per scan.
+
+    Args:
+        state: The campaign.
+        ent: The entity.
+
+    Returns:
+        The position, cached for the current scan.
+    """
     p = _POS.get(ent.id)
     if p is None:
         p = _POS[ent.id] = ent.position(state.theater)
@@ -283,7 +385,12 @@ _POS: dict[str, Vec2] = {}
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Seed the pre-war picture once, then scan every ``SCAN_INTERVAL_S``."""
+    """Seed the pre-war picture once, then scan every ``SCAN_INTERVAL_S``.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed (unused: scans run on their own timer).
+    """
     if "intel_seeded" not in state.timers:
         state.timers["intel_seeded"] = state.time
         seed_prewar(state)
@@ -299,7 +406,12 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def _expire(state: CampaignState, fid: str) -> None:
-    """Forget contacts that are too old or whose entity no longer exists."""
+    """Forget contacts that are too old or whose entity no longer exists.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+    """
     pic = picture(state, fid)
     for eid, c in list(pic.items()):
         if c.age(state.time) > TTL_S[c.kind] or state.entity(eid) is None:
@@ -308,7 +420,15 @@ def _expire(state: CampaignState, fid: str) -> None:
 
 def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, str, bool, Flight | None]]:
     """Friendly air-search sensors: (position, range, kind, name, can identify,
-    the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`)."""
+    the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        The sensors.
+    """
     t = state.theater
     out: list[tuple[Vec2, float, str, str, bool, Flight | None]] = []
     for f in state.flights.values():
@@ -337,7 +457,15 @@ def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, 
 
 
 def ground_observers(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str]]:
-    """Friendly observers of ground units: (position, range, name)."""
+    """Friendly observers of ground units: (position, range, name).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        The observers.
+    """
     t = state.theater
     out: list[tuple[Vec2, float, str]] = []
 
@@ -366,7 +494,12 @@ def ground_observers(state: CampaignState, fid: str) -> list[tuple[Vec2, float, 
 
 
 def scan(state: CampaignState, fid: str) -> None:
-    """One sweep of all the faction's sensors."""
+    """One sweep of all the faction's sensors.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+    """
     from . import air_defense
 
     t = state.theater
@@ -376,7 +509,7 @@ def scan(state: CampaignState, fid: str) -> None:
         if not state.at_war(fid, f.faction) or f.status not in ACTIVE_STATUSES or f.ai_count + len(f.active_seats) <= 0:
             continue
         pos = _pos(state, f)
-        low = flight_altitude(f) <= LOW_ALT_M
+        low = radar.low(f)
         jamming = radar.jam(state, f)
         seen_by, identify = None, False
         for spos, rng, skind, name, can_id, carrier in sensors:
@@ -480,7 +613,16 @@ def scan(state: CampaignState, fid: str) -> None:
 
 def _strobe(state: CampaignState, f, pos: Vec2) -> Vec2:
     """Where ELINT puts a jammer: ``JAM_FIX_ERROR_M`` off its real position, in
-    a direction that changes every 10 minutes (stable for a given flight and time)."""
+    a direction that changes every 10 minutes (stable for a given flight and time).
+
+    Args:
+        state: The campaign.
+        f: The jamming flight.
+        pos: Its true position.
+
+    Returns:
+        The estimated position.
+    """
     seed = zlib.crc32(f"{f.id}:{int(state.time // 600)}".encode())
     a = (seed % 3600) / 3600 * 2 * math.pi
     return Vec2(
@@ -491,7 +633,17 @@ def _strobe(state: CampaignState, f, pos: Vec2) -> Vec2:
 
 def known_covering(state: CampaignState, fid: str, point: Vec2, roles=(SamRole.LONG, SamRole.MEDIUM)) -> list[Contact]:
     """Known enemy SAM sites whose engagement range covers ``point``, at their
-    last known position (what the planners believe, not the truth)."""
+    last known position (what the planners believe, not the truth).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        point: The point.
+        roles: SAM roles to consider.
+
+    Returns:
+        The contacts on those sites.
+    """
     out = []
     for c in known(state, fid, ContactKind.SAM):
         u = state.air_defense.get(c.entity_id)
@@ -503,6 +655,16 @@ def known_covering(state: CampaignState, fid: str, point: Vec2, roles=(SamRole.L
 
 
 def located(state: CampaignState, fid: str, entity_id: str, max_age: float) -> Vec2 | None:
-    """Last known position of an enemy entity if located within ``max_age``."""
+    """Last known position of an enemy entity if located within ``max_age``.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        entity_id: The enemy entity.
+        max_age: Maximum age of the contact in seconds.
+
+    Returns:
+        The position, or None.
+    """
     c = knows(state, fid, entity_id, max_age)
     return None if c is None else c.position

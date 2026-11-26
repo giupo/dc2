@@ -32,6 +32,7 @@ class TerrainProfile:
     attack_factor: float  # multiplier on the attacker's firepower
 
 
+#: Movement and combat modifiers of each terrain.
 TERRAIN: dict[Terrain, TerrainProfile] = {
     Terrain.PLAINS: TerrainProfile(1.0, 1.0),
     Terrain.FOREST: TerrainProfile(0.7, 0.8),
@@ -49,7 +50,11 @@ class LinkKind(StrEnum):
     RAIL = "rail"
 
 
+#: Speed factor of each kind of link.
 LINK_SPEED: dict[LinkKind, float] = {LinkKind.ROAD: 1.0, LinkKind.TRACK: 0.6, LinkKind.RAIL: 1.0}
+#: Length of a link without road geometry, as a multiple of the straight line between the centres
+#: (straight-line distances underestimate road lengths).
+ROAD_WINDING = 1.25
 
 
 @dataclass(slots=True)
@@ -119,11 +124,23 @@ class Link:
 
         Args:
             pid: One end of the link.
+
+        Returns:
+            The other province id.
         """
         return self.b if pid == self.a else self.a
 
     def points(self, frm: str, a_center: Vec2, b_center: Vec2) -> list[Vec2]:
-        """Polyline oriented from province ``frm`` to the other end."""
+        """Polyline oriented from province ``frm`` to the other end.
+
+        Args:
+            frm: Province the polyline starts from.
+            a_center: Centre of province ``a`` (used without a road).
+            b_center: Centre of province ``b`` (used without a road).
+
+        Returns:
+            The road polyline, or the straight segment between the centres.
+        """
         pts = list(self.route) if self.route else [a_center, b_center]
         return pts if frm == self.a else pts[::-1]
 
@@ -133,12 +150,23 @@ def polyline_length(pts: list[Vec2]) -> float:
 
     Args:
         pts: Polyline vertices.
+
+    Returns:
+        The length.
     """
     return sum(p.distance_to(q) for p, q in zip(pts, pts[1:]))
 
 
 def point_along(pts: list[Vec2], s: float) -> tuple[Vec2, int]:
-    """Point at arc length ``s`` and the index of the segment it lies on."""
+    """Point at arc length ``s`` and the index of the segment it lies on.
+
+    Args:
+        pts: Polyline vertices.
+        s: Arc length in metres from the first vertex.
+
+    Returns:
+        The point and its segment index (clamped to the ends).
+    """
     if s <= 0:
         return pts[0], 0
     for i, (p, q) in enumerate(zip(pts, pts[1:])):
@@ -150,7 +178,15 @@ def point_along(pts: list[Vec2], s: float) -> tuple[Vec2, int]:
 
 
 def project_on(pts: list[Vec2], pos: Vec2) -> float:
-    """Arc length of the point of the polyline closest to ``pos``."""
+    """Arc length of the point of the polyline closest to ``pos``.
+
+    Args:
+        pts: Polyline vertices.
+        pos: The point to project.
+
+    Returns:
+        The arc length in metres.
+    """
     best, best_s, acc = float("inf"), 0.0, 0.0
     for p, q in zip(pts, pts[1:]):
         seg = p.distance_to(q)
@@ -160,10 +196,6 @@ def project_on(pts: list[Vec2], pos: Vec2) -> float:
             best, best_s = d, acc + t * seg
         acc += seg
     return best_s
-
-
-# Straight-line distances underestimate road lengths.
-ROAD_WINDING = 1.25
 
 
 @dataclass
@@ -198,6 +230,7 @@ class Theater:
         """
         if province.id in self.provinces:
             raise ValueError(f"duplicate province {province.id!r}")
+
         self.provinces[province.id] = province
         self._links[province.id] = {}
         return province
@@ -232,10 +265,12 @@ class Theater:
             pts = [pa.center, *route, pb.center]
             length = polyline_length(pts)
             route_t: tuple[Vec2, ...] | None = tuple(pts)
+
         else:
             route_t = None
             if length is None:
                 length = pa.center.distance_to(pb.center) * ROAD_WINDING
+
         link = Link(a, b, length, kind, river, route_t)
         self._links[a][b] = link
         self._links[b][a] = link
@@ -247,11 +282,21 @@ class Theater:
 
         Args:
             pid: Province id.
+
+        Returns:
+            The neighbouring province ids.
         """
         return self._links[pid].keys()
 
     def link(self, a: str, b: str) -> Link:
         """The link between two adjacent provinces.
+
+        Args:
+            a: Province id.
+            b: Province id.
+
+        Returns:
+            The link.
 
         Raises:
             KeyError: If they are not adjacent.
@@ -259,7 +304,11 @@ class Theater:
         return self._links[a][b]
 
     def links(self) -> Iterable[Link]:
-        """Iterate over every link once."""
+        """Iterate over every link once.
+
+        Yields:
+            Each link once.
+        """
         seen: set[tuple[str, str]] = set()
         for a, out in self._links.items():
             for b, link in out.items():
@@ -279,12 +328,23 @@ class Theater:
         Args:
             frm: Start province id.
             to: End province id.
+
+        Returns:
+            The polyline.
         """
         return self._geometry(frm, to)[0]
 
     def _geometry(self, frm: str, to: str) -> tuple[list[Vec2], float]:
         """Cached oriented polyline and scale of a link (geometry never changes
-        after the theatre is built; :meth:`connect` clears the cache)."""
+        after the theatre is built; :meth:`connect` clears the cache).
+
+        Args:
+            frm: Start province id.
+            to: End province id.
+
+        Returns:
+            The oriented polyline and its length per link-length metre.
+        """
         g = self._geom.get((frm, to))
         if g is None:
             link = self._links[frm][to]
@@ -294,7 +354,16 @@ class Theater:
         return g
 
     def _scale(self, frm: str, to: str, pts: list[Vec2]) -> float:
-        """Polyline metres per progress metre (1 on real roads)."""
+        """Polyline metres per progress metre (1 on real roads).
+
+        Args:
+            frm: Start province id.
+            to: End province id.
+            pts: The oriented polyline (unused: the scale is cached with it).
+
+        Returns:
+            The scale.
+        """
         return self._geometry(frm, to)[1]
 
     def point_on_link(self, frm: str, to: str, s: float) -> Vec2:
@@ -304,6 +373,9 @@ class Theater:
             frm: Start province id.
             to: End province id.
             s: Progress in metres from ``frm`` (0 .. link length).
+
+        Returns:
+            The point on the road.
         """
         pts = self.link_points(frm, to)
         return point_along(pts, s * self._scale(frm, to, pts))[0]
@@ -315,6 +387,9 @@ class Theater:
             frm: Start province id.
             to: End province id.
             s: Progress in metres from ``frm``.
+
+        Returns:
+            The heading.
         """
         pts = self.link_points(frm, to)
         _, i = point_along(pts, s * self._scale(frm, to, pts))
@@ -336,7 +411,16 @@ class Theater:
         return project_on(pts, pos) / scale if scale else 0.0
 
     def link_points_from(self, frm: str, to: str, s: float) -> list[Vec2]:
-        """The rest of the road from progress ``s`` to ``to``."""
+        """The rest of the road from progress ``s`` to ``to``.
+
+        Args:
+            frm: Start province id.
+            to: End province id.
+            s: Progress in metres from ``frm``.
+
+        Returns:
+            The current point followed by the remaining road vertices.
+        """
         pts = self.link_points(frm, to)
         p, i = point_along(pts, s * self._scale(frm, to, pts))
         return [p, *pts[i + 1 :]]
@@ -347,12 +431,23 @@ class Theater:
         Args:
             pos: Point.
             candidates: Restrict the search to these province ids.
+
+        Returns:
+            The nearest province.
         """
         ids = candidates if candidates is not None else self.provinces.keys()
         return min((self.provinces[i] for i in ids), key=lambda p: p.center.distance_to(pos))
 
     def travel_cost(self, a: str, b: str) -> float:
-        """Seconds-like cost of moving a->b: length scaled by link, terrain and infrastructure."""
+        """Seconds-like cost of moving a->b: length scaled by link, terrain and infrastructure.
+
+        Args:
+            a: Start province id.
+            b: Adjacent province id.
+
+        Returns:
+            The cost, link length divided by the effective speed.
+        """
         link = self._links[a][b]
         dest = self.provinces[b]
         speed = LINK_SPEED[link.kind] * TERRAIN[dest.terrain].move_factor * infra_factor(dest.infrastructure)
@@ -370,6 +465,15 @@ class Theater:
         ``passable`` filters intermediate provinces; ``goal`` itself is always allowed
         so that a path can end on a hostile province (an attack). ``penalty(a, b)``
         multiplies the cost of a link (e.g. a road the enemy is known to cover).
+
+        Args:
+            start: Start province id.
+            goal: Destination province id.
+            passable: Whether an intermediate province may be crossed (None = all).
+            penalty: Cost multiplier of a link (None = 1).
+
+        Returns:
+            The path (empty if ``start == goal``), or None if the goal cannot be reached.
         """
         if start == goal:
             return []
@@ -380,21 +484,27 @@ class Theater:
             d, pid = heapq.heappop(heap)
             if pid == goal:
                 break
+
             if d > dist.get(pid, float("inf")):
                 continue
+
             for nxt in self._links[pid]:
                 if nxt != goal and passable is not None and not passable(nxt):
                     continue
+
                 nd = d + self.travel_cost(pid, nxt) * (penalty(pid, nxt) if penalty else 1.0)
                 if nd < dist.get(nxt, float("inf")):
                     dist[nxt] = nd
                     prev[nxt] = pid
                     heapq.heappush(heap, (nd, nxt))
+
         if goal not in prev:
             return None
+
         path = [goal]
         while path[-1] in prev and prev[path[-1]] != start:
             path.append(prev[path[-1]])
+
         return list(reversed(path))
 
     def path_length(self, start: str, path: list[str]) -> float:
@@ -408,9 +518,11 @@ class Theater:
             Metres along the route.
         """
         total, cur = 0.0, start
+
         for nxt in path:
             total += self._links[cur][nxt].length
             cur = nxt
+
         return total
 
 

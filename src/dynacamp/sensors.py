@@ -39,36 +39,73 @@ from .geo import Vec2
 if TYPE_CHECKING:
     from .state import CampaignState
 
-SCAN_HALF_ANGLE_RAD = math.radians(60.0)  # fighter radars scan about +-60 degrees
-LOOK_DOWN = 0.7  # range against a target below LOW_ALT_M
+#: Half aperture of a fighter's radar scan (about 60 degrees each side).
+SCAN_HALF_ANGLE_RAD = math.radians(60.0)
+#: Radar range factor against a target below :data:`LOW_ALT_M`.
+LOOK_DOWN = 0.7
+#: Altitude below which an aircraft is in the ground clutter.
 LOW_ALT_M = 300.0
-TRACK_FACTOR = 0.6  # a radar tracks (and a fighter engages) within this share of its search range
-EYEBALL_M = 3_000.0  # direct fire / visual range on the ground
+#: A radar tracks (and a fighter engages) within this share of its search range.
+TRACK_FACTOR = 0.6
+#: Direct fire and visual range on the ground.
+EYEBALL_M = 3_000.0
 # Jamming
-JAMMER_RANGE_M = 40_000.0  # a SEAD flight's jammers cover friendly aircraft this close
-ESCORT_JAM = 0.5  # radar range against an aircraft under that cover
-SELF_JAM = 0.7  # ...against one with its own self-protection pod
-BURN_THROUGH_M = 10_000.0  # radars see through any jamming this close
-ESCORT_JAM_PK = 0.6  # radar-guided missiles at an aircraft under stand-off jamming
-SELF_JAM_PK = 0.8  # ...at one with a self-protection pod
+#: A SEAD flight's jammers cover friendly aircraft this close.
+JAMMER_RANGE_M = 40_000.0
+#: Radar range factor against an aircraft under escort jamming (the SEAD flight's ECM pods
+#: stand in for a dedicated jammer: DCS has no AI EA-6B or EA-18G).
+ESCORT_JAM = 0.5
+#: Radar range factor against an aircraft with its own self-protection pod.
+SELF_JAM = 0.7
+#: Radars see through any jamming this close.
+BURN_THROUGH_M = 10_000.0
+#: Kill probability factor of radar-guided missiles at an aircraft under escort jamming.
+ESCORT_JAM_PK = 0.6
+#: Kill probability factor of radar-guided missiles at an aircraft with a self-protection pod.
+SELF_JAM_PK = 0.8
 
 
 def track(f: Flight) -> float:
     """Direction the aircraft points, radians (0 = north, clockwise): along its
-    orbit while on station, else its last track over the ground."""
+    orbit while on station, else its last track over the ground.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        The heading of the aircraft's nose.
+    """
     if f.status is FlightStatus.ON_STATION:
         return (f.orbit_angle + math.pi / 2) % (2 * math.pi)
     return f.track
 
 
 def low(f: Flight) -> bool:
-    """True if the flight is down in the ground clutter."""
+    """True if the flight is down in the ground clutter.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        Whether it flies at or below ``LOW_ALT_M``.
+    """
     return flight_altitude(f) <= LOW_ALT_M
 
 
 def in_cone(origin: Vec2, heading: float, half_angle: float, reach: float, point: Vec2) -> bool:
     """True if ``point`` is within ``reach`` of ``origin`` and at most
-    ``half_angle`` off ``heading`` (radians)."""
+    ``half_angle`` off ``heading`` (radians).
+
+    Args:
+        origin: Apex of the cone.
+        heading: Axis of the cone, radians.
+        half_angle: Half aperture, radians.
+        reach: Length of the cone, metres.
+        point: The point to test.
+
+    Returns:
+        Whether the point is in the cone (always True within a metre of the apex).
+    """
     d = origin.distance_to(point)
     if d > reach:
         return False
@@ -79,7 +116,15 @@ def in_cone(origin: Vec2, heading: float, half_angle: float, reach: float, point
 
 
 def escort_jammer(state: CampaignState, f: Flight) -> Flight | None:
-    """A friendly SEAD flight (not ``f`` itself) close enough to jam for ``f``."""
+    """A friendly SEAD flight (not ``f`` itself) close enough to jam for ``f``.
+
+    Args:
+        state: The campaign.
+        f: The flight to protect.
+
+    Returns:
+        The jamming SEAD flight, or None.
+    """
     for o in state.flights.values():
         if (
             o is not f and o.faction == f.faction and o.task is Task.SEAD and o.ai_count > 0
@@ -91,7 +136,15 @@ def escort_jammer(state: CampaignState, f: Flight) -> Flight | None:
 
 def jam(state: CampaignState, f: Flight) -> float:
     """Factor on enemy radar range against ``f``: ``ESCORT_JAM`` under a SEAD
-    flight's jamming, ``SELF_JAM`` with its own ECM pod, else 1."""
+    flight's jamming, ``SELF_JAM`` with its own ECM pod, else 1.
+
+    Args:
+        state: The campaign.
+        f: The target flight.
+
+    Returns:
+        The range factor (1 = no jamming).
+    """
     from . import loadouts
 
     if escort_jammer(state, f) is not None:
@@ -103,7 +156,15 @@ def jam(state: CampaignState, f: Flight) -> float:
 
 def reach(range_m: float, jamming: float = 1.0) -> float:
     """Range of a radar of ``range_m`` against a target jamming by ``jamming``
-    (never less than the burn-through distance, nor more than the range)."""
+    (never less than the burn-through distance, nor more than the range).
+
+    Args:
+        range_m: Nominal range of the radar, metres.
+        jamming: The target's :func:`jam` factor.
+
+    Returns:
+        The effective range in metres.
+    """
     if jamming >= 1.0:
         return range_m
     return max(range_m * jamming, min(range_m, BURN_THROUGH_M))
@@ -111,7 +172,15 @@ def reach(range_m: float, jamming: float = 1.0) -> float:
 
 def jam_pk(jamming: float, target: Flight) -> float:
     """Factor on the kill probability of a radar-guided missile at a jammed
-    target (a SEAD flight's own pods are already in its SAM odds)."""
+    target (a SEAD flight's own pods are already in its SAM odds).
+
+    Args:
+        jamming: The target's :func:`jam` factor.
+        target: The target flight.
+
+    Returns:
+        The factor on the kill probability (1 = no jamming).
+    """
     if jamming <= ESCORT_JAM:
         return ESCORT_JAM_PK
     if jamming < 1.0 and target.task is not Task.SEAD:
@@ -132,6 +201,10 @@ def radar_sees(
         track_only: Within tracking range only (``TRACK_FACTOR`` of the search
             range): what a fighter engages, as opposed to what it reports.
         jamming: The target's :func:`jam` factor.
+
+    Returns:
+        Whether the target is within the radar's reach (and, except for AWACS, within its scan
+        cone).
     """
     base = observer.aircraft_type.air_radar_m * (LOOK_DOWN if low(target) else 1.0) * (TRACK_FACTOR if track_only else 1.0)
     if base <= 0:

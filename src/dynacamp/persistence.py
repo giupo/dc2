@@ -38,9 +38,10 @@ from .events import EventKind
 if TYPE_CHECKING:  # pragma: no cover
     from .engine import Engine
 
+#: Marks a save file's envelope.
 MAGIC = "dynacamp-save"
+#: Version of the save format: bumped only for incompatible changes (renamed fields, changed types).
 FORMAT_VERSION = 1
-SUFFIX = ".dcsave"
 _GZIP_MAGIC = b"\x1f\x8b"
 
 
@@ -67,7 +68,11 @@ class SaveInfo:
 
 
 def _package_version() -> str:
-    """Installed version of the package (``"unknown"`` if not installed)."""
+    """Installed version of the package (``"unknown"`` if not installed).
+
+    Returns:
+        The version string.
+    """
     try:
         return metadata.version("dynacamp")
     except metadata.PackageNotFoundError:  # pragma: no cover - always installed in practice
@@ -142,6 +147,12 @@ def save(state: CampaignState, path: str | Path, compression: float | None = Non
 def _read_envelope(path: str | Path) -> dict[str, Any]:
     """Read and check the envelope of a save file.
 
+    Args:
+        path: The save file.
+
+    Returns:
+        The envelope dictionary, with the campaign in ``state``.
+
     Raises:
         SaveError: If the file is not a readable save of this format version.
     """
@@ -163,7 +174,14 @@ def _read_envelope(path: str | Path) -> dict[str, Any]:
 
 
 def _info(envelope: dict[str, Any]) -> SaveInfo:
-    """The :class:`SaveInfo` of a checked envelope."""
+    """The :class:`SaveInfo` of a checked envelope.
+
+    Args:
+        envelope: An envelope checked by :func:`_read_envelope`.
+
+    Returns:
+        Name, times, version and compression of the save.
+    """
     return SaveInfo(
         name=envelope["name"],
         campaign_time=envelope["campaign_time"],
@@ -176,7 +194,11 @@ def _info(envelope: dict[str, Any]) -> SaveInfo:
 def _add_missing_fields(state: CampaignState) -> None:
     """Give a campaign saved by an older version the state fields added since,
     at their defaults (unpickling restores only the attributes it had), and
-    the factions their bullseye (the default one: centre of the side's provinces now)."""
+    the factions their bullseye (the default one: centre of the side's provinces now).
+
+    Args:
+        state: The unpickled campaign, updated in place.
+    """
     import dataclasses
 
     for f in dataclasses.fields(state):
@@ -196,7 +218,11 @@ def _add_missing_fields(state: CampaignState) -> None:
 
 
 def _detach_from_game(state: CampaignState) -> None:
-    """Bring back under campaign control what a game held when the save was made."""
+    """Bring back under campaign control what a game held when the save was made.
+
+    Args:
+        state: The unpickled campaign, updated in place.
+    """
     from .systems import ato
 
     for ent in state.entities():
@@ -239,6 +265,9 @@ def is_save(path: str | Path) -> bool:
 
     Args:
         path: File to check.
+
+    Returns:
+        Whether the file starts with the gzip magic bytes (False if it cannot be read).
     """
     try:
         with open(path, "rb") as fh:
@@ -276,7 +305,9 @@ class Saver:
     """
 
     def __init__(self, path: str | Path, autosave_s: float = 600.0, clock: Callable[[], float] = time.monotonic) -> None:
-        """Args:
+        """Set up a saver for one file.
+
+        Args:
             path: The save file.
             autosave_s: Real seconds between autosaves (0 = never).
             clock: Monotonic real-time clock (for the autosave interval).
@@ -314,5 +345,9 @@ class Saver:
         return record
 
     def due(self) -> bool:
-        """True if an autosave is due (the interval elapsed since the last attempt)."""
+        """True if an autosave is due (the interval elapsed since the last attempt).
+
+        Returns:
+            Whether to save now.
+        """
         return self.autosave_s > 0 and self._clock() - self._last_attempt >= self.autosave_s

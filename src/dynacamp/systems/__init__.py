@@ -14,6 +14,7 @@ from . import (
     supply
 )
 
+#: The systems run at every engine substep, in this order.
 PIPELINE = (
     intel,
     scramble,

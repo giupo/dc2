@@ -31,6 +31,7 @@ class TransverseMercator:
     scale_factor: float = 0.9996
 
 
+#: Transverse Mercator parameters of the DCS theatres, by lower-case name.
 THEATERS: dict[str, TransverseMercator] = {
     "caucasus": TransverseMercator(33, -99516.9999999732, -4998114.999999984),
     "syria": TransverseMercator(39, 282801.00000003993, -3879865.9999999935),
@@ -44,7 +45,14 @@ _EP2 = _E2 / (1 - _E2)
 
 
 def _meridian_arc(phi: float) -> float:
-    """Meridian arc length from the equator to latitude ``phi`` (radians), WGS84."""
+    """Meridian arc length from the equator to latitude ``phi`` (radians), WGS84.
+
+    Args:
+        phi: Latitude in radians.
+
+    Returns:
+        The arc length in metres.
+    """
     e2, e4, e6 = _E2, _E2**2, _E2**3
     return _A * (
         (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
@@ -55,7 +63,16 @@ def _meridian_arc(phi: float) -> float:
 
 
 def ll_to_dcs(theater: str, lat: float, lon: float) -> tuple[float, float]:
-    """(lat, lon) -> (DCS x north, DCS z east). Snyder's series."""
+    """(lat, lon) -> (DCS x north, DCS z east). Snyder's series.
+
+    Args:
+        theater: Theatre name, lower case (a key of ``THEATERS``).
+        lat: Latitude in degrees (WGS84).
+        lon: Longitude in degrees (WGS84).
+
+    Returns:
+        DCS ``(x, z)`` in metres.
+    """
     p = THEATERS[theater]
     phi = math.radians(lat)
     lam = math.radians(lon - p.central_meridian)
@@ -76,7 +93,16 @@ def ll_to_dcs(theater: str, lat: float, lon: float) -> tuple[float, float]:
 
 
 def dcs_to_ll(theater: str, x: float, z: float) -> tuple[float, float]:
-    """(DCS x north, DCS z east) -> (lat, lon). Inverse of :func:`ll_to_dcs`."""
+    """(DCS x north, DCS z east) -> (lat, lon). Inverse of :func:`ll_to_dcs`.
+
+    Args:
+        theater: Theatre name, lower case (a key of ``THEATERS``).
+        x: DCS x (north) in metres.
+        z: DCS z (east) in metres.
+
+    Returns:
+        Latitude and longitude in degrees (WGS84).
+    """
     p = THEATERS[theater]
     k0 = p.scale_factor
     m = (x - p.false_northing) / k0
@@ -107,7 +133,15 @@ def dcs_to_ll(theater: str, x: float, z: float) -> tuple[float, float]:
 
 
 def to_latlon(theater: str, v: Vec2) -> tuple[float, float] | None:
-    """Campaign point -> (lat, lon), or None for theaters without a projection."""
+    """Campaign point -> (lat, lon), or None for theaters without a projection.
+
+    Args:
+        theater: Theatre name (any case).
+        v: Point on the campaign plane.
+
+    Returns:
+        Latitude and longitude in degrees, or None.
+    """
     if theater.lower() not in THEATERS:
         return None
     return dcs_to_ll(theater.lower(), v.y, v.x)
@@ -115,7 +149,16 @@ def to_latlon(theater: str, v: Vec2) -> tuple[float, float] | None:
 
 def from_latlon(theater: str, lat: float, lon: float) -> Vec2 | None:
     """(lat, lon) -> campaign point, or None for theaters without a projection.
-    Inverse of :func:`to_latlon`."""
+    Inverse of :func:`to_latlon`.
+
+    Args:
+        theater: Theatre name (any case).
+        lat: Latitude in degrees (WGS84).
+        lon: Longitude in degrees (WGS84).
+
+    Returns:
+        The point on the campaign plane, or None.
+    """
     if theater.lower() not in THEATERS:
         return None
     x, z = ll_to_dcs(theater.lower(), lat, lon)

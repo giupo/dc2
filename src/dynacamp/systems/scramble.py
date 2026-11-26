@@ -34,22 +34,39 @@ from ..units import M_PER_NM as NM
 from . import ato, intel, routing
 from ..events import EventKind
 
+#: Seconds between two checks of the alert.
 CHECK_INTERVAL_S = 60.0
-SCRAMBLE_RADIUS_M = 30 * NM  # alarm distance from a base or a protected asset
-NEAR_BASE_M = 20 * NM  # assets this close to a base are protected too
-ALERT_DELAY_S = 5 * 60.0  # from the alarm to wheels up
-STATION_S = 30 * 60.0  # time at the intruder before giving up
-CHASE_LIMIT_M = 60 * NM  # interceptors do not chase further than this from home
-CONTACT_MAX_AGE_S = 120.0  # only fresh tracks raise the alarm
-LAUNCH_RANGE_M = 60 * NM  # other bases help only if this close to the intruder
-COVERED_M = 40_000.0  # an intruder this close to one of our fighters is theirs already
-REARM_S = 60 * 60.0  # no new scramble on the same intruder for this long
-MAX_ACTIVE = 4  # concurrent scrambled flights per faction
+#: Alarm distance from a base or a protected asset.
+SCRAMBLE_RADIUS_M = 30 * NM
+#: Assets this close to a base are protected too.
+NEAR_BASE_M = 20 * NM
+#: From the alarm to wheels up, seconds.
+ALERT_DELAY_S = 5 * 60.0
+#: Time at the intruder before giving up, seconds.
+STATION_S = 30 * 60.0
+#: Interceptors do not chase further than this from home.
+CHASE_LIMIT_M = 60 * NM
+#: Only tracks this fresh raise the alarm, seconds.
+CONTACT_MAX_AGE_S = 120.0
+#: Other bases help only if this close to the intruder.
+LAUNCH_RANGE_M = 60 * NM
+#: An intruder this close to one of our fighters is theirs already.
+COVERED_M = 40_000.0
+#: No new scramble against the same intruder for this long, seconds.
+REARM_S = 60 * 60.0
+#: Concurrent scrambled flights per faction.
+MAX_ACTIVE = 4
+#: Aircraft in a scrambled flight.
 SIZE = 2
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Check every faction with fighters, every ``CHECK_INTERVAL_S``."""
+    """Check every faction with fighters, every ``CHECK_INTERVAL_S``.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed (unused: the check runs on its own timer).
+    """
     if state.time < state.timers.get("scramble", 0.0):
         return
     state.timers["scramble"] = state.time + CHECK_INTERVAL_S
@@ -59,7 +76,15 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def active(state: CampaignState, fid: str) -> list:
-    """Live scrambled flights of a faction."""
+    """Live scrambled flights of a faction.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        The faction's scramble flights not done or cancelled.
+    """
     return [
         f for f in state.flights.values()
         if f.faction == fid and f.target_kind == "flight" and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
@@ -68,6 +93,10 @@ def active(state: CampaignState, fid: str) -> list:
 
 def protected(state: CampaignState, fid: str) -> list[tuple[Vec2, str, str]]:
     """What the faction's alert covers: its airbases and the assets close to them.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
 
     Returns:
         (position, label, airbase id) for each base and asset.
@@ -95,7 +124,12 @@ def protected(state: CampaignState, fid: str) -> list[tuple[Vec2, str, str]]:
 
 def check(state: CampaignState, fid: str) -> None:
     """Scramble a pair against every fresh enemy track inside the alarm radius
-    of a base or protected asset that nobody is intercepting yet."""
+    of a base or protected asset that nobody is intercepting yet.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+    """
     busy = active(state, fid)
     if len(busy) >= MAX_ACTIVE:
         return

@@ -18,19 +18,40 @@ from .geo import Vec2
 from .state import CampaignState
 from .world import Theater
 
+#: Maximum radius of a province's territory cell.
 CELL_RADIUS_M = 60_000.0
+#: Vertices of the circle a cell is cut from.
 CIRCLE_SIDES = 48
-OUTER = "__outer__"  # label of cell edges that are not shared with a province
+#: Label of cell edges not shared with another province.
+OUTER = "__outer__"
 
 # A polygon is a list of (vertex, label of the edge from this vertex to the next).
 Polygon = list[tuple[Vec2, str]]
 
 
 def _clip(poly: Polygon, point: Vec2, normal: Vec2, offset: float, label: str) -> Polygon:
-    """Keep the part of ``poly`` where dot(normal, p) <= offset (Sutherland-Hodgman)."""
+    """Keep the part of ``poly`` where dot(normal, p) <= offset (Sutherland-Hodgman).
+
+    Args:
+        poly: The polygon to clip.
+        point: The cell centre (unused: the half-plane is given by ``normal`` and ``offset``).
+        normal: Normal of the clip line, pointing to the discarded side.
+        offset: The kept half-plane is ``dot(normal, p) <= offset``.
+        label: Label of the new edge created along the clip line.
+
+    Returns:
+        The clipped polygon (empty if nothing is kept).
+    """
 
     def side(p: Vec2) -> float:
-        """Signed distance of ``p`` from the clip line (<= 0 is kept)."""
+        """Signed distance of ``p`` from the clip line (<= 0 is kept).
+
+        Args:
+            p: The point.
+
+        Returns:
+            The signed distance (scaled by the length of ``normal``).
+        """
         return normal.x * p.x + normal.y * p.y - offset
 
     out: Polygon = []
@@ -86,7 +107,14 @@ class Cells:
     polygons: dict[str, Polygon]
 
     def shared_edges(self, a: str) -> list[tuple[str, Vec2, Vec2]]:
-        """Edges of cell ``a`` shared with another province: (neighbour, p, q)."""
+        """Edges of cell ``a`` shared with another province: (neighbour, p, q).
+
+        Args:
+            a: Province id.
+
+        Returns:
+            The shared edges as ``(neighbour id, start, end)``.
+        """
         poly = self.polygons[a]
         out = []
         for i, (p, label) in enumerate(poly):
@@ -104,6 +132,9 @@ def cells(theater: Theater, radius: float = CELL_RADIUS_M) -> Cells:
     Args:
         theater: The map.
         radius: Maximum cell radius in metres.
+
+    Returns:
+        The cells of every province.
     """
     key = (theater.name, radius, tuple((p.id, p.center.x, p.center.y) for p in theater.provinces.values()))
     if key not in _cache:
@@ -135,6 +166,9 @@ def front_lines(state: CampaignState, radius: float = CELL_RADIUS_M) -> list[Fro
     Args:
         state: The campaign.
         radius: Cell radius used for the territories.
+
+    Returns:
+        One front line per chain of hostile edges, per pair of factions.
     """
     t = state.theater
     cs = cells(t, radius)
@@ -157,12 +191,26 @@ def front_lines(state: CampaignState, radius: float = CELL_RADIUS_M) -> list[Fro
 
 
 def _key(v: Vec2) -> tuple[int, int]:
-    """Hashable key of a point rounded to the metre."""
+    """Hashable key of a point rounded to the metre.
+
+    Args:
+        v: The point.
+
+    Returns:
+        The point rounded to whole metres.
+    """
     return round(v.x), round(v.y)
 
 
 def _chain(segs: list[tuple[Vec2, Vec2, tuple[str, str]]]) -> list[tuple[list[Vec2], list[tuple[str, str]]]]:
-    """Join segments that share endpoints into polylines."""
+    """Join segments that share endpoints into polylines.
+
+    Args:
+        segs: Segments as ``(start, end, (province a, province b))``.
+
+    Returns:
+        Polylines with the province pairs of their segments.
+    """
     remaining = list(segs)
     out = []
     while remaining:

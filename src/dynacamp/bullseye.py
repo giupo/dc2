@@ -23,12 +23,19 @@ from .projection import to_latlon
 from .state import CampaignState
 from .units import M_PER_NM, UnitDomain, Units
 
-# East positive, degrees, around 2024 (World Magnetic Model at the theatre's centre).
+#: Magnetic variation of each theatre, degrees, east positive: around 2024, from the World
+#: Magnetic Model at the theatre's centre (to verify against what DCS computes from the date).
 MAGNETIC_VARIATION_DEG = {"caucasus": 6.5, "syria": 5.0}
 
 
 def centre(points: Iterable[Vec2]) -> Vec2:
     """Centroid of some points (the default bullseye: of a side's provinces).
+
+    Args:
+        points: The points.
+
+    Returns:
+        Their centroid.
 
     Raises:
         ValueError: With no points.
@@ -41,7 +48,16 @@ def centre(points: Iterable[Vec2]) -> Vec2:
 
 def true_bearing(theater: str, a: Vec2, b: Vec2) -> float:
     """True bearing from ``a`` to ``b``, degrees [0, 360): great circle on
-    WGS84 latitude/longitude, or the plane's grid without a projection."""
+    WGS84 latitude/longitude, or the plane's grid without a projection.
+
+    Args:
+        theater: Theatre name (picks the projection).
+        a: From this point.
+        b: To this point.
+
+    Returns:
+        The true bearing in degrees.
+    """
     la, lb = to_latlon(theater, a), to_latlon(theater, b)
     if la is None or lb is None:
         return math.degrees(a.heading_to(b)) % 360
@@ -54,7 +70,16 @@ def true_bearing(theater: str, a: Vec2, b: Vec2) -> float:
 
 def bearing_range(state: CampaignState, fid: str, point: Vec2) -> tuple[float, float]:
     """Magnetic bearing (degrees) and range (metres) of ``point`` from the
-    bullseye of faction ``fid``."""
+    bullseye of faction ``fid``.
+
+    Args:
+        state: The campaign.
+        fid: Faction whose bullseye is the reference.
+        point: The point to describe.
+
+    Returns:
+        Magnetic bearing in degrees and range in metres.
+    """
     bulls = state.factions[fid].bullseye
     theater = state.theater.name
     variation = MAGNETIC_VARIATION_DEG.get(theater.lower(), 0.0)
@@ -63,7 +88,17 @@ def bearing_range(state: CampaignState, fid: str, point: Vec2) -> tuple[float, f
 
 def label(state: CampaignState, fid: str, point: Vec2, units: Units) -> str:
     """``point`` as the radio says it, ``"045/32"``: magnetic bearing and range
-    from faction ``fid``'s bullseye (NM in imperial units, km in metric)."""
+    from faction ``fid``'s bullseye (NM in imperial units, km in metric).
+
+    Args:
+        state: The campaign.
+        fid: Faction whose bullseye is the reference.
+        point: The point to describe.
+        units: Unit system for the range.
+
+    Returns:
+        The ``bearing/range`` label.
+    """
     brg, rng = bearing_range(state, fid, point)
     dist = rng / M_PER_NM if units == UnitDomain.IMPERIAL else rng / 1000
     return f"{round(brg) % 360:03d}/{round(dist)}"

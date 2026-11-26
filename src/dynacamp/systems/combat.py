@@ -28,24 +28,40 @@ from ..world import TERRAIN
 from . import contact
 from ..events import EventKind
 
+#: Organisation lost per hit, spread over a side's elements.
 ORG_PER_HIT = 0.9
+#: Strength lost per hit, spread over a side's elements.
 STRENGTH_PER_HIT = 0.2
+#: Defence multiplier of the defenders of a province.
 ENTRENCHMENT = 1.25
+#: Attack multiplier across a river.
 RIVER_PENALTY = 0.7
+#: Defenders below this organisation retreat.
 DEFENDER_BREAK_ORG = 0.1
+#: Attackers below this organisation withdraw (both sides, in a meeting engagement).
 ATTACKER_BREAK_ORG = 0.15
+#: A brigade below this strength is destroyed.
 DESTROYED_STRENGTH = 0.05
-# Strength lost in the game is converted to organisation lost at this rate.
+#: Organisation a delegated division loses per share of strength lost in the game.
 DELEGATED_ORG_PER_STRENGTH = 3.0
 
+#: Authorities during a handoff: no campaign combat for those divisions.
 FROZEN = (Authority.MATERIALIZING, Authority.DEMATERIALIZING)
-MEET_RANGE_M = EYEBALL_M  # direct fire / visual range: forces this close fight (dynacamp.sensors)
-MEET_MIN_ORG = 0.3  # a brigade this disorganised avoids contact instead of seeking it
-MEET_COOLDOWN_S = 3600.0  # the same two brigades do not meet again for this long
+#: Hostile brigades this close fight where they are (:data:`~dynacamp.sensors.EYEBALL_M`).
+MEET_RANGE_M = EYEBALL_M
+#: A brigade this disorganised avoids contact instead of seeking it.
+MEET_MIN_ORG = 0.3
+#: The same two brigades do not meet again for this long, seconds.
+MEET_COOLDOWN_S = 3600.0
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Trapped divisions, new battles, damage, breaks and battle ends."""
+    """Trapped divisions, new battles, damage, breaks and battle ends.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     _resolve_trapped(state)
     _open_battles(state)
     for battle in list(state.battles.values()):
@@ -73,12 +89,25 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def is_delegated(state: CampaignState, battle: Battle) -> bool:
-    """True if the game simulates any participant (it then produces the losses)."""
+    """True if the game simulates any participant (it then produces the losses).
+
+    Args:
+        state: The campaign.
+        battle: The battle.
+
+    Returns:
+        Whether a participant is ``DELEGATED`` to the game.
+    """
     return any(state.divisions[i].authority is Authority.DELEGATED for i in battle.attackers + battle.defenders)
 
 
 def apply_reported_losses(div: Division, strength_lost: float) -> None:
-    """Called when the game reports casualties for a delegated division."""
+    """Called when the game reports casualties for a delegated division.
+
+    Args:
+        div: The delegated division.
+        strength_lost: Fraction of strength lost (0..1).
+    """
     if strength_lost > 0:
         div.org = max(0.0, div.org - strength_lost * DELEGATED_ORG_PER_STRENGTH)
 
@@ -87,7 +116,11 @@ def apply_reported_losses(div: Division, strength_lost: float) -> None:
 
 
 def _open_battles(state: CampaignState) -> None:
-    """Open or join battles for attackers that reached their assault position."""
+    """Open or join battles for attackers that reached their assault position.
+
+    Args:
+        state: The campaign.
+    """
     for div in state.divisions.values():
         if div.battle or div.authority in FROZEN or div.order.kind is not OrderKind.ATTACK:
             continue
@@ -121,7 +154,12 @@ def _open_battles(state: CampaignState) -> None:
 
 def _refresh(state: CampaignState, battle: Battle) -> None:
     """Drop participants that left/died, pull in defenders that arrived
-    (meeting engagements only drop: there is no province to defend)."""
+    (meeting engagements only drop: there is no province to defend).
+
+    Args:
+        state: The campaign.
+        battle: The battle, updated in place.
+    """
     if battle.kind == "meeting":
         for side in (battle.attackers, battle.defenders):
             side[:] = [i for i in side if i in state.divisions and state.divisions[i].battle == battle.id]
@@ -150,7 +188,12 @@ def _refresh(state: CampaignState, battle: Battle) -> None:
 
 
 def _deploy_defenders(state: CampaignState, battle: Battle) -> None:
-    """Defenders man forward defence lines facing the attack axes (round robin)."""
+    """Defenders man forward defence lines facing the attack axes (round robin).
+
+    Args:
+        state: The campaign.
+        battle: The battle.
+    """
     axes = sorted(set(battle.attack_from.get(i) for i in battle.attackers) - {None})
     if not axes:
         return
@@ -169,7 +212,12 @@ def _deploy_defenders(state: CampaignState, battle: Battle) -> None:
 
 
 def withdraw(state: CampaignState, div: Division) -> None:
-    """Call off an attack: drive back along the road to the start line."""
+    """Call off an attack: drive back along the road to the start line.
+
+    Args:
+        state: The campaign.
+        div: The division.
+    """
     div.order = Order()
     if div.movement and div.movement.progress > 0:
         div.movement.back = True
@@ -184,18 +232,38 @@ def withdraw(state: CampaignState, div: Division) -> None:
 
 
 def _fight(state: CampaignState, battle: Battle, hours: float) -> None:
-    """One integration step of damage between the two sides."""
+    """One integration step of damage between the two sides.
+
+    Args:
+        state: The campaign.
+        battle: The battle.
+        hours: Hours of fighting.
+    """
     t = state.theater
     attackers = [state.divisions[i] for i in battle.attackers]
     defenders = [state.divisions[i] for i in battle.defenders]
     terrain = TERRAIN[t.provinces[battle.province].terrain]
 
     def readiness(d: Division) -> float:
-        """Firepower multiplier from organisation and supply."""
+        """Firepower multiplier from organisation and supply.
+
+        Args:
+            d: The division.
+
+        Returns:
+            The multiplier.
+        """
         return (0.5 + 0.5 * d.org) * (0.6 if d.supply <= 0 else 1.0)
 
     def side_hardness(ds: list[Division]) -> float:
-        """Average hardness of a side, weighted by size."""
+        """Average hardness of a side, weighted by size.
+
+        Args:
+            ds: The divisions of the side.
+
+        Returns:
+            The hardness, 0 for an empty side.
+        """
         sizes = [_size(d) for d in ds]
         total = sum(sizes)
         return sum(d.hardness() * s for d, s in zip(ds, sizes)) / total if total else 0.0
@@ -236,12 +304,24 @@ def _fight(state: CampaignState, battle: Battle, hours: float) -> None:
 
 
 def _size(d: Division) -> float:
-    """Number of combat elements."""
+    """Number of combat elements.
+
+    Args:
+        d: The division.
+
+    Returns:
+        Its elements other than trucks.
+    """
     return sum(n for k, n in d.elements.items() if k != "truck")
 
 
 def _distribute(side: list[Division], hits: float) -> None:
-    """Spread hits over a side as organisation and strength losses."""
+    """Spread hits over a side as organisation and strength losses.
+
+    Args:
+        side: The divisions taking the hits.
+        hits: Hits to spread, proportionally to size.
+    """
     total = sum(_size(d) for d in side)
     if total <= 0:
         return
@@ -257,7 +337,12 @@ def _distribute(side: list[Division], hits: float) -> None:
 
 def _check_breaks(state: CampaignState, battle: Battle) -> None:
     """Attackers that broke withdraw; defenders that broke retreat (in a
-    meeting engagement both sides just disengage back along their road)."""
+    meeting engagement both sides just disengage back along their road).
+
+    Args:
+        state: The campaign.
+        battle: The battle, updated in place.
+    """
     if battle.kind == "meeting":
         for side, limit in ((battle.attackers, ATTACKER_BREAK_ORG), (battle.defenders, ATTACKER_BREAK_ORG)):
             for i in list(side):
@@ -288,7 +373,11 @@ def _check_breaks(state: CampaignState, battle: Battle) -> None:
 def _resolve_trapped(state: CampaignState) -> None:
     """Divisions standing in a province the enemy took (e.g. they were on the
     road when it fell and had to turn back). With no enemy troops there they
-    retake it; otherwise they try to break out, or surrender."""
+    retake it; otherwise they try to break out, or surrender.
+
+    Args:
+        state: The campaign.
+    """
     from . import control
 
     for div in list(state.divisions.values()):
@@ -328,7 +417,14 @@ def _retreat(state: CampaignState, div: Division, battle: Battle | None = None, 
         return
 
     def danger(pid: str) -> int:
-        """Number of hostile neighbours of a province."""
+        """Number of hostile neighbours of a province.
+
+        Args:
+            pid: Province id.
+
+        Returns:
+            The count.
+        """
         return sum(1 for n in t.neighbors(pid) if state.hostile_province(div.faction, n))
 
     dest = min(options, key=lambda pid: (danger(pid), pid))
@@ -342,7 +438,12 @@ def _retreat(state: CampaignState, div: Division, battle: Battle | None = None, 
 
 
 def _end(state: CampaignState, battle: Battle) -> None:
-    """Close a battle and let the victorious attackers advance."""
+    """Close a battle and let the victorious attackers advance.
+
+    Args:
+        state: The campaign.
+        battle: The battle to close.
+    """
     winner = battle.attacker_faction if battle.attackers else battle.defender_faction
     for i in battle.attackers + battle.defenders:
         if i in state.divisions and state.divisions[i].battle == battle.id:
@@ -357,7 +458,12 @@ def _end(state: CampaignState, battle: Battle) -> None:
 def _advance_after_victory(state: CampaignState, battle: Battle) -> None:
     """The fittest half of the attackers advance (the movement system moves them
     in and captures the province); the others hold the line they attacked from,
-    so a breakthrough does not leave the start line empty behind it."""
+    so a breakthrough does not leave the start line empty behind it.
+
+    Args:
+        state: The campaign.
+        battle: The won assault.
+    """
     survivors = sorted(
         (state.divisions[i] for i in battle.attackers if i in state.divisions),
         key=lambda d: (-d.org * d.strength, d.id),
@@ -371,11 +477,27 @@ def _advance_after_victory(state: CampaignState, battle: Battle) -> None:
 
 
 def battle_point(state: CampaignState, b: Battle) -> Vec2:
-    """Where the fighting is: between the attackers' and defenders' positions."""
+    """Where the fighting is: between the attackers' and defenders' positions.
+
+    Args:
+        state: The campaign.
+        b: The battle.
+
+    Returns:
+        The midpoint of the two sides, else whichever side is left, the battle's point or the
+        province centre.
+    """
     t = state.theater
 
     def centroid(ids: list[str]) -> Vec2 | None:
-        """Mean position of some divisions."""
+        """Mean position of some divisions.
+
+        Args:
+            ids: Division ids (those no longer existing are skipped).
+
+        Returns:
+            The mean position, or None if none exists.
+        """
         pts = [state.divisions[i].position(t) for i in ids if i in state.divisions]
         if not pts:
             return None
@@ -389,7 +511,15 @@ def battle_point(state: CampaignState, b: Battle) -> Vec2:
 
 def _free(state: CampaignState, d: Division) -> bool:
     """A campaign-simulated brigade that can meet the enemy: not fighting, not
-    in a handoff, not shattered, not falling back."""
+    in a handoff, not shattered, not falling back.
+
+    Args:
+        state: The campaign.
+        d: The brigade.
+
+    Returns:
+        Whether it can start a meeting engagement.
+    """
     return (
         not d.battle
         and d.authority is Authority.CAMPAIGN
@@ -401,7 +531,14 @@ def _free(state: CampaignState, d: Division) -> bool:
 
 def _contested(state: CampaignState, fid: str, a: str, b: str) -> None:
     """``fid`` ran into the enemy on the road a-b: mark it, and call back the
-    brigades of ``fid`` still driving along it (word gets round on the radio)."""
+    brigades of ``fid`` still driving along it (word gets round on the radio).
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        a: One end of the road.
+        b: The other end.
+    """
     state.mark_contested(fid, a, b)
     for d in state.divisions.values():
         mv = d.movement
@@ -413,14 +550,26 @@ def _contested(state: CampaignState, fid: str, a: str, b: str) -> None:
 
 
 def _assaulting(div: Division, other: Division) -> bool:
-    """True if ``div`` is attacking (or about to attack) the province ``other`` holds."""
+    """True if ``div`` is attacking (or about to attack) the province ``other`` holds.
+
+    Args:
+        div: The division that may be attacking.
+        other: The enemy division.
+
+    Returns:
+        Whether ``div``'s next province is ``other``'s location under an attack order.
+    """
     mv = div.movement
     return div.order.kind is OrderKind.ATTACK and bool(mv and mv.path) and mv.path[0] == other.location
 
 
 def _meeting_engagements(state: CampaignState) -> None:
     """Hostile brigades within ``MEET_RANGE_M``, at least one moving, fight
-    where they are. Nearby brigades of either side not yet fighting join in."""
+    where they are. Nearby brigades of either side not yet fighting join in.
+
+    Args:
+        state: The campaign.
+    """
     t = state.theater
     free = [d for d in state.divisions.values() if _free(state, d)]
     if len(free) < 2:
@@ -474,7 +623,11 @@ def _meeting_engagements(state: CampaignState) -> None:
 
 def _overrun(state: CampaignState) -> None:
     """Convoys and air defence sites within ``MEET_RANGE_M`` of an enemy brigade
-    (campaign-simulated on both ends) are destroyed: they cannot fight it off."""
+    (campaign-simulated on both ends) are destroyed: they cannot fight it off.
+
+    Args:
+        state: The campaign.
+    """
     from . import air_defense
 
     t = state.theater
@@ -486,7 +639,14 @@ def _overrun(state: CampaignState) -> None:
         return
 
     def overrun_by(ent) -> Division | None:
-        """The enemy brigade close enough to overrun ``ent``, if any."""
+        """The enemy brigade close enough to overrun ``ent``, if any.
+
+        Args:
+            ent: A convoy or an air defence unit.
+
+        Returns:
+            The brigade, or None.
+        """
         p = ent.position(t)
         for d, q in brigades:
             if state.at_war(d.faction, ent.faction) and p.distance_to(q) <= MEET_RANGE_M:
@@ -508,7 +668,11 @@ def _overrun(state: CampaignState) -> None:
 
 
 def _remove_destroyed(state: CampaignState) -> None:
-    """Remove destroyed divisions and schedule their re-forming."""
+    """Remove destroyed divisions and schedule their re-forming.
+
+    Args:
+        state: The campaign.
+    """
     for div in list(state.divisions.values()):
         if div.strength < DESTROYED_STRENGTH and div.authority is Authority.CAMPAIGN:
             if div.battle and div.battle in state.battles:

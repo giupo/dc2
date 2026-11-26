@@ -14,6 +14,7 @@ import threading
 from typing import Any
 
 from ..base import Command, GameAdapter, Report
+from . import protocol
 from .protocol import DcsTranslator
 
 log = logging.getLogger(__name__)
@@ -27,11 +28,13 @@ class DcsAdapter(GameAdapter):
     """
     name = "dcs"
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 50555, translator: DcsTranslator | None = None) -> None:
-        """Args:
+    def __init__(self, host: str = "127.0.0.1", port: int = 50555, translator: protocol.DcsTranslator | None = None) -> None:
+        """Prepare the adapter (call :meth:`start` to listen).
+
+        Args:
             host: Listen address.
             port: Listen port (0 = any free port).
-            translator: Message translator (default :class:`DcsTranslator`).
+            translator: Message translator (default :class:`~dynacamp.adapters.dcs.protocol.DcsTranslator`).
         """
         self.host, self.port = host, port
         self.translator = translator or DcsTranslator()
@@ -74,7 +77,11 @@ class DcsAdapter(GameAdapter):
         return self._conn is not None
 
     def send(self, commands: list[Command]) -> None:
-        """Encode and send commands (dropped if DCS is not connected)."""
+        """Encode and send commands (dropped if DCS is not connected).
+
+        Args:
+            commands: Commands to encode, in order.
+        """
         lines = [json.dumps(self.translator.encode(c), separators=(",", ":")) + "\n" for c in commands]
         with self._lock:
             if self._conn is None:
@@ -86,7 +93,12 @@ class DcsAdapter(GameAdapter):
                 self._drop_locked(str(exc))
 
     def poll(self) -> list[Report]:
-        """Decode the messages received since the last call."""
+        """Decode the messages received since the last call.
+
+        Returns:
+            Reports decoded from the queued messages, oldest first (malformed messages are logged
+            and skipped).
+        """
         reports: list[Report] = []
         while True:
             try:
@@ -119,7 +131,11 @@ class DcsAdapter(GameAdapter):
             self._read(conn)
 
     def _read(self, conn: socket.socket) -> None:
-        """Read JSON lines from a connection until it closes."""
+        """Read JSON lines from a connection until it closes.
+
+        Args:
+            conn: The accepted connection from the DCS bridge.
+        """
         buf = b""
         while self._running:
             try:
@@ -143,13 +159,22 @@ class DcsAdapter(GameAdapter):
                     log.warning("malformed line from DCS: %r", line[:200])
 
     def _drop(self, conn: socket.socket, reason: str) -> None:
-        """Drop ``conn`` if it is still the current connection."""
+        """Drop ``conn`` if it is still the current connection.
+
+        Args:
+            conn: The connection that failed.
+            reason: Why it was dropped, for the log and the ``_disconnected`` message.
+        """
         with self._lock:
             if self._conn is conn:
                 self._drop_locked(reason)
 
     def _drop_locked(self, reason: str) -> None:
-        """Close the current connection and report the disconnection (lock held)."""
+        """Close the current connection and report the disconnection (lock held).
+
+        Args:
+            reason: Why it was dropped, for the log and the ``_disconnected`` message.
+        """
         if self._conn is not None:
             try:
                 self._conn.close()

@@ -20,31 +20,64 @@ from ..forces import Division
 from ..sensors import EYEBALL_M
 from ..state import CampaignState
 
-DEFENSE_DEPTH_M = 6_000.0  # forward defence line at most this far out along the road...
-DEFENSE_DEPTH_FRACTION = 0.3  # ...and never beyond this fraction of the link
-DIRECT_CONTACT_M = EYEBALL_M  # tanks, IFVs, infantry: direct fire / visual range
-INDIRECT_CONTACT_M = 12_000.0  # tube and rocket artillery firing from depth
-INDIRECT_SHARE = 0.4  # a division counts as artillery above this share of guns
+#: The forward defence line is at most this far out along the road...
+DEFENSE_DEPTH_M = 6_000.0
+#: ...and never beyond this share of the link.
+DEFENSE_DEPTH_FRACTION = 0.3
+#: Contact distance of tanks, IFVs and infantry: direct fire and visual range
+#: (:data:`~dynacamp.sensors.EYEBALL_M`).
+DIRECT_CONTACT_M = EYEBALL_M
+#: Contact distance of tube and rocket artillery firing from depth.
+INDIRECT_CONTACT_M = 12_000.0
+#: A division counts as artillery above this share of guns among its combat elements.
+INDIRECT_SHARE = 0.4
+#: Step of the search for the assault position along the road.
 SEARCH_STEP_M = 100.0
 
 _assault_cache: dict[tuple, float] = {}
 
 
 def deploy_progress(state: CampaignState, province: str, toward: str) -> float:
-    """The defence line as progress along the road province -> toward."""
+    """The defence line as progress along the road province -> toward.
+
+    Args:
+        state: The campaign.
+        province: The defended province.
+        toward: The neighbour the defence faces.
+
+    Returns:
+        Metres from ``province`` along the road.
+    """
     length = state.theater.link(province, toward).length
     return min(DEFENSE_DEPTH_M, length * DEFENSE_DEPTH_FRACTION)
 
 
 def contact_range(div: Division) -> float:
-    """Engagement distance of a division: indirect for artillery-heavy ones."""
+    """Engagement distance of a division: indirect for artillery-heavy ones.
+
+    Args:
+        div: The division.
+
+    Returns:
+        ``INDIRECT_CONTACT_M`` if guns are at least ``INDIRECT_SHARE`` of its combat elements, else
+        ``DIRECT_CONTACT_M``.
+    """
     guns = div.elements.get("artillery", 0.0) + div.elements.get("mlrs", 0.0)
     combat = sum(n for k, n in div.elements.items() if k != "truck")
     return INDIRECT_CONTACT_M if combat and guns / combat >= INDIRECT_SHARE else DIRECT_CONTACT_M
 
 
 def assault_progress(state: CampaignState, div: Division, target: str) -> float:
-    """Progress along the road (location -> target) where ``div`` stops to attack."""
+    """Progress along the road (location -> target) where ``div`` stops to attack.
+
+    Args:
+        state: The campaign.
+        div: The attacking division.
+        target: The province it attacks (next on its path).
+
+    Returns:
+        Metres from ``div``'s location along the road (cached per link and range).
+    """
     t = state.theater
     rng = contact_range(div)
     key = (t.name, div.location, target, rng)
@@ -60,7 +93,15 @@ def assault_progress(state: CampaignState, div: Division, target: str) -> float:
 
 
 def at_assault_position(state: CampaignState, div: Division) -> bool:
-    """True if the division reached its assault position on its attack road."""
+    """True if the division reached its assault position on its attack road.
+
+    Args:
+        state: The campaign.
+        div: The division.
+
+    Returns:
+        Whether it is attacking along its road and has reached the assault position.
+    """
     mv = div.movement
     if not mv or not mv.path or mv.back:
         return False

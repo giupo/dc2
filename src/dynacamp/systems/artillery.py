@@ -19,14 +19,22 @@ from ..state import CampaignState
 from . import intel
 from ..events import EventKind
 
-ORGANIC_RANGE_M = 24_000.0  # brigade artillery battalion (M109, 2S19: 24-29 km)
-GROUP_RANGE_M = 40_000.0  # dedicated artillery groups with MLRS (BM-21, M270: 20-70 km)
-FIRE_INTERVAL_S = 45 * 60.0  # average time between missions of one division
+#: Range of a brigade's artillery battalion (M109, 2S19: 24-29 km).
+ORGANIC_RANGE_M = 24_000.0
+#: Range of a brigade with MLRS (BM-21, M270: 20-70 km).
+GROUP_RANGE_M = 40_000.0
+#: Average time between two fire missions of one division.
+FIRE_INTERVAL_S = 45 * 60.0
+#: A division fires only with at least this many gun-equivalents.
 MIN_GUNS = 4.0
+#: Strength a target loses per gun-equivalent of effect.
 STRENGTH_PER_GUN = 0.00005
+#: Organisation a target loses per gun-equivalent of effect.
 ORG_PER_GUN = 0.001
-TARGET_FRESH_S = 1800.0  # a located target is engaged for this long
-FIRE_MEMORY_S = 30 * 60.0  # missions kept for presentation
+#: A located target is engaged for this long after its last sighting.
+TARGET_FRESH_S = 1800.0
+#: Fire missions are kept this long for the map.
+FIRE_MEMORY_S = 30 * 60.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,17 +58,36 @@ class FireMission:
 
 
 def guns(d: Division) -> float:
-    """Gun-equivalents of a division (MLRS count 1.5)."""
+    """Gun-equivalents of a division (MLRS count 1.5).
+
+    Args:
+        d: The division.
+
+    Returns:
+        Artillery pieces plus 1.5 per MLRS.
+    """
     return d.elements.get("artillery", 0.0) + 1.5 * d.elements.get("mlrs", 0.0)
 
 
 def fire_range(d: Division) -> float:
-    """Fire range of a division: longer with MLRS."""
+    """Fire range of a division: longer with MLRS.
+
+    Args:
+        d: The division.
+
+    Returns:
+        ``GROUP_RANGE_M`` with at least one MLRS, else ``ORGANIC_RANGE_M``.
+    """
     return GROUP_RANGE_M if d.elements.get("mlrs", 0.0) >= 1 else ORGANIC_RANGE_M
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Fire missions of every division with guns at the nearest enemy in range."""
+    """Fire missions of every division with guns at the nearest enemy in range.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     t = state.theater
     state.fires[:] = [f for f in state.fires if state.time - f.time <= FIRE_MEMORY_S]
     chance = min(1.0, dt / FIRE_INTERVAL_S)

@@ -29,6 +29,7 @@ from ..persistence import Saver
 from . import schemas, views
 from ..events import EventKind
 
+#: Seconds between two polls of the event stream (and clock ticks sent).
 STREAM_TICK_S = 1.0
 
 
@@ -68,6 +69,9 @@ def create_app(
         web_dir: Built React front-end to serve at ``/``, if it exists.
         token: Bearer token required by commands (``POST``); None leaves them open.
         saver: Saves the campaign on ``POST /api/save`` (None: saving disabled).
+
+    Returns:
+        The FastAPI application.
     """
     app = FastAPI(
         title="DynaCamp",
@@ -89,11 +93,22 @@ def create_app(
     app.state.active_streams = 0
 
     def state():
-        """The current campaign state."""
+        """The current campaign state.
+
+        Returns:
+            The engine's campaign state.
+        """
         return engine.state
 
     def viewer(faction: str | None) -> str | None:
-        """Validate the ``faction`` query parameter (None = umpire view)."""
+        """Validate the ``faction`` query parameter (None = umpire view).
+
+        Args:
+            faction: The requested faction, or None.
+
+        Returns:
+            The same faction.
+        """
         if faction is not None and faction not in engine.state.factions:
             raise HTTPException(status_code=404, detail=f"no faction {faction}")
         return faction
@@ -103,13 +118,24 @@ def create_app(
     bearer = HTTPBearer(auto_error=False, description="token printed by `dynacamp serve` (or `--api-token`)")
 
     def authenticated(credentials: HTTPAuthorizationCredentials | None) -> bool:
-        """True if no token is required or the request carries the right one."""
+        """True if no token is required or the request carries the right one.
+
+        Args:
+            credentials: The bearer credentials of the request, if any.
+
+        Returns:
+            Whether the request may run commands.
+        """
         if token is None:
             return True
         return credentials is not None and secrets.compare_digest(credentials.credentials.encode(), token.encode())
 
     def require_token(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> None:
-        """Dependency of commands: refuse (401) a request without the right token."""
+        """Dependency of commands: refuse (401) a request without the right token.
+
+        Args:
+            credentials: The bearer credentials of the request, if any.
+        """
         if not authenticated(credentials):
             raise HTTPException(
                 status_code=401, detail="missing or wrong API token", headers={"WWW-Authenticate": "Bearer"}
@@ -117,51 +143,118 @@ def create_app(
 
     @app.get("/api/auth", response_model=schemas.AuthView, tags=["campaign"])
     def get_auth(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
-        """Whether commands need a token and whether the one sent (if any) is valid."""
+        """Whether commands need a token and whether the one sent (if any) is valid.
+
+        \f
+
+        Args:
+            credentials: The bearer credentials of the request, if any.
+
+        Returns:
+            Whether a token is required and whether the request is authenticated.
+        """
         return {"required": token is not None, "authenticated": authenticated(credentials)}
 
     @app.get("/api/campaign", response_model=schemas.CampaignView, tags=["campaign"])
     def get_campaign():
-        """Clock, factions and objectives, connected players."""
+        """Clock, factions and objectives, connected players.
+
+        \f
+
+        Returns:
+            The campaign view, with the save status.
+        """
         with engine.lock:
             view = views.campaign(state(), engine.live, views.players(engine), views.control(engine))
         return {**view, "save": views.save_view(saver)}
 
     @app.get("/api/map", response_model=schemas.MapView, tags=["map"])
     def get_map():
-        """Provinces with territory polygons, links, airbases. Geometry never changes: load it once."""
+        """Provinces with territory polygons, links, airbases. Geometry never changes: load it once.
+
+        \f
+
+        Returns:
+            The map view.
+        """
         with engine.lock:
             return views.map_view(state())
 
     @app.get("/api/fronts", response_model=schemas.FrontsView, tags=["map"])
     def get_fronts(faction: str | None = FACTION):
-        """Front lines, front sectors with local force ratios, battles."""
+        """Front lines, front sectors with local force ratios, battles.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The fronts view.
+        """
         with engine.lock:
             return views.fronts(state(), viewer(faction))
 
     @app.get("/api/forces", response_model=schemas.ForcesView, tags=["forces"])
     def get_forces(faction: str | None = FACTION):
-        """Divisions with state and remaining route, battles."""
+        """Divisions with state and remaining route, battles.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The forces view.
+        """
         with engine.lock:
             return views.forces(state(), viewer(faction))
 
     @app.get("/api/logistics", response_model=schemas.LogisticsView, tags=["logistics"])
     def get_logistics(faction: str | None = FACTION):
-        """Depots, convoys, supply network reach, division supply."""
+        """Depots, convoys, supply network reach, division supply.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The logistics view.
+        """
         with engine.lock:
             return views.logistics(state(), viewer(faction))
 
     @app.get("/api/ato", response_model=schemas.AtoView, tags=["air"])
     def get_ato(faction: str | None = FACTION):
         """Packages and flights, squadrons, sortie budget, in-game join boards
-        (and the enemy radar tracks, in a faction's view)."""
+        (and the enemy radar tracks, in a faction's view).
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The ATO view.
+        """
         with engine.lock:
             return views.ato(state(), viewer(faction))
 
     @app.get("/api/ato/packages/{package_id}", response_model=schemas.PackageView, tags=["air"],
              responses={404: {"description": "unknown package (or an enemy's)"}})
     def get_package(package_id: str, faction: str | None = FACTION):
-        """A package and its flights, also once it is over (archived)."""
+        """A package and its flights, also once it is over (archived).
+
+        \f
+
+        Args:
+            package_id: The package (live or archived).
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The package view.
+        """
         with engine.lock:
             p = views.find_package(state(), package_id=package_id, viewer=viewer(faction))
             if p is None:
@@ -171,7 +264,17 @@ def create_app(
     @app.get("/api/ato/flights/{flight_id}/package", response_model=schemas.PackageView, tags=["air"],
              responses={404: {"description": "unknown flight (or an enemy's)"}})
     def get_flight_package(flight_id: str, faction: str | None = FACTION):
-        """The package of a flight, also once it is over (archived)."""
+        """The package of a flight, also once it is over (archived).
+
+        \f
+
+        Args:
+            flight_id: A flight of the package (live or archived).
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The package view.
+        """
         with engine.lock:
             p = views.find_package(state(), flight_id=flight_id, viewer=viewer(faction))
             if p is None:
@@ -186,7 +289,18 @@ def create_app(
             None, description="units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's)"
         ),
     ):
-        """Mission package of a flight: briefing, named waypoints, threats, ordnance, comms."""
+        """Mission package of a flight: briefing, named waypoints, threats, ordnance, comms.
+
+        \f
+
+        Args:
+            flight_id: The flight.
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+            units: Units of the texts (None: the campaign's).
+
+        Returns:
+            The briefing view.
+        """
         from ..systems import briefing
 
         with engine.lock:
@@ -205,7 +319,14 @@ def create_app(
     }
 
     def point(p: schemas.PointIn):
-        """Campaign point of a request position (``ll`` preferred)."""
+        """Campaign point of a request position (``ll`` preferred).
+
+        Args:
+            p: The position as sent in a request.
+
+        Returns:
+            The point on the campaign plane.
+        """
         from ..geo import Vec2
         from ..projection import from_latlon
 
@@ -219,7 +340,16 @@ def create_app(
         raise HTTPException(status_code=422, detail="a point needs `ll` or `pos`")
 
     def order(fn, *args, **kwargs):
-        """Run an order under the engine lock, turning a refusal into an HTTP error."""
+        """Run an order under the engine lock, turning a refusal into an HTTP error.
+
+        Args:
+            fn: The order function of :mod:`dynacamp.systems.orders`.
+            *args: Its positional arguments.
+            **kwargs: Its keyword arguments.
+
+        Returns:
+            What the order function returns.
+        """
         from ..systems.orders import OrderError
 
         try:
@@ -236,7 +366,16 @@ def create_app(
     )
     def post_package(body: schemas.PackageRequest):
         """Order a new package against a target the faction knows (needs the API token).
-        Planned as the AI would: main flight, then SEAD and escort when called for."""
+        Planned as the AI would: main flight, then SEAD and escort when called for.
+
+        \f
+
+        Args:
+            body: The package order.
+
+        Returns:
+            The new package's view.
+        """
         from ..air import Task
         from ..systems import orders
 
@@ -258,7 +397,17 @@ def create_app(
     def post_route(flight_id: str, body: schemas.RouteRequest):
         """Replace a flight's route, takeoff to landing (needs the API token). Waypoints
         already flown and the landing cannot move; the target only for CAP/AWACS/tanker.
-        A flight in the game gets the new route at once; seated players get a new briefing."""
+        A flight in the game gets the new route at once; seated players get a new briefing.
+
+        \f
+
+        Args:
+            flight_id: The flight.
+            body: The new route.
+
+        Returns:
+            The flight's view.
+        """
         from ..systems import orders
 
         with engine.lock:
@@ -277,7 +426,17 @@ def create_app(
         responses=ORDER_RESPONSES,
     )
     def post_tot(package_id: str, body: schemas.TotRequest):
-        """Move the time on target of a package still on the ground (needs the API token)."""
+        """Move the time on target of a package still on the ground (needs the API token).
+
+        \f
+
+        Args:
+            package_id: The package.
+            body: The new time on target.
+
+        Returns:
+            The package's view.
+        """
         from ..systems import orders
 
         with engine.lock:
@@ -294,7 +453,17 @@ def create_app(
     )
     def post_cancel(package_id: str, body: schemas.CancelRequest):
         """Cancel the flights of a package still on the ground (needs the API token);
-        airborne ones carry on."""
+        airborne ones carry on.
+
+        \f
+
+        Args:
+            package_id: The package.
+            body: The ordering faction.
+
+        Returns:
+            The callsigns of the cancelled flights.
+        """
         from ..systems import orders
 
         with engine.lock:
@@ -312,14 +481,32 @@ def create_app(
 
     @app.get("/api/airdefense",response_model=schemas.AirDefenseView, tags=["air"])
     def get_air_defense(faction: str | None = FACTION):
-        """SAM sites and early-warning radars, their state, and the IADS network links."""
+        """SAM sites and early-warning radars, their state, and the IADS network links.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The air defence view.
+        """
         with engine.lock:
             return views.air_defense(state(), viewer(faction))
 
     @app.get("/api/intel", response_model=schemas.IntelView, tags=["intel"])
     def get_intel(faction: str = Query(..., description="faction whose intelligence picture to give")):
         """Fog of war: the contacts a faction holds on the enemy (last known
-        position, age, source, identification) and its air-search sensors."""
+        position, age, source, identification) and its air-search sensors.
+
+        \f
+
+        Args:
+            faction: Faction whose intelligence picture to give.
+
+        Returns:
+            The intelligence view.
+        """
         with engine.lock:
             return views.intel_view(state(), viewer(faction))
 
@@ -330,14 +517,35 @@ def create_app(
         limit: int = Query(500, ge=1, le=5000),
         faction: str | None = FACTION,
     ):
-        """Campaign events in order, paged: call again with `since=next`."""
+        """Campaign events in order, paged: call again with `since=next`.
+
+        \f
+
+        Args:
+            since: First event sequence number to return.
+            kinds: Comma separated event kinds to keep (None: all).
+            limit: Maximum number of events.
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            A page of events, with the ``next`` sequence number.
+        """
         wanted = _event_kinds(kinds)
         with engine.lock:
             return views.events(state(), since, wanted, limit, viewer(faction))
 
     @app.get("/api/snapshot", response_model=schemas.SnapshotView, tags=["campaign"])
     def get_snapshot(faction: str | None = FACTION):
-        """Everything above in one document."""
+        """Everything above in one document.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The whole campaign in one document.
+        """
         with engine.lock:
             snap = views.snapshot(state(), engine.live, views.players(engine), viewer(faction), views.control(engine))
         snap["campaign"]["save"] = views.save_view(saver)
@@ -355,18 +563,40 @@ def create_app(
         faction: str | None = FACTION,
     ):
         """Server-Sent Events: `event` for each campaign event (data = Event, id = seq) and
-        `tick` every second (data = Tick). Without `since` only new events are sent."""
+        `tick` every second (data = Tick). Without `since` only new events are sent.
+
+        \f
+
+        Args:
+            request: The HTTP request (to notice the client leaving).
+            since: Replay from this sequence number (None: only new events).
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The Server-Sent Events response.
+        """
         viewer(faction)
 
         def read(seq: int):
-            """Read the next batch of events and the clock under the engine lock."""
+            """Read the next batch of events and the clock under the engine lock.
+
+            Args:
+                seq: First sequence number to read.
+
+            Returns:
+                The batch of events and the clock.
+            """
             with engine.lock:
                 batch = views.events(engine.state, seq, limit=1000, viewer=faction)
                 tick = {"time": views.time_view(engine.state.time), "live": engine.live, **views.control(engine)}
                 return batch, tick
 
         async def gen() -> AsyncIterator[str]:
-            """Server-Sent Events generator."""
+            """Server-Sent Events generator.
+
+            Yields:
+                SSE messages: event batches and clock ticks.
+            """
             seq = since if since is not None else len(engine.state.events)
             app.state.active_streams += 1
             try:
@@ -395,17 +625,36 @@ def create_app(
     ):
         """Server-Sent Events: `positions` events (data = Positions) at `hz` per
         second, for smooth animation: the client interpolates between samples.
-        Only what moves, as `id -> [lat, lon]`; fog of war applies with `faction`."""
+        Only what moves, as `id -> [lat, lon]`; fog of war applies with `faction`.
+
+        \f
+
+        Args:
+            request: The HTTP request (to notice the client leaving).
+            hz: Samples per second.
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The Server-Sent Events response.
+        """
         viewer(faction)
         period = 1.0 / hz
 
         def read():
-            """One sample under the engine lock."""
+            """One sample under the engine lock.
+
+            Returns:
+                The positions view.
+            """
             with engine.lock:
                 return views.positions(engine.state, faction)
 
         async def gen() -> AsyncIterator[str]:
-            """Positions generator: sample, send, wait for the rest of the period."""
+            """Positions generator: sample, send, wait for the rest of the period.
+
+            Yields:
+                One SSE message per sample.
+            """
             app.state.active_streams += 1
             loop = asyncio.get_running_loop()
             try:
@@ -420,13 +669,28 @@ def create_app(
 
     @app.get("/api/positions", response_model=schemas.PositionsView, tags=["map"])
     def get_positions(faction: str | None = FACTION):
-        """One sample of the positions stream."""
+        """One sample of the positions stream.
+
+        \f
+
+        Args:
+            faction: Faction whose fog-of-war view to give (None: the umpire's).
+
+        Returns:
+            The positions view.
+        """
         with engine.lock:
             return views.positions(state(), viewer(faction))
 
     @app.get("/api/control", response_model=schemas.ControlView, tags=["campaign"])
     def get_control():
-        """Pause and speed of the campaign clock."""
+        """Pause and speed of the campaign clock.
+
+        \f
+
+        Returns:
+            Pause and compression.
+        """
         with engine.lock:
             return views.control(engine)
 
@@ -439,7 +703,16 @@ def create_app(
     )
     def post_control(body: schemas.ControlRequest):
         """Pause / resume and fast-forward the campaign (needs the API token).
-        Refused (409) while a game simulates part of the campaign: then time must run 1:1."""
+        Refused (409) while a game simulates part of the campaign: then time must run 1:1.
+
+        \f
+
+        Args:
+            body: The new pause state and/or compression.
+
+        Returns:
+            Pause and compression after the change.
+        """
         with engine.lock:
             if engine.live and (body.paused or (body.compression not in (None, engine.control.compression))):
                 raise HTTPException(status_code=409, detail="a game is live: time runs 1:1 and cannot be paused or accelerated")
@@ -452,7 +725,13 @@ def create_app(
 
     @app.get("/api/save", response_model=schemas.SaveView, tags=["campaign"])
     def get_save():
-        """Whether the server saves the campaign, where, and the latest save."""
+        """Whether the server saves the campaign, where, and the latest save.
+
+        \f
+
+        Returns:
+            The save status.
+        """
         return views.save_view(saver)
 
     @app.post(
@@ -464,7 +743,13 @@ def create_app(
     )
     def post_save():
         """Save the campaign now to the server's save file (needs the API token).
-        409 if the server was started without `--save`, 500 if the file cannot be written."""
+        409 if the server was started without `--save`, 500 if the file cannot be written.
+
+        \f
+
+        Returns:
+            The save status, with the new save.
+        """
         if saver is None:
             raise HTTPException(status_code=409, detail="saving is disabled: start the server with --save FILE")
         try:
@@ -475,7 +760,13 @@ def create_app(
 
     @app.get("/api", tags=["campaign"])
     def index():
-        """Entry point: list of endpoints."""
+        """Entry point: list of endpoints.
+
+        \f
+
+        Returns:
+            API version, documentation links and the list of endpoints.
+        """
         return {
             "api_version": views.API_VERSION,
             "docs": "/docs",
@@ -491,7 +782,16 @@ def create_app(
 
 
 def _sse(event: str, data, event_id: int | None = None) -> str:
-    """Format one Server-Sent Event."""
+    """Format one Server-Sent Event.
+
+    Args:
+        event: Event name.
+        data: JSON-serialisable payload.
+        event_id: Event id, for clients resuming the stream (None: no id).
+
+    Returns:
+        The event, ready to write.
+    """
     msg = f"event: {event}\n"
     if event_id is not None:
         msg += f"id: {event_id}\n"

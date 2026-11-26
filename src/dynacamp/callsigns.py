@@ -37,16 +37,21 @@ if TYPE_CHECKING:
     from .air import Flight, Squadron
     from .state import CampaignState
 
+#: Generic western flight callsigns, the stand-ins for names DCS cannot voice.
 GENERIC = ("Enfield", "Springfield", "Uzi", "Colt", "Dodge", "Ford", "Chevy", "Pontiac")
+#: Callsigns DCS voices for AWACS flights.
 AWACS = ("Overlord", "Magic", "Wizard", "Focus", "Darkstar")
+#: Callsigns DCS voices for tankers.
 TANKER = ("Texaco", "Arco", "Shell")
 
-# Type-specific names, numbered from len(GENERIC) + 1 (from pydcs ``callnames``).
+#: Type-specific callsigns DCS voices, by campaign aircraft id, numbered from ``len(GENERIC) + 1``
+#: (copied from pydcs ``callnames``).
 TYPE_NAMES: dict[str, tuple[str, ...]] = {
     aid: tuple(d["callsigns"]) for aid, d in catalog.dcs("aircraft").items() if d.get("callsigns")
 }
 
-WESTERN_SIDE = "blue"  # the missions put blue in the USA country (western callsigns)
+#: The side with western callsigns (the missions put it in the USA country).
+WESTERN_SIDE = "blue"
 
 
 @dataclass(frozen=True)
@@ -101,7 +106,14 @@ def names(aircraft: str, task: Task) -> dict[str, int]:
 
 
 def _main_task(sq: Squadron) -> Task:
-    """The task that picks a squadron's callsign list (AWACS, tanker or other)."""
+    """The task that picks a squadron's callsign list (AWACS, tanker or other).
+
+    Args:
+        sq: The squadron.
+
+    Returns:
+        ``Task.AWACS``, ``Task.TANKER`` or ``Task.CAP`` (every other squadron).
+    """
     for t in (Task.AWACS, Task.TANKER):
         if t in sq.tasks:
             return t
@@ -130,6 +142,12 @@ class SquadronCallsign:
 
         Squadrons sharing a stand-in split the 1-9 range (1-4 and 5-8 for two),
         so their flights are never called the same at the same time.
+
+        Args:
+            n: Number of the flight in the squadron, from 1.
+
+        Returns:
+            The DCS flight number.
         """
         per = max(1, 9 // self.sharers)
         return (n - 1) % per + 1 + self.share * per

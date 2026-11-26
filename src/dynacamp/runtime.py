@@ -27,9 +27,12 @@ from .engine import Engine
 
 log = logging.getLogger(__name__)
 
+#: Ticks per second of the real-time loop.
 DEFAULT_TICK_HZ = 10.0
-MIN_SLEEP_S = 0.002  # always yield a little, even when a tick overruns
-MAX_ELAPSED_S = 1.0  # real seconds covered by one tick at most
+#: Minimum sleep per tick, even when a tick overruns.
+MIN_SLEEP_S = 0.002
+#: Real seconds one tick covers at most (after a stall the campaign does not jump ahead).
+MAX_ELAPSED_S = 1.0
 
 
 def run_realtime(
@@ -59,14 +62,21 @@ def run_realtime(
         now = time.monotonic()
         elapsed, last = min(now - last, MAX_ELAPSED_S), now
         rate = engine.time_rate
+
         mode = "1x (live)" if engine.live else ("paused" if rate == 0 else f"{rate:g}x")
+
         if mode != was:
             log.info("time: %s", mode)
             was = mode
+
         engine.step(elapsed * rate)
+
         if on_tick:
             on_tick(engine)
+
         spent = time.monotonic() - now
+
         if spent > tick_s:
             log.debug("tick overran its budget: %.1f ms > %.1f ms", spent * 1000, tick_s * 1000)
+
         time.sleep(max(MIN_SLEEP_S, tick_s - spent))

@@ -36,6 +36,7 @@ with warnings.catch_warnings():
 
 logging.getLogger("dcs").setLevel(logging.ERROR)  # "no DCS installation found" noise
 
+#: pydcs terrain class of each supported theatre.
 THEATERS = {"caucasus": Caucasus, "syria": Syria}
 
 # ---------------------------------------------------------------- loadouts
@@ -55,7 +56,8 @@ _BOMB = "GBU-12|GBU-38|Mk-82|FAB-250|FAB-500|SAMP-250|Mk-81|OFAB-250"
 _HEAVY = "AGM-86|AGM-154|Kh-65|Kh-555|Kh-101|Kh-22|GBU-31|GBU-27|GBU-10|GBU-24|KAB-1500|KAB-500|BLU-109|Mk-84|FAB-1500|FAB-500|Mk-83|Mk-82|FAB-250|SAB"
 _ROCKET = "S-8KOM|S-8OFP2|M151|S-5KO|S-13|S-24|Zuni|Hydra|SNEB|ARF-8|M261|LAU-61|LAU-68|B-8|UB-32"
 
-# Each recipe: (weapon name patterns in order of preference, pylons to fill).
+#: Loadouts composed when ``data/loadouts.json`` has none, by recipe name: (store name patterns in
+#: order of preference, pylons to fill).
 RECIPES: dict[str, list[tuple[str, int]]] = {
     "A2A": [(_A2A_LONG, 4), (_A2A_SHORT, 2), (_TANK, 1)],
     "SEAD": [(_ARM, 2), (_A2A_LONG, 2), (_A2A_SHORT, 2), ("ALQ-184|ALQ-131|ALQ-119|SPS-141|Sorbtsiya", 1), (_TANK, 1)],
@@ -73,12 +75,37 @@ RECIPES: dict[str, list[tuple[str, int]]] = {
     "BOMBER": [(_HEAVY, 99)],  # heavy bombers: every station with heavy ordnance
     "HELO": [("AGM-114K|AGM-114L|9M114|9M120|Vikhr|TOW|BGM-71|HOT", 4), (_ROCKET, 4)],
 }
+#: Aircraft ids loaded with the ``BOMBER`` recipe.
 BOMBERS = {"b1b", "b52h", "tu22m3", "tu95ms", "f117"}
+#: pydcs main task of a mission group (template or player slot), by campaign task; it also
+#: selects the default loadout.
+MAIN_TASK = {
+    Task.CAP: dcs.task.CAP,
+    Task.ESCORT: dcs.task.Escort,
+    Task.SEAD: dcs.task.SEAD,
+    Task.CAS: dcs.task.CAS,
+    Task.BAI: dcs.task.CAS,
+    Task.STRIKE: dcs.task.GroundAttack,
+    Task.AWACS: dcs.task.AWACS,
+    Task.TANKER: dcs.task.Refueling,
+    Task.TRANSPORT: dcs.task.Transport,
+}
+#: DCS country of each side in the generated missions.
+COUNTRY_NAME = {"blue": "USA", "red": "Russia"}
 _EXCLUDE = re.compile(r"practice|training|inert|dummy|smoke|empty|TsM|M257|M274|M156|illum|ROCKEYE.*training|BDU|SUU-20", re.IGNORECASE)
 
 
 def _recipe(task: Task, helo: bool, aircraft: str = "") -> str:
-    """Loadout recipe name for an aircraft and task."""
+    """Loadout recipe name for an aircraft and task.
+
+    Args:
+        task: The flight's task.
+        helo: Whether the aircraft is a helicopter.
+        aircraft: Campaign aircraft id (bombers get their own recipe).
+
+    Returns:
+        The recipe name (``A2A``, ``SEAD``, ``STRIKE``, ``MUD``, ``BOMBER`` or ``HELO``).
+    """
     if helo:
         return "HELO"
     if aircraft in BOMBERS:
@@ -131,6 +158,13 @@ def apply_loadout(fg, unit_type, task: Task, helo: bool, aircraft: str = "") -> 
     """Load a flight group with the loadout of :mod:`dynacamp.loadouts` (the one
     players are briefed with), or compose one if the file has none.
 
+    Args:
+        fg: The pydcs flight group to arm.
+        unit_type: pydcs type of the aircraft, used when a loadout has to be composed.
+        task: The flight's task.
+        helo: Whether the aircraft is a helicopter.
+        aircraft: Campaign aircraft id whose briefed loadout to use ("" = compose one).
+
     Returns:
         The number of stores loaded.
     """
@@ -180,7 +214,16 @@ def generate_radio_data(path: Path | None = None) -> Path:
 def safe_group_frequency(theater: str, mhz: float) -> float:
     """A group radio frequency near ``mhz`` (same band) clear of the theatre's
     airfields and guard: ``mhz`` itself if already clear, else the next clear
-    channel above it."""
+    channel above it.
+
+    Args:
+        theater: Theatre name, lower case, as keyed in ``data/radio.json``.
+        mhz: The wanted frequency in MHz.
+
+    Returns:
+        The clear frequency in MHz (``mhz`` unchanged if no clear channel is found within 400
+        steps).
+    """
     from ... import radio
 
     taken = radio.reserved(theater)
@@ -226,24 +269,16 @@ def generate_loadouts(path: Path | None = None) -> Path:
     loadouts._data.cache_clear()
     return path
 
-# campaign task -> pydcs main task (also selects the default loadout)
-MAIN_TASK = {
-    Task.CAP: dcs.task.CAP,
-    Task.ESCORT: dcs.task.Escort,
-    Task.SEAD: dcs.task.SEAD,
-    Task.CAS: dcs.task.CAS,
-    Task.BAI: dcs.task.CAS,
-    Task.STRIKE: dcs.task.GroundAttack,
-    Task.AWACS: dcs.task.AWACS,
-    Task.TANKER: dcs.task.Refueling,
-    Task.TRANSPORT: dcs.task.Transport,
-}
-
-COUNTRY_NAME = {"blue": "USA", "red": "Russia"}
-
 
 def _unit_type(dcs_id: str):
-    """pydcs aircraft or helicopter type by DCS type name."""
+    """pydcs aircraft or helicopter type by DCS type name.
+
+    Args:
+        dcs_id: DCS type name of the aircraft.
+
+    Returns:
+        The pydcs plane or helicopter type, or None if pydcs does not know it.
+    """
     return dcs.planes.plane_map.get(dcs_id) or dcs.helicopters.helicopter_map.get(dcs_id)
 
 
@@ -253,7 +288,17 @@ def build_mission(
     date: dt.date = dt.date(2024, 6, 1),
     clients_per_squadron: int = 4,
 ) -> tuple[Mission, list[str]]:
-    """Return the mission and a list of warnings (things that could not be placed)."""
+    """Return the mission and a list of warnings (things that could not be placed).
+
+    Args:
+        state: The campaign to export (theatre, sides, airbases, squadrons).
+        port: TCP port the embedded bridge connects to.
+        date: Calendar date of the mission start (the campaign clock adds the time of day).
+        clients_per_squadron: Player slots created for each squadron.
+
+    Returns:
+        The pydcs mission and the warnings collected while building it.
+    """
     theater = state.theater.name.lower()
     if theater not in THEATERS:
         raise ValueError(f"no DCS terrain for theater {state.theater.name!r} (known: {sorted(THEATERS)})")
@@ -270,7 +315,14 @@ def build_mission(
             notes.append(f"country id mismatch for {side}: {countries[side].id} vs catalog {catalog.COUNTRY[side]}")
 
     def point(v) -> Point:
-        """Campaign point -> pydcs point."""
+        """Campaign point -> pydcs point.
+
+        Args:
+            v: Point on the campaign plane.
+
+        Returns:
+            The same point on the DCS terrain.
+        """
         return Point(v.y, v.x, terrain)  # campaign (east, north) -> DCS (x north, y east)
 
     # -------------------------------------------------- bullseyes (one per coalition: the side's)

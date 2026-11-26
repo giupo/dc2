@@ -64,7 +64,9 @@ class Player:
 class BubbleManager:
     """Tracks players and decides which entities the game should simulate."""
     def __init__(self, config: BubbleConfig | None = None) -> None:
-        """Args:
+        """Start with no players and no bubble entities.
+
+        Args:
             config: Bubble settings (defaults if None).
         """
         self.config = config or BubbleConfig()
@@ -73,11 +75,19 @@ class BubbleManager:
     # ------------------------------------------------------------ players
 
     def update_player(self, player: Player) -> None:
-        """Add or refresh a player."""
+        """Add or refresh a player.
+
+        Args:
+            player: The player as last reported by the game.
+        """
         self.players[player.id] = player
 
     def remove_player(self, player_id: str) -> None:
-        """Forget a player."""
+        """Forget a player.
+
+        Args:
+            player_id: Id of the player who left.
+        """
         self.players.pop(player_id, None)
 
     def prune(self, now: float) -> list[str]:
@@ -111,6 +121,9 @@ class BubbleManager:
         Args:
             pos: Point.
             extra: Extra radius (hysteresis, entity reach).
+
+        Returns:
+            Whether a player's bubble (plus ``extra``) contains the point.
         """
         for p in self.players.values():
             if pos.distance_to(p.position) <= self.config.radius_m[p.kind] + extra:
@@ -118,7 +131,14 @@ class BubbleManager:
         return False
 
     def desired_delegation(self, state: CampaignState) -> set[str]:
-        """Ids of the entities that should be simulated by the game right now."""
+        """Ids of the entities that should be simulated by the game right now.
+
+        Args:
+            state: The campaign.
+
+        Returns:
+            Ids of the entities inside a bubble, with every member of a battle that touches one.
+        """
         if not self.players:
             return set()
         t = state.theater
@@ -145,5 +165,12 @@ class BubbleManager:
 
 
 def _held_by_game(ent: MobileEntity) -> bool:
-    """True if the game holds or is taking over the entity."""
+    """True if the game holds or is taking over the entity.
+
+    Args:
+        ent: The entity.
+
+    Returns:
+        Whether its authority is ``MATERIALIZING`` or ``DELEGATED``.
+    """
     return ent.authority in (Authority.MATERIALIZING, Authority.DELEGATED)

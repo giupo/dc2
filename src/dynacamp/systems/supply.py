@@ -15,27 +15,48 @@ from ..forces import Authority, Convoy, Division, Movement
 from ..state import CampaignState
 from ..events import EventKind
 
+#: Brigades within this road distance of a depot are supplied directly (no convoy).
 DIRECT_RANGE_M = 40_000.0
+#: Supply a brigade draws per hour from a depot in direct range.
 DIRECT_RATE_PER_HOUR = 10.0
+#: Most supply one convoy carries.
 CONVOY_CAPACITY = 80.0
+#: Supply one truck carries.
 TRUCK_CAPACITY = 5.0
+#: A depot sends convoys only with at least this many trucks (and the stock to fill them).
 MIN_TRUCKS = 10
-NEED_THRESHOLD = 0.85  # resupply divisions below this supply ratio
+#: Brigades below this supply ratio call for a convoy.
+NEED_THRESHOLD = 0.85
+#: Seconds between two rounds of convoy dispatch.
 LOGISTICS_INTERVAL_S = 1800.0
+#: Organisation a supplied brigade out of combat recovers per hour.
 ORG_RECOVERY_PER_HOUR = 0.10
+#: Organisation a brigade without supply loses per hour.
 ORG_DECAY_NO_SUPPLY_PER_HOUR = 0.02
+#: Strength a brigade without supply loses per hour.
 ATTRITION_NO_SUPPLY_PER_HOUR = 0.002
 # Replacements: supplied brigades out of combat get men and vehicles back.
-REINFORCE_PER_HOUR = 0.01  # share of nominal strength per hour (half beyond direct depot range)
-REINFORCE_COST = 2.0  # depot stock per percent of strength
-REFORM_DELAY_S = 48 * 3600.0  # a destroyed brigade is re-formed this much later...
-REFORM_STRENGTH = 0.5  # ...at this strength, at the faction's best depot
+#: Replacements for supplied brigades out of combat, as a share of nominal strength per hour (half
+#: beyond direct depot range).
+REINFORCE_PER_HOUR = 0.01
+#: Depot stock paid per percent of strength replaced.
+REINFORCE_COST = 2.0
+#: A destroyed brigade is re-formed this much later...
+REFORM_DELAY_S = 48 * 3600.0
+#: ...at this strength, at the faction's best depot.
+REFORM_STRENGTH = 0.5
 
+#: Authorities of brigades that consume supply (campaign-simulated or delegated to the game).
 ACTIVE = (Authority.CAMPAIGN, Authority.DELEGATED)
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Depot production, re-forming, consumption/recovery, convoy dispatch."""
+    """Depot production, re-forming, consumption/recovery, convoy dispatch.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     hours = dt / 3600.0
     _produce(state, hours)
     _reform(state)
@@ -51,7 +72,16 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def depot_distances(state: CampaignState, faction: str) -> dict[str, tuple[float, str]]:
-    """Road distance from every friendly province to its nearest stocked friendly depot."""
+    """Road distance from every friendly province to its nearest stocked friendly depot.
+
+    Args:
+        state: The campaign.
+        faction: Faction id.
+
+    Returns:
+        For each province reachable through friendly territory, the road distance in metres and the
+        id of the nearest depot.
+    """
     t = state.theater
     dist: dict[str, tuple[float, str]] = {}
     heap: list[tuple[float, str, str]] = []
@@ -71,7 +101,12 @@ def depot_distances(state: CampaignState, faction: str) -> dict[str, tuple[float
 
 
 def _produce(state: CampaignState, hours: float) -> None:
-    """Depots produce supply up to capacity."""
+    """Depots produce supply up to capacity.
+
+    Args:
+        state: The campaign.
+        hours: Hours elapsed.
+    """
     for p in state.theater.provinces.values():
         if p.depot is not None:
             d = p.depot
@@ -81,7 +116,14 @@ def _produce(state: CampaignState, hours: float) -> None:
 def _consume_and_recover(
     state: CampaignState, div: Division, hours: float, network: dict[str, tuple[float, str]]
 ) -> None:
-    """Consumption, direct resupply, organisation recovery, attrition and replacements."""
+    """Consumption, direct resupply, organisation recovery, attrition and replacements.
+
+    Args:
+        state: The campaign.
+        div: The division.
+        hours: Hours elapsed.
+        network: The faction's :func:`depot_distances`.
+    """
     mult = 2.5 if div.battle else (1.5 if div.movement else 1.0)
     div.supply = max(0.0, div.supply - div.template.supply_use_per_hour * mult * hours)
 
@@ -105,7 +147,15 @@ def _consume_and_recover(
 
 
 def _reinforce(state: CampaignState, div: Division, hours: float, direct: bool, depot_pid: str) -> None:
-    """Replacements for a supplied brigade out of combat, paid with depot stock."""
+    """Replacements for a supplied brigade out of combat, paid with depot stock.
+
+    Args:
+        state: The campaign.
+        div: The brigade to reinforce.
+        hours: Hours elapsed.
+        direct: Whether it is in direct supply range (full rate; half rate otherwise).
+        depot_pid: Province of the depot that pays.
+    """
     depot = state.theater.provinces[depot_pid].depot
     missing = 1.0 - div.strength
     if depot is None or missing <= 0.001:
@@ -120,13 +170,22 @@ def _reinforce(state: CampaignState, div: Division, hours: float, direct: bool, 
 
 
 def schedule_reform(state: CampaignState, div: Division) -> None:
-    """Queue a destroyed brigade for re-forming."""
+    """Queue a destroyed brigade for re-forming.
+
+    Args:
+        state: The campaign.
+        div: The destroyed brigade.
+    """
     state.reforming.append((state.time + REFORM_DELAY_S, div.faction, div.template, div.name))
     state.emit(EventKind.DIVISION_REFORMING, division=div.id, faction=div.faction, name=div.name, hours=REFORM_DELAY_S / 3600)
 
 
 def _reform(state: CampaignState) -> None:
-    """Re-raise destroyed brigades at the faction's best stocked depot."""
+    """Re-raise destroyed brigades at the faction's best stocked depot.
+
+    Args:
+        state: The campaign.
+    """
     pending = []
     for ready, faction, template, name in state.reforming:
         depots = [
@@ -146,7 +205,13 @@ def _reform(state: CampaignState) -> None:
 
 
 def _dispatch_convoys(state: CampaignState, faction: str, network: dict[str, tuple[float, str]]) -> None:
-    """Send convoys from depots to brigades beyond direct supply range."""
+    """Send convoys from depots to brigades beyond direct supply range.
+
+    Args:
+        state: The campaign.
+        faction: Faction id.
+        network: The faction's :func:`depot_distances`.
+    """
     t = state.theater
     incoming = {c.destination for c in state.convoys.values() if c.faction == faction and not c.returning}
     needs: dict[str, float] = {}
@@ -195,7 +260,12 @@ def _dispatch_convoys(state: CampaignState, faction: str, network: dict[str, tup
 
 
 def on_convoy_arrived(state: CampaignState, convoy: Convoy) -> None:
-    """Deliver supply at destination, or return the trucks at home."""
+    """Deliver supply at destination, or return the trucks at home.
+
+    Args:
+        state: The campaign.
+        convoy: The convoy that reached its destination (or its home).
+    """
     t = state.theater
     if convoy.returning:
         depot = t.provinces[convoy.home].depot
@@ -224,7 +294,12 @@ def on_convoy_arrived(state: CampaignState, convoy: Convoy) -> None:
 
 
 def on_convoy_blocked(state: CampaignState, convoy: Convoy) -> None:
-    """Re-route a convoy whose road was cut, or lose it."""
+    """Re-route a convoy whose road was cut, or lose it.
+
+    Args:
+        state: The campaign.
+        convoy: The convoy whose next province turned hostile.
+    """
     goal = convoy.home if convoy.returning else convoy.destination
     if state.route_entity(convoy, goal):
         return

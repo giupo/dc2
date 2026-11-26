@@ -22,7 +22,15 @@ class ScenarioError(ValueError):
 
 
 def load(path: str | Path, with_roads: bool = True) -> CampaignState:
-    """Load a scenario; road geometry comes from ``<scenario>.roads.json`` if present."""
+    """Load a scenario; road geometry comes from ``<scenario>.roads.json`` if present.
+
+    Args:
+        path: Path of the scenario TOML.
+        with_roads: Read the road geometry file (False: straight links).
+
+    Returns:
+        The initial campaign state.
+    """
     from . import roads
 
     with open(path, "rb") as fh:
@@ -44,12 +52,22 @@ def point(spec: dict[str, Any], theater: str, what: str) -> Vec2:
         theater: The theatre's name.
         what: What it is, for error messages (e.g. ``"province aleppo"``).
 
+    Returns:
+        The position on the theatre plane.
+
     Raises:
         ScenarioError: Missing or malformed coordinates, or ``ll`` on a theatre
             without a projection.
     """
     def pair(key: str) -> tuple[float, float]:
-        """The two numbers of ``spec[key]``."""
+        """The two numbers of ``spec[key]``.
+
+        Args:
+            key: ``"ll"`` or ``"pos"``.
+
+        Returns:
+            The two numbers as floats.
+        """
         v = spec[key]
         if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) for x in v)):
             raise ScenarioError(f"{what}: {key} must be two numbers, not {v!r}")
@@ -75,6 +93,11 @@ def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], th
     a point, ``{ ll = [lat, lon] }`` (``{ pos = [east, north] }`` on a theatre
     without projection). Without it a faction takes its side's: the one another faction
     of the side gives, else the centre of the provinces the side holds.
+
+    Args:
+        specs: The ``[[factions]]`` tables of the scenario.
+        factions: The factions built from them, updated in place.
+        theater: The map (province centres).
 
     Raises:
         ScenarioError: Unknown province, malformed point, or two factions on the

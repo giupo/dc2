@@ -27,9 +27,15 @@ from ..air_defense import SamRole
 from ..geo import Vec2
 from ..state import CampaignState
 
-ROUTE_MARGIN = 1.15  # keep this much outside the engagement range
-RING_POINTS = 12  # vertices of the polygon around each threat
-MAX_DETOUR = 1.6  # a detour may be this much longer than the direct leg
+#: Routes keep this much outside a SAM's engagement range (multiple of the range).
+ROUTE_MARGIN = 1.15
+#: Vertices of the polygon a route follows around each threat.
+RING_POINTS = 12
+#: A detour may be this much longer than the direct leg.
+MAX_DETOUR = 1.6
+#: Altitude assumed when the caller gives none: jets at cruise (see
+#: :attr:`~dynacamp.air.AircraftType.cruise_alt_m`).
+DEFAULT_ALTITUDE_M = 6_000.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,15 +54,38 @@ class Threat:
     long_range: bool
 
     def contains(self, p: Vec2) -> bool:
-        """True if ``p`` is inside the umbrella."""
+        """True if ``p`` is inside the umbrella.
+
+        Args:
+            p: The point.
+
+        Returns:
+            Whether it is strictly inside the radius.
+        """
         return self.center.distance_to(p) < self.radius
 
     def crosses(self, a: Vec2, b: Vec2) -> bool:
-        """True if the segment ``a``-``b`` enters the umbrella."""
+        """True if the segment ``a``-``b`` enters the umbrella.
+
+        Args:
+            a: Start of the segment.
+            b: End of the segment.
+
+        Returns:
+            Whether the segment comes closer than the radius to the centre.
+        """
         return _segment_distance(self.center, a, b) < self.radius
 
     def inside_length(self, a: Vec2, b: Vec2) -> float:
-        """Length of the segment ``a``-``b`` that lies inside the umbrella."""
+        """Length of the segment ``a``-``b`` that lies inside the umbrella.
+
+        Args:
+            a: Start of the segment.
+            b: End of the segment.
+
+        Returns:
+            The length in metres inside the circle.
+        """
         d = b - a
         seg = d.length()
         if seg == 0:
@@ -76,16 +105,22 @@ class Threat:
 
 
 def _segment_distance(c: Vec2, a: Vec2, b: Vec2) -> float:
-    """Distance from point ``c`` to the segment ``a``-``b``."""
+    """Distance from point ``c`` to the segment ``a``-``b``.
+
+    Args:
+        c: The point.
+        a: Start of the segment.
+        b: End of the segment.
+
+    Returns:
+        The distance in metres.
+    """
     d = b - a
     seg2 = d.x * d.x + d.y * d.y
     if seg2 == 0:
         return c.distance_to(a)
     t = max(0.0, min(1.0, ((c.x - a.x) * d.x + (c.y - a.y) * d.y) / seg2))
     return c.distance_to(Vec2(a.x + t * d.x, a.y + t * d.y))
-
-
-DEFAULT_ALTITUDE_M = 6_000.0  # jets at cruise (see AircraftType.cruise_alt_m)
 
 
 def threats(state: CampaignState, fid: str, altitude: float = DEFAULT_ALTITUDE_M) -> list[Threat]:
@@ -140,7 +175,15 @@ def leg(a: Vec2, b: Vec2, umbrellas: list[Threat], max_detour: float = MAX_DETOU
         return []
 
     def clear(p: Vec2, q: Vec2) -> bool:
-        """True if the segment p-q crosses no blocking circle."""
+        """True if the segment p-q crosses no blocking circle.
+
+        Args:
+            p: Start of the segment.
+            q: End of the segment.
+
+        Returns:
+            Whether the segment is clear.
+        """
         return not any(t.crosses(p, q) for t in blocking)
 
     # Polygon vertices just outside each circle (the polygon encloses it).
@@ -208,6 +251,10 @@ def route(points: list[Vec2], umbrellas: list[Threat], max_detour: float = MAX_D
 def exposure(waypoints: list[Vec2], umbrellas: list[Threat]) -> dict[str, float]:
     """Metres flown inside each threat along a route.
 
+    Args:
+        waypoints: The route.
+        umbrellas: The threats to measure.
+
     Returns:
         Site id -> length inside its umbrella, only for the sites entered.
     """
@@ -228,6 +275,9 @@ def screen_point(waypoints: list[Vec2], target_index: int, umbrellas: list[Threa
         target_index: Index of its target waypoint.
         umbrellas: Known threats.
         back_off: How far short of the umbrella to hold.
+
+    Returns:
+        The holding point, or None.
     """
     for a, b in zip(waypoints[: target_index + 1], waypoints[1 : target_index + 1]):
         seg = a.distance_to(b)
@@ -254,5 +304,12 @@ def screen_point(waypoints: list[Vec2], target_index: int, umbrellas: list[Threa
 
 
 def length(waypoints: list[Vec2]) -> float:
-    """Length of a polyline in metres."""
+    """Length of a polyline in metres.
+
+    Args:
+        waypoints: Polyline vertices.
+
+    Returns:
+        The length.
+    """
     return sum(a.distance_to(b) for a, b in zip(waypoints, waypoints[1:]))

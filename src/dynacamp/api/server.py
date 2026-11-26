@@ -27,7 +27,9 @@ class ApiServer:
         token: str | None = None,
         saver=None,
     ) -> None:
-        """Args:
+        """Prepare the server (not started yet).
+
+        Args:
             engine: The engine whose campaign is served.
             host: Listen address.
             port: Listen port (0 = any free port).
@@ -46,6 +48,9 @@ class ApiServer:
 
     def start(self, timeout: float = 10.0) -> None:
         """Start serving and wait until the socket is open.
+
+        Args:
+            timeout: Seconds to wait for the socket to open.
 
         Raises:
             RuntimeError: If the server does not start in time.

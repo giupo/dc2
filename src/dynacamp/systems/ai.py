@@ -26,20 +26,34 @@ from ..world import TERRAIN
 from . import intel
 from ..events import EventKind
 
+#: Seconds between two planning rounds of the theatre AI.
 AI_INTERVAL_S = 3600.0
+#: An attack goes in with at least this force ratio over the known defenders (terrain-adjusted).
 ATTACK_RATIO = 1.1
+#: Minimum organisation of a brigade sent to attack.
 READY_ORG = 0.6
+#: Minimum strength of a brigade sent to attack.
 READY_STRENGTH = 0.5
+#: Minimum supply ratio of a brigade sent to attack.
 READY_SUPPLY = 0.3
 
+#: Provinces this many hops (or fewer) from an enemy brigade are exposed.
 EXPOSURE_HOPS = 3
+#: Weight of an exposed province by its hops from the nearest enemy brigade.
 EXPOSURE_DECAY = {0: 1.5, 1: 1.0, 2: 0.6, 3: 0.3}
-MIN_SECURITY_GAIN = 1.0  # exposure points a move must remove to be worth it
+#: Exposure points a garrison move must remove to be worth it.
+MIN_SECURITY_GAIN = 1.0
+#: Brigades weaker than this neither hold a province nor threaten one.
 GARRISON_MIN_STRENGTH = 0.3
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Plan for every faction every ``AI_INTERVAL_S``."""
+    """Plan for every faction every ``AI_INTERVAL_S``.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed (unused: planning runs on its own timer).
+    """
     if state.time < state.timers.get("ai", 0.0):
         return
     state.timers["ai"] = state.time + AI_INTERVAL_S
@@ -48,17 +62,40 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def _power(divs: list[Division]) -> float:
-    """Sum of the divisions' :meth:`~dynacamp.forces.Division.combat_power`."""
+    """Sum of the divisions' :meth:`~dynacamp.forces.Division.combat_power`.
+
+    Args:
+        divs: The divisions.
+
+    Returns:
+        Their total combat power.
+    """
     return sum(d.combat_power() for d in divs)
 
 
 def _ready(d: Division) -> bool:
-    """Fit to attack: enough organisation, strength and supply."""
+    """Fit to attack: enough organisation, strength and supply.
+
+    Args:
+        d: The division.
+
+    Returns:
+        Whether organisation, strength and supply ratio are all at the ``READY_*`` thresholds.
+    """
     return d.org >= READY_ORG and d.strength >= READY_STRENGTH and d.supply_ratio >= READY_SUPPLY
 
 
 def _objective_value(state: CampaignState, faction: Faction, pid: str) -> float:
-    """How much ``faction`` wants province ``pid`` (VP + objectives and closeness to them)."""
+    """How much ``faction`` wants province ``pid`` (VP + objectives and closeness to them).
+
+    Args:
+        state: The campaign.
+        faction: The faction.
+        pid: Province id.
+
+    Returns:
+        The value (0 for a province with no VP far from every objective still to take).
+    """
     t = state.theater
     here = t.provinces[pid]
     value = float(here.victory_points)
@@ -77,7 +114,16 @@ def _objective_value(state: CampaignState, faction: Faction, pid: str) -> float:
 
 
 def importance(state: CampaignState, fid: str, pid: str) -> float:
-    """How much we care about losing ``pid``."""
+    """How much we care about losing ``pid``.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        pid: Province id.
+
+    Returns:
+        The value, from 1 upwards (VP, depot, enemy objectives, active airbase).
+    """
     p = state.theater.provinces[pid]
     value = 1.0 + p.victory_points
     if p.depot is not None:
@@ -94,40 +140,66 @@ def importance(state: CampaignState, fid: str, pid: str) -> float:
 
 
 def blockers(state: CampaignState, fid: str) -> dict[str, int]:
-    """Provinces our troops hold (or are about to hold) -> number of divisions."""
+    """Provinces our troops hold (or are about to hold) -> number of divisions.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        The number of divisions holding each province.
+    """
     out: dict[str, int] = {}
     for d in state.divisions.values():
         if d.faction != fid or d.strength < GARRISON_MIN_STRENGTH:
             continue
+
         if d.movement and d.order.kind is OrderKind.MOVE and d.order.target:
             pid = d.order.target  # on its way there
+
         elif d.order.kind is OrderKind.ATTACK and d.movement and not d.movement.back:
             pid = d.location  # attacking out of it: still screens it
+
         elif d.movement and d.movement.progress > 0:
             continue  # on the road, holds nothing
+
         else:
             pid = d.location
+
         out[pid] = out.get(pid, 0) + 1
     return out
 
 
 def enemy_reach(state: CampaignState, fid: str, held: set[str]) -> dict[str, int]:
-    """Hops from the nearest enemy division, not passing through ``held`` provinces."""
+    """Hops from the nearest enemy division, not passing through ``held`` provinces.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        held: Provinces held with troops (the flood-fill stops there).
+
+    Returns:
+        Hops from the nearest enemy division, for provinces within ``EXPOSURE_HOPS``.
+    """
     t = state.theater
     dist: dict[str, int] = {}
     queue: deque[str] = deque()
+
     for d in state.divisions.values():
         if state.at_war(fid, d.faction) and d.strength >= GARRISON_MIN_STRENGTH and d.location not in dist:
             dist[d.location] = 0
             queue.append(d.location)
+
     while queue:
         pid = queue.popleft()
         if dist[pid] >= EXPOSURE_HOPS or (pid in held and dist[pid] > 0):
             continue
+
         for n in t.neighbors(pid):
             if n not in dist:
                 dist[n] = dist[pid] + 1
                 queue.append(n)
+
     return dist
 
 
@@ -139,6 +211,9 @@ def exposure(state: CampaignState, fid: str, held: set[str], weights: dict[str, 
         fid: Faction id.
         held: Provinces held with troops (they block the enemy flood-fill).
         weights: Importance of each province.
+
+    Returns:
+        The importance-weighted exposure (lower is safer).
     """
     reach = enemy_reach(state, fid, held)
     return sum(
@@ -148,8 +223,23 @@ def exposure(state: CampaignState, fid: str, held: set[str], weights: dict[str, 
     )
 
 
-def _secure(state: CampaignState, faction: Faction, divs: list[Division], busy: set[str]) -> set[str]:
-    """Greedy garrisoning of exposed provinces. Returns the ids it gave orders to."""
+def _secure(
+    state: CampaignState,
+    faction: Faction,
+    divs: list[Division],
+    busy: set[str]
+) -> set[str]:
+    """Greedy garrisoning of exposed provinces. Returns the ids it gave orders to.
+
+    Args:
+        state: The campaign.
+        faction: The faction.
+        divs: Its divisions available for orders.
+        busy: Ids of divisions already given an order this round (not moved again).
+
+    Returns:
+        The ids of the divisions sent to garrison a province.
+    """
     t = state.theater
     fid = faction.id
     weights = {pid: importance(state, fid, pid) for pid in t.provinces}
@@ -161,45 +251,68 @@ def _secure(state: CampaignState, faction: Faction, divs: list[Division], busy: 
         base = exposure(state, fid, held, weights)
         if base < MIN_SECURITY_GAIN:
             break
+
         reach = enemy_reach(state, fid, held)
         holes = [pid for pid in reach if pid not in held and t.provinces[pid].controller == fid]
         best: tuple[float, Division, str] | None = None
+
         for d in divs:
             if d.id in busy or d.id in moved or d.battle or d.order.kind is OrderKind.ATTACK:
                 continue
+
             if d.strength < GARRISON_MIN_STRENGTH or (d.movement and d.movement.progress > 0):
                 continue
+
             here = d.order.target if (d.movement and d.order.target) else d.location
+
             for hole in holes:
                 path = t.shortest_path(d.location, hole, passable=lambda pid: state.friendly_province(fid, pid))
                 if path is None:
                     continue
+
                 after = set(held)
+
                 if counts.get(here, 0) <= 1:
                     after.discard(here)
+
                 after.add(hole)
                 gain = base - exposure(state, fid, after, weights)
                 hours = t.path_length(d.location, path) / 1000.0 / d.template.speed_kmh
                 score = gain / (1.0 + hours / 12.0)
+
                 if gain >= MIN_SECURITY_GAIN and (best is None or score > best[0]):
                     best = (score, d, hole)
+
         if best is None:
             break
+
         _, d, hole = best
         here = d.order.target if (d.movement and d.order.target) else d.location
         if not state.set_order(d, Order(OrderKind.MOVE, hole)):
             break
+
         counts[here] = counts.get(here, 1) - 1
         if counts[here] <= 0:
             del counts[here]
+
         counts[hole] = counts.get(hole, 0) + 1
         moved.add(d.id)
         state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="secure", target=hole)
+
     return moved
 
 
 def _keepers(state: CampaignState, fid: str, candidates: list[Division]) -> set[str]:
-    """Divisions whose departure would leave something exposed."""
+    """Divisions whose departure would leave something exposed.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        candidates: Divisions that might be sent elsewhere.
+
+    Returns:
+        The ids of those that should stay.
+    """
     t = state.theater
     weights = {pid: importance(state, fid, pid) for pid in t.provinces}
     counts = blockers(state, fid)
@@ -314,7 +427,15 @@ def plan(state: CampaignState, faction: Faction) -> None:
 
 def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts: set[str], busy: set[str]) -> None:
     """Brigades holding a front province deploy on its forward line facing the
-    most threatening hostile neighbour, instead of waiting in the town centre."""
+    most threatening hostile neighbour, instead of waiting in the town centre.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        divs: The faction's divisions.
+        fronts: The faction's front provinces.
+        busy: Ids of divisions already given an order this round.
+    """
     from . import contact
 
     t = state.theater
@@ -332,7 +453,17 @@ def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts:
 
 
 def _may_leave(state: CampaignState, d: Division, target: str, committed: set[str]) -> bool:
-    """Keep one division in a front province that other enemies also threaten."""
+    """Keep one division in a front province that other enemies also threaten.
+
+    Args:
+        state: The campaign.
+        d: The division that would attack.
+        target: The province it would attack.
+        committed: Ids of divisions already committed to an attack this round.
+
+    Returns:
+        Whether it may leave its province.
+    """
     t = state.theater
     other_threats = any(
         intel.known_divisions_in(state, d.faction, n)

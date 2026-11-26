@@ -22,11 +22,25 @@ class Vec2:
     y: float  # north, metres
 
     def __add__(self, other: Vec2) -> Vec2:
-        """Component-wise sum."""
+        """Component-wise sum.
+
+        Args:
+            other: The vector to add.
+
+        Returns:
+            The sum.
+        """
         return Vec2(self.x + other.x, self.y + other.y)
 
     def __sub__(self, other: Vec2) -> Vec2:
-        """Component-wise difference."""
+        """Component-wise difference.
+
+        Args:
+            other: The vector to subtract.
+
+        Returns:
+            The difference.
+        """
         return Vec2(self.x - other.x, self.y - other.y)
 
     def __mul__(self, k: float) -> Vec2:
@@ -38,7 +52,11 @@ class Vec2:
         return Vec2(self.x * k, self.y * k)
 
     def length(self) -> float:
-        """Euclidean norm of the vector, in metres."""
+        """Euclidean norm of the vector, in metres.
+
+        Returns:
+            The norm.
+        """
         return math.hypot(self.x, self.y)
 
     def distance_to(self, other: Vec2) -> float:
@@ -66,11 +84,26 @@ class Vec2:
         return Vec2(self.x + (other.x - self.x) * t, self.y + (other.y - self.y) * t)
 
     def heading_to(self, other: Vec2) -> float:
-        """Compass heading in radians (0 = north, clockwise)."""
+        """Compass heading in radians (0 = north, clockwise).
+
+        Args:
+            other: The point to head to.
+
+        Returns:
+            The heading in [0, 2π).
+        """
         return math.atan2(other.x - self.x, other.y - self.y) % (2 * math.pi)
 
     def project_t(self, a: Vec2, b: Vec2) -> float:
-        """Parameter t in [0, 1] of this point projected on segment a-b."""
+        """Parameter t in [0, 1] of this point projected on segment a-b.
+
+        Args:
+            a: Start of the segment.
+            b: End of the segment.
+
+        Returns:
+            The parameter of the nearest point of the segment (0 for a degenerate segment).
+        """
         ab = b - a
         denom = ab.x * ab.x + ab.y * ab.y
         if denom == 0:

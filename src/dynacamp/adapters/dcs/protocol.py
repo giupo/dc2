@@ -39,34 +39,71 @@ from ..base import (
 )
 from . import catalog
 
+#: Prefix of the DCS names of the units the campaign spawns (``DC.<entity>.<element>.<n>``).
 UNIT_PREFIX = "DC"
+#: Campaign side of each DCS coalition id.
 COALITION_SIDE = {1: "red", 2: "blue"}
+#: DCS coalition id of each campaign side.
 SIDE_COALITION = {v: k for k, v in COALITION_SIDE.items()}
+#: Prefix of the template groups in the missions (``DC_TPL_<aircraft>[_<task>]``).
 TEMPLATE_PREFIX = "DC_TPL"
-# AI.Option.Air.id.ECM_USING and its ALWAYS_USE value (DCS scripting API).
-# NOTE: verify in DCS that AI jamming follows it.
+#: Id of the DCS AI option "ECM using" (``AI.Option.Air.id.ECM_USING`` of the scripting API).
+#: To verify in DCS that AI jamming follows it.
 ECM_USING = 13
+#: Value "always on" of the ECM option.
 ECM_ALWAYS = 3
+#: Kind of player by DCS group category (airplane, helicopter, ground unit, ship).
 CATEGORY_KIND = {0: PlayerKind.AIR, 1: PlayerKind.HELO, 2: PlayerKind.GROUND, 3: PlayerKind.GROUND}
 
 
 def to_dcs(v: Vec2) -> tuple[float, float]:
-    """Campaign point -> (DCS x north, DCS y/z east)."""
+    """Campaign point -> (DCS x north, DCS y/z east).
+
+    Args:
+        v: Point on the campaign plane (east, north).
+
+    Returns:
+        The DCS ``(x, z)`` coordinates.
+    """
     return v.y, v.x
 
 
 def from_dcs(x: float, z: float) -> Vec2:
-    """DCS (x north, z east) -> campaign point."""
+    """DCS (x north, z east) -> campaign point.
+
+    Args:
+        x: DCS x (north).
+        z: DCS z (east).
+
+    Returns:
+        The point on the campaign plane.
+    """
     return Vec2(z, x)
 
 
 def unit_name(entity_id: str, element: str, index: int) -> str:
-    """DCS unit name encoding entity and element: ``DC.<entity>.<element>.<n>``."""
+    """DCS unit name encoding entity and element: ``DC.<entity>.<element>.<n>``.
+
+    Args:
+        entity_id: Campaign entity the unit belongs to.
+        element: Element of the entity the unit stands for.
+        index: Number of the unit within that element.
+
+    Returns:
+        The DCS unit name.
+    """
     return f"{UNIT_PREFIX}.{entity_id}.{element}.{index}"
 
 
 def parse_unit_name(name: str) -> tuple[str, str] | None:
-    """(entity id, element) from a unit name, or None."""
+    """(entity id, element) from a unit name, or None.
+
+    Args:
+        name: DCS unit name.
+
+    Returns:
+        The entity id and the element, or None if the name was not made by :func:`unit_name`.
+    """
     parts = name.split(".")
     if len(parts) != 4 or parts[0] != UNIT_PREFIX:
         return None
@@ -102,7 +139,14 @@ class DcsTranslator:
     # ------------------------------------------------------------ outgoing
 
     def encode(self, cmd: Command) -> dict[str, Any]:
-        """Bridge message for a command."""
+        """Bridge message for a command.
+
+        Args:
+            cmd: The command to translate.
+
+        Returns:
+            The JSON-ready message for the Lua bridge.
+        """
         match cmd:
             case Materialize(entity=snap):
                 return self._spawn(snap)
@@ -133,7 +177,14 @@ class DcsTranslator:
         raise TypeError(cmd)  # pragma: no cover
 
     def _spawn(self, snap: EntitySnapshot) -> dict[str, Any]:
-        """``spawn`` message for a ground entity, convoy or SAM site."""
+        """``spawn`` message for a ground entity, convoy or SAM site.
+
+        Args:
+            snap: Snapshot of the entity to spawn.
+
+        Returns:
+            The ``spawn`` message.
+        """
         if snap.kind == "flight":
             return self._spawn_flight(snap)
         if snap.kind == "sam":
@@ -201,7 +252,17 @@ class DcsTranslator:
 
     def _spawn_on_road(self, snap: EntitySnapshot, units: list[dict[str, Any]], plans, road: list[Vec2]) -> dict[str, Any]:
         """Line the vehicles up in a column along the road behind the unit (no
-        vehicle dropped in a forest), groups one after the other."""
+        vehicle dropped in a forest), groups one after the other.
+
+        Args:
+            snap: Snapshot of the entity to spawn.
+            units: The DCS units to place, already named and typed.
+            plans: Spawn plans the units come from.
+            road: Road polyline behind the unit, nearest point first.
+
+        Returns:
+            The ``spawn`` message with one group per ``max_units_per_group`` vehicles.
+        """
         from ...world import point_along, polyline_length
 
         total = polyline_length(road)
@@ -245,7 +306,14 @@ class DcsTranslator:
         return {"cmd": "spawn", "id": snap.id, "groups": groups}
 
     def _spawn_flight(self, snap: EntitySnapshot) -> dict[str, Any]:
-        """``spawn`` message for a flight (templates, route tasks, landing)."""
+        """``spawn`` message for a flight (templates, route tasks, landing).
+
+        Args:
+            snap: Snapshot of the flight to spawn.
+
+        Returns:
+            The ``spawn`` message for the flight group.
+        """
         a = snap.attrs
         aircraft, task = a["aircraft"], a["task"]
         count = int(round(snap.elements.get("aircraft", 0)))
@@ -302,7 +370,14 @@ class DcsTranslator:
 
     def _flight_route(self, snap: EntitySnapshot) -> list[dict[str, Any]]:
         """DCS route of a flight: from where it is, along its remaining
-        waypoints, with en-route tasks first and the attack/orbit at the target."""
+        waypoints, with en-route tasks first and the attack/orbit at the target.
+
+        Args:
+            snap: Snapshot of the flight.
+
+        Returns:
+            The DCS route points.
+        """
         a = snap.attrs
         task, helo = a["task"], bool(a.get("helo"))
         alt, speed = snap.altitude, snap.speed_kmh / 3.6
@@ -316,7 +391,18 @@ class DcsTranslator:
 
     @staticmethod
     def _air_point(p: Vec2, alt: float, speed: float, helo: bool, tasks: list[dict[str, Any]]) -> dict[str, Any]:
-        """DCS route point for aircraft."""
+        """DCS route point for aircraft.
+
+        Args:
+            p: Position of the route point.
+            alt: Altitude in metres (above ground for helicopters, barometric otherwise).
+            speed: Speed in m/s.
+            helo: Whether the flight is a helicopter.
+            tasks: DCS tasks to run at this point.
+
+        Returns:
+            The DCS route point.
+        """
         x, y = to_dcs(p)
         return {
             "x": x,
@@ -334,7 +420,14 @@ class DcsTranslator:
 
     @staticmethod
     def _enroute_tasks(task: str) -> list[dict[str, Any]]:
-        """En-route DCS tasks of a flight (engage air / air defence)."""
+        """En-route DCS tasks of a flight (engage air / air defence).
+
+        Args:
+            task: The flight's campaign task name.
+
+        Returns:
+            The en-route DCS tasks (empty for tasks without one).
+        """
         if task == "AWACS":
             return [{"number": 1, "auto": False, "enabled": True, "id": "AWACS", "params": {}}]
         if task == "TANKER":
@@ -367,7 +460,17 @@ class DcsTranslator:
 
     @staticmethod
     def _target_tasks(task: str, target: Vec2 | None, station_s: float, helo: bool) -> list[dict[str, Any]]:
-        """DCS tasks at the target waypoint (orbit, bombing, engage in zone)."""
+        """DCS tasks at the target waypoint (orbit, bombing, engage in zone).
+
+        Args:
+            task: The flight's campaign task name.
+            target: Target position, if the task has one.
+            station_s: Time on station in seconds (orbit tasks).
+            helo: Whether the flight is a helicopter.
+
+        Returns:
+            The DCS tasks for the target waypoint.
+        """
         if task in ("CAP", "AWACS", "TANKER"):
             return [
                 {
@@ -396,7 +499,14 @@ class DcsTranslator:
     # ------------------------------------------------------------ incoming
 
     def decode(self, msg: dict[str, Any]) -> list[Report]:
-        """Reports for one bridge message."""
+        """Reports for one bridge message.
+
+        Args:
+            msg: A decoded JSON line from the bridge.
+
+        Returns:
+            The campaign reports it carries (empty for unknown messages).
+        """
         kind = msg.get("msg")
         if kind == "players":
             return self._players(msg.get("players") or [])
@@ -438,7 +548,15 @@ class DcsTranslator:
         return []  # hello, pong, log ... are informational
 
     def _players(self, players: list[dict[str, Any]]) -> list[Report]:
-        """Player reports, including players that disappeared."""
+        """Player reports, including players that disappeared.
+
+        Args:
+            players: Player entries of a ``players`` message.
+
+        Returns:
+            One :class:`PlayerSeen` per player and one :class:`PlayerGone` per player no longer
+            listed.
+        """
         out: list[Report] = []
         seen: set[str] = set()
         for p in players:
@@ -464,7 +582,16 @@ class DcsTranslator:
         return out
 
     def _aggregate(self, eid: str, units: list[dict[str, Any]]) -> tuple[Vec2 | None, dict[str, float]]:
-        """Mean position and alive campaign elements of an entity's units."""
+        """Mean position and alive campaign elements of an entity's units.
+
+        Args:
+            eid: Campaign entity id.
+            units: Unit entries (name and position) reported by the bridge.
+
+        Returns:
+            The mean position of the matching units (None if none is alive) and the campaign
+            elements they still represent.
+        """
         sp = self.spawned.get(eid)
         alive: dict[str, int] = {}
         xs, zs = [], []
@@ -485,7 +612,16 @@ class DcsTranslator:
 
 
 def route_point(p: Vec2, speed_kmh: float, on_road: bool = True) -> dict[str, Any]:
-    """DCS ground route point."""
+    """DCS ground route point.
+
+    Args:
+        p: Position of the point.
+        speed_kmh: Speed in km/h.
+        on_road: Drive on roads to reach it.
+
+    Returns:
+        The DCS route point.
+    """
     x, y = to_dcs(p)
     return {
         "x": x,

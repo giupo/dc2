@@ -28,10 +28,13 @@ from functools import cache
 from pathlib import Path
 from typing import Any, TypeVar
 
+#: Directory of the catalogue files.
 CATALOG_DIR = Path(__file__).parent / "data" / "catalog"
 
+#: Sub-table of an entry holding its DCS data (``[<id>.dcs]``).
 DCS_KEY = "dcs"
 
+#: Type of the dataclass built from a catalogue file.
 T = TypeVar("T")
 
 
@@ -45,6 +48,9 @@ def _read(name: str) -> dict[str, Any]:
 
     Args:
         name: File name without extension, e.g. ``"aircraft"``.
+
+    Returns:
+        The parsed TOML document.
 
     Raises:
         CatalogError: If the file is missing or is not valid TOML.
@@ -116,6 +122,9 @@ def _type_name(annotation: Any) -> str:
 
     Args:
         annotation: ``dataclasses.Field.type``.
+
+    Returns:
+        The type name.
     """
     return annotation if isinstance(annotation, str) else getattr(annotation, "__name__", str(annotation))
 
@@ -126,6 +135,9 @@ def _scalar(kind: str, value: Any) -> Any:
     Args:
         kind: The field's annotation, as a string (``"float"``, ``"int"``...).
         value: The TOML value.
+
+    Returns:
+        The value converted to the annotated type.
 
     Raises:
         TypeError: If the value does not fit the annotation.
@@ -225,6 +237,9 @@ def counts(value: Any) -> dict[str, int]:
 
     Args:
         value: The TOML inline table.
+
+    Returns:
+        The counts by element id.
 
     Raises:
         TypeError: If it is not a table of non-negative integers.

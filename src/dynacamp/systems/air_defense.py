@@ -32,34 +32,59 @@ from ..state import CampaignState
 from . import air, supply
 from ..events import EventKind
 
+#: Missiles a site fires in one engagement.
 SALVO = 2
+#: A site engages at most this often, seconds.
 ENGAGE_COOLDOWN_S = 3 * 60.0
-NETWORK_RANGE_FACTOR = 0.5  # a site is networked within this share of an EWR's detection range
+#: A site is networked to an EWR within this share of the EWR's detection range.
+NETWORK_RANGE_FACTOR = 0.5
+#: Kill probability multiplier of a networked site.
 NETWORK_PK_BONUS = 1.15
-SEAD_PK_FACTOR = 0.7  # SEAD aircraft fly defensively (ECM, low, notching)
-# The package's SEAD flight jams for everyone near it (its ECM pods stand in for
-# a dedicated jammer: DCS has no AI EA-6B or EA-18G).
-DEFENSIVE_FACTOR = 0.5  # chaff, ECM and manoeuvring against every engagement
-PAIR_COOLDOWN_S = 10 * 60.0  # one site engages the same flight at most this often
+#: Kill probability multiplier against SEAD aircraft, which fly defensively (ECM, low, notching).
+SEAD_PK_FACTOR = 0.7
+#: Kill probability multiplier of every engagement for chaff, ECM and manoeuvring.
+DEFENSIVE_FACTOR = 0.5
+#: A site engages the same flight at most this often, seconds.
+PAIR_COOLDOWN_S = 10 * 60.0
+#: Launch range of anti-radiation missiles.
 HARM_RANGE_M = 60_000.0
+#: A SEAD flight fires anti-radiation missiles at most this often, seconds.
 HARM_COOLDOWN_S = 15 * 60.0
+#: A suppressed site keeps its radar off this long, seconds.
 SUPPRESS_S = 20 * 60.0
-GO_DARK_CHANCE = 0.4  # networked site switches off before the HARM arrives
-RELOAD_RANGE_M = 60_000.0  # road distance to a depot to reload missiles
-REFORM_DELAY_S = 36 * 3600.0  # a destroyed battery is replaced this much later at the main depot
+#: Chance that a networked site switches off before the anti-radiation missile arrives.
+GO_DARK_CHANCE = 0.4
+#: Sites reload missiles within this road distance of a depot.
+RELOAD_RANGE_M = 60_000.0
+#: A destroyed battery is replaced this much later at the faction's best depot.
+REFORM_DELAY_S = 36 * 3600.0
+#: Seconds between two deployment plans of a faction's air defence.
 ADA_INTERVAL_S = 2 * 3600.0
-# How much better a new position must be before a site packs up and moves:
-# long-range systems take long to set up again, short-range ones are nimble.
+#: How much better a new position must be before a site packs up and moves, by role (long-range
+#: systems take long to set up again, short-range ones are nimble).
 MOVE_GAIN = {SamRole.LONG: 2.0, SamRole.MEDIUM: 1.6, SamRole.SHORT: 1.25}
 
 
 def units(state: CampaignState, faction: str | None = None) -> list[AirDefenseUnit]:
-    """Air defence units, optionally of one faction."""
+    """Air defence units, optionally of one faction.
+
+    Args:
+        state: The campaign.
+        faction: Faction id (None = every faction).
+
+    Returns:
+        The units.
+    """
     return [u for u in state.air_defense.values() if faction is None or u.faction == faction]
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Status, reloads, engagements, SEAD, losses; ADA planning every ``ADA_INTERVAL_S``."""
+    """Status, reloads, engagements, SEAD, losses; ADA planning every ``ADA_INTERVAL_S``.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     _reform(state)
     _update_status(state)
     place_sites(state.air_defense.values(), state.theater)
@@ -79,7 +104,11 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def _update_status(state: CampaignState) -> None:
-    """Moving -> setting up -> active; suppression expiring."""
+    """Moving -> setting up -> active; suppression expiring.
+
+    Args:
+        state: The campaign.
+    """
     for u in state.air_defense.values():
         if u.movement:
             u.status = SamStatus.MOVING
@@ -92,7 +121,15 @@ def _update_status(state: CampaignState) -> None:
 
 
 def ewrs(state: CampaignState, faction: str) -> list[AirDefenseUnit]:
-    """Operational, active early-warning radars of a faction."""
+    """Operational, active early-warning radars of a faction.
+
+    Args:
+        state: The campaign.
+        faction: Faction id.
+
+    Returns:
+        The EWR units.
+    """
     return [
         u for u in units(state, faction)
         if u.system.role is SamRole.EWR and u.operational and u.status is SamStatus.ACTIVE
@@ -100,7 +137,15 @@ def ewrs(state: CampaignState, faction: str) -> list[AirDefenseUnit]:
 
 
 def network_node(state: CampaignState, u: AirDefenseUnit) -> AirDefenseUnit | None:
-    """The EWR this site is networked to, if any."""
+    """The EWR this site is networked to, if any.
+
+    Args:
+        state: The campaign.
+        u: The SAM site.
+
+    Returns:
+        The first EWR whose network range reaches the site, or None (always None for an EWR).
+    """
     if u.system.role is SamRole.EWR:
         return None
     here = u.position(state.theater)
@@ -112,7 +157,17 @@ def network_node(state: CampaignState, u: AirDefenseUnit) -> AirDefenseUnit | No
 
 def detects(state: CampaignState, u: AirDefenseUnit, pos: Vec2, jamming: float = 1.0) -> bool:
     """True if site ``u`` sees ``pos`` with its own radar or through its IADS
-    node (against a target jamming by ``jamming``, see :func:`dynacamp.sensors.jam`)."""
+    node (against a target jamming by ``jamming``, see :func:`dynacamp.sensors.jam`).
+
+    Args:
+        state: The campaign.
+        u: The SAM site.
+        pos: The target's position.
+        jamming: The target's jamming factor.
+
+    Returns:
+        Whether the site has a track on the point.
+    """
     t = state.theater
     if u.position(t).distance_to(pos) <= sensors.reach(u.system.detection_m, jamming):
         return True
@@ -121,7 +176,17 @@ def detects(state: CampaignState, u: AirDefenseUnit, pos: Vec2, jamming: float =
 
 
 def covering(state: CampaignState, attacker: str, point: Vec2, roles=(SamRole.LONG, SamRole.MEDIUM)) -> list[AirDefenseUnit]:
-    """Enemy SAM sites (of ``attacker``'s enemies) whose engagement range covers ``point``."""
+    """Enemy SAM sites (of ``attacker``'s enemies) whose engagement range covers ``point``.
+
+    Args:
+        state: The campaign.
+        attacker: Faction flying over ``point``.
+        point: The point.
+        roles: SAM roles to consider.
+
+    Returns:
+        The operational sites (truth, not intelligence) in range of the point.
+    """
     t = state.theater
     return [
         u for u in state.air_defense.values()
@@ -131,7 +196,12 @@ def covering(state: CampaignState, attacker: str, point: Vec2, roles=(SamRole.LO
 
 
 def _reload(state: CampaignState, dt: float) -> None:
-    """Reload missiles of sites near a depot."""
+    """Reload missiles of sites near a depot.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     hours = dt / 3600.0
     reach = {f: supply.depot_distances(state, f) for f in state.factions}
     for u in state.air_defense.values():
@@ -146,7 +216,11 @@ def _reload(state: CampaignState, dt: float) -> None:
 
 
 def _engage(state: CampaignState) -> None:
-    """Every ready site fires a salvo at the nearest detected flight in reach."""
+    """Every ready site fires a salvo at the nearest detected flight in reach.
+
+    Args:
+        state: The campaign.
+    """
     t = state.theater
     flying = [
         f for f in state.flights.values()
@@ -201,7 +275,15 @@ def _engage(state: CampaignState) -> None:
 
 
 def ecm_screened(state: CampaignState, f: Flight) -> bool:
-    """True if a friendly SEAD flight is close enough to jam for ``f`` (see :mod:`dynacamp.sensors`)."""
+    """True if a friendly SEAD flight is close enough to jam for ``f`` (see :mod:`dynacamp.sensors`).
+
+    Args:
+        state: The campaign.
+        f: The flight.
+
+    Returns:
+        Whether an escort jammer covers it.
+    """
     return sensors.escort_jammer(state, f) is not None
 
 
@@ -211,6 +293,11 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
 
     Once per flight and site. Flights with players seated keep their briefed
     route (the planner can still change it); SEAD flights are there for it.
+
+    Args:
+        state: The campaign.
+        f: The flight fired upon.
+        u: The site that fired.
     """
     from . import ato, routing
 
@@ -248,7 +335,11 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
 
 
 def _sead(state: CampaignState) -> None:
-    """SEAD flights fire anti-radiation missiles at emitting radars in reach."""
+    """SEAD flights fire anti-radiation missiles at emitting radars in reach.
+
+    Args:
+        state: The campaign.
+    """
     t = state.theater
     for f in state.flights.values():
         if f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or not f.simulated_by_campaign or f.ai_count <= 0:
@@ -269,7 +360,14 @@ def _sead(state: CampaignState) -> None:
 
 
 def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str) -> None:
-    """Anti-radiation attack on an emitting site."""
+    """Anti-radiation attack on an emitting site.
+
+    Args:
+        state: The campaign.
+        u: The emitting site.
+        effort: Number of missiles fired at it.
+        by: Id of the attacking flight (for the event).
+    """
     if network_node(state, u) is not None and state.rng.random() < GO_DARK_CHANCE:
         _suppress(state, u, SUPPRESS_S / 2)
         state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="went dark")
@@ -289,7 +387,14 @@ def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str
 
 
 def strike_site(state: CampaignState, u: AirDefenseUnit, effort: float, by: str) -> None:
-    """Bombs and missiles on a SAM site (DEAD): packed or dark sites are easier to hit."""
+    """Bombs and missiles on a SAM site (DEAD): packed or dark sites are easier to hit.
+
+    Args:
+        state: The campaign.
+        u: The site.
+        effort: Strength of the attack, roughly the number of aircraft.
+        by: Id of the attacking flight (for the event).
+    """
     exposed = 1.5 if u.status in (SamStatus.MOVING, SamStatus.SETTING_UP) else 1.0
     if state.rng.random() < min(0.85, 0.2 * effort * exposed):
         for k in u.elements:
@@ -301,7 +406,13 @@ def strike_site(state: CampaignState, u: AirDefenseUnit, effort: float, by: str)
 
 
 def _suppress(state: CampaignState, u: AirDefenseUnit, seconds: float) -> None:
-    """Switch a site's radar off for ``seconds`` and flag it to relocate."""
+    """Switch a site's radar off for ``seconds`` and flag it to relocate.
+
+    Args:
+        state: The campaign.
+        u: The site.
+        seconds: How long the radar stays off.
+    """
     if u.status in (SamStatus.ACTIVE, SamStatus.SETTING_UP):
         u.status = SamStatus.SUPPRESSED
         u.ready_at = max(u.ready_at, state.time + seconds)
@@ -309,7 +420,11 @@ def _suppress(state: CampaignState, u: AirDefenseUnit, seconds: float) -> None:
 
 
 def _remove_destroyed(state: CampaignState) -> None:
-    """Remove sites that lost their radars or launchers and schedule replacements."""
+    """Remove sites that lost their radars or launchers and schedule replacements.
+
+    Args:
+        state: The campaign.
+    """
     for u in list(state.air_defense.values()):
         if not u.operational and u.authority is Authority.CAMPAIGN:
             del state.air_defense[u.id]
@@ -318,12 +433,21 @@ def _remove_destroyed(state: CampaignState) -> None:
 
 
 def schedule_replacement(state: CampaignState, u: AirDefenseUnit) -> None:
-    """Queue a replacement battery for a destroyed site."""
+    """Queue a replacement battery for a destroyed site.
+
+    Args:
+        state: The campaign.
+        u: The destroyed site.
+    """
     state.reforming_ad.append((state.time + REFORM_DELAY_S, u.faction, u.system, u.name))
 
 
 def _reform(state: CampaignState) -> None:
-    """Replacement batteries arrive at the faction's best stocked depot."""
+    """Replacement batteries arrive at the faction's best stocked depot.
+
+    Args:
+        state: The campaign.
+    """
     pending = []
     for ready, faction, system, name in state.reforming_ad:
         depots = [p for p in state.theater.provinces.values() if p.depot is not None and p.controller == faction]
@@ -342,7 +466,15 @@ def _reform(state: CampaignState) -> None:
 
 
 def _asset_weights(state: CampaignState, fid: str) -> tuple[dict[str, float], dict[str, float]]:
-    """(manoeuvre units, fixed installations) worth covering, by province."""
+    """(manoeuvre units, fixed installations) worth covering, by province.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+
+    Returns:
+        Weights by province of the manoeuvre units and of the fixed installations.
+    """
     t = state.theater
     units_w: dict[str, float] = {}
     for d in state.divisions.values():
@@ -362,7 +494,15 @@ def _asset_weights(state: CampaignState, fid: str) -> tuple[dict[str, float], di
 
 
 def _threatened(state: CampaignState, u: AirDefenseUnit) -> bool:
-    """Enemy troops in or attacking the site's province."""
+    """Enemy troops in or attacking the site's province.
+
+    Args:
+        state: The campaign.
+        u: The site.
+
+    Returns:
+        Whether a battle is in its province or an enemy division is moving to attack it.
+    """
     loc = u.location
     if any(b.province == loc for b in state.battles.values()):
         return True
@@ -384,7 +524,14 @@ def plan(state: CampaignState, fid: str) -> None:
 
     def role_weights(role: SamRole) -> dict[str, float]:
         # Short-range systems go with the manoeuvre units; the others cover installations as well.
-        """Asset weights as seen by systems of one role."""
+        """Asset weights as seen by systems of one role.
+
+        Args:
+            role: The SAM role.
+
+        Returns:
+            Weight by province.
+        """
         k_units, k_fixed = (2.0, 0.5) if role is SamRole.SHORT else (1.0, 1.0)
         out = {q: k_fixed * w for q, w in fixed_w.items()}
         for q, w in units_w.items():
@@ -397,7 +544,16 @@ def plan(state: CampaignState, fid: str) -> None:
     covered: dict[tuple[str, str], float] = {}  # (role, province) -> share already covered
 
     def value(u: AirDefenseUnit, pid: str) -> float:
-        """Coverage value of putting site ``u`` in province ``pid``."""
+        """Coverage value of putting site ``u`` in province ``pid``.
+
+        Args:
+            u: The site.
+            pid: Candidate province.
+
+        Returns:
+            The weight of the uncovered assets within reach (lower for long and medium range sites
+            on a hot front).
+        """
         here = t.provinces[pid].center
         reach = max(u.system.range_m * 0.8, 8_000.0)
         total = 0.0
@@ -414,7 +570,14 @@ def plan(state: CampaignState, fid: str) -> None:
         key=lambda u: (order[u.system.role], u.id),
     )
     def relocating(role: SamRole) -> bool:
-        """True if a site of that role is already on the road."""
+        """True if a site of that role is already on the road.
+
+        Args:
+            role: The SAM role.
+
+        Returns:
+            Whether one is moving.
+        """
         return any(o.movement and o.system.role is role for o in mobile)
 
     for u in mobile:

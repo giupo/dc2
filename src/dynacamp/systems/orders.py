@@ -26,12 +26,16 @@ from ..state import CampaignState
 from . import air, ato, intel
 from ..events import EventKind
 
+#: Most waypoints a planned route may have.
 MAX_WAYPOINTS = 24
+#: A TOT may be at most this far in the future, seconds.
 MAX_TOT_AHEAD_S = 24 * 3600.0
-SAME_POINT_M = 50.0  # tolerance on points that must not move (lat/lon round trips)
+#: Tolerance on points that must not move (latitude/longitude round trips).
+SAME_POINT_M = 50.0
+#: The landing point of a new route must be this close to the old one.
 LANDING_TOLERANCE_M = 1_000.0
 
-# Targets each main task can be ordered against.
+#: Kinds of target each main task can be ordered against.
 TARGET_KINDS: dict[Task, tuple[str, ...]] = {
     Task.CAS: ("battle",),
     Task.BAI: ("division", "convoy"),
@@ -54,7 +58,9 @@ class OrderError(ValueError):
     """
 
     def __init__(self, message: str, status: int = 409) -> None:
-        """Args:
+        """Record why the order was refused.
+
+        Args:
             message: Why, for the planner.
             status: 404 (unknown object) or 409 (refused).
         """
@@ -82,7 +88,16 @@ class Target:
 
 
 def _flight(state: CampaignState, flight_id: str, faction: str | None) -> Flight:
-    """The flight, checked against the ordering faction."""
+    """The flight, checked against the ordering faction.
+
+    Args:
+        state: The campaign.
+        flight_id: Flight id.
+        faction: Ordering faction (None: the umpire, who may order any flight).
+
+    Returns:
+        The flight.
+    """
     f = state.flights.get(flight_id)
     if f is None or (faction is not None and f.faction != faction):
         raise OrderError(f"no flight {flight_id}", 404)
@@ -90,7 +105,16 @@ def _flight(state: CampaignState, flight_id: str, faction: str | None) -> Flight
 
 
 def _package(state: CampaignState, package_id: str, faction: str | None) -> Package:
-    """The package, checked against the ordering faction."""
+    """The package, checked against the ordering faction.
+
+    Args:
+        state: The campaign.
+        package_id: Package id.
+        faction: Ordering faction (None: the umpire, who may order any package).
+
+    Returns:
+        The package.
+    """
     p = state.packages.get(package_id)
     if p is None or (faction is not None and p.faction != faction):
         raise OrderError(f"no package {package_id}", 404)
@@ -98,13 +122,28 @@ def _package(state: CampaignState, package_id: str, faction: str | None) -> Pack
 
 
 def _length(points: list[Vec2]) -> float:
-    """Length of a polyline in metres."""
+    """Length of a polyline in metres.
+
+    Args:
+        points: Polyline vertices.
+
+    Returns:
+        The length.
+    """
     return sum(a.distance_to(b) for a, b in zip(points, points[1:]))
 
 
 def fuel_limit_m(state: CampaignState, f: Flight) -> float:
     """Longest route a flight may plan: twice the combat radius, stretched by a
-    tanker on station for fixed-wing combat aircraft (as the ATO does)."""
+    tanker on station for fixed-wing combat aircraft (as the ATO does).
+
+    Args:
+        state: The campaign.
+        f: The flight.
+
+    Returns:
+        The maximum route length in metres.
+    """
     stretch = 1.0
     if not f.aircraft_type.helo and not f.task.support and air.tanker_on_station(state, f.faction):
         stretch = ato.TANKER_RADIUS_FACTOR
@@ -113,7 +152,15 @@ def fuel_limit_m(state: CampaignState, f: Flight) -> float:
 
 def _route_length(f: Flight, waypoints: list[Vec2]) -> float:
     """Length of a route as the flight flies it: the legs already flown, then
-    from its current position along what is left."""
+    from its current position along what is left.
+
+    Args:
+        f: The flight.
+        waypoints: The proposed route, including the waypoints already flown.
+
+    Returns:
+        The length in metres.
+    """
     if f.status is FlightStatus.SCHEDULED:
         return _length(waypoints)
     flown = waypoints[: f.wp_index]
@@ -121,7 +168,15 @@ def _route_length(f: Flight, waypoints: list[Vec2]) -> float:
 
 
 def _to_target(waypoints: list[Vec2], target_index: int) -> float:
-    """Distance from takeoff to the target along the route."""
+    """Distance from takeoff to the target along the route.
+
+    Args:
+        waypoints: The route.
+        target_index: Index of the target waypoint.
+
+    Returns:
+        The distance in metres.
+    """
     return _length(waypoints[: target_index + 1])
 
 
@@ -130,7 +185,14 @@ def _to_target(waypoints: list[Vec2], target_index: int) -> float:
 
 def locked_waypoints(f: Flight) -> int:
     """How many leading waypoints of a flight can no longer change: those
-    already flown (the takeoff one at least) and, while on station, the station."""
+    already flown (the takeoff one at least) and, while on station, the station.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        The number of locked waypoints (at least 1).
+    """
     if f.status is FlightStatus.ON_STATION:
         return f.target_index + 1
     return max(1, f.wp_index)
@@ -224,7 +286,15 @@ def set_route(
 def earliest_tot(state: CampaignState, pkg: Package) -> float:
     """Earliest TOT a package can be moved to. Later is always fine (crews only
     get more time); earlier only as long as every flight still takes off after
-    now plus the startup lead given to human pilots."""
+    now plus the startup lead given to human pilots.
+
+    Args:
+        state: The campaign.
+        pkg: The package.
+
+    Returns:
+        The earliest TOT, campaign seconds (never later than the current one).
+    """
     needed = max(
         (state.time + ato.STARTUP_LEAD_S - f.takeoff_time for f in _live_flights(state, pkg)), default=0.0
     )
@@ -232,7 +302,15 @@ def earliest_tot(state: CampaignState, pkg: Package) -> float:
 
 
 def _live_flights(state: CampaignState, pkg: Package) -> list[Flight]:
-    """Flights of a package not done or cancelled."""
+    """Flights of a package not done or cancelled.
+
+    Args:
+        state: The campaign.
+        pkg: The package.
+
+    Returns:
+        The live flights.
+    """
     return [
         f for f in (state.flights[i] for i in pkg.flights if i in state.flights)
         if f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
@@ -248,6 +326,9 @@ def set_tot(state: CampaignState, package_id: str, tot: float, faction: str | No
         package_id: The package.
         tot: New time on target (campaign seconds).
         faction: Ordering faction (None: the umpire).
+
+    Returns:
+        The package, with the new TOT.
 
     Raises:
         OrderError: The order is refused; nothing changed.
@@ -281,7 +362,17 @@ def set_tot(state: CampaignState, package_id: str, tot: float, faction: str | No
 
 
 def _request(state: CampaignState, fid: str, task: Task, target: Target) -> ato.Request:
-    """Turn an order into an ATO request, from what the faction knows."""
+    """Turn an order into an ATO request, from what the faction knows.
+
+    Args:
+        state: The campaign.
+        fid: Ordering faction.
+        task: The package's main task.
+        target: The ordered target.
+
+    Returns:
+        The request, with the target's label and position as the faction knows them.
+    """
     t = state.theater
     if target.kind not in TARGET_KINDS.get(task, ()):
         allowed = ", ".join(TARGET_KINDS.get(task, ())) or "nothing (it escorts other packages)"
@@ -351,6 +442,9 @@ def order_package(
         squadron: Squadron of the main flight (None: the best available).
         tot: Time on target (None: the earliest possible).
 
+    Returns:
+        The new package.
+
     Raises:
         OrderError: The order is refused; nothing changed.
     """
@@ -386,7 +480,19 @@ def order_package(
 def _why_no_package(
     state: CampaignState, fid: str, task: Task, r: ato.Request, squadron: str | None, tot: float | None
 ) -> str:
-    """Explain why :func:`ato.build_package` found nothing."""
+    """Explain why :func:`ato.build_package` found nothing.
+
+    Args:
+        state: The campaign.
+        fid: Ordering faction.
+        task: The package's main task.
+        r: The ATO request built from the order.
+        squadron: The squadron asked for (None: any).
+        tot: The TOT asked for (None: the earliest).
+
+    Returns:
+        The reason, for the planner.
+    """
     size = 4 if task is Task.STRIKE else (1 if task in (Task.AWACS, Task.TANKER) else 2)
     if task is Task.DEAD:
         task = Task.STRIKE  # the strikers (SEAD is checked before building)
@@ -408,7 +514,16 @@ def _why_no_package(
 
 
 def _squadron_filter(state: CampaignState, r: ato.Request, squadron: str | None):
-    """Squadron filter of an order: the target's requirement and the chosen squadron."""
+    """Squadron filter of an order: the target's requirement and the chosen squadron.
+
+    Args:
+        state: The campaign.
+        r: The ATO request.
+        squadron: The squadron asked for (None: any).
+
+    Returns:
+        A predicate on squadrons.
+    """
     base = ato._target_requirement(state, r)
     return lambda sq: (squadron is None or sq.id == squadron) and (base is None or base(sq))
 
@@ -416,6 +531,11 @@ def _squadron_filter(state: CampaignState, r: ato.Request, squadron: str | None)
 def cancel_package(state: CampaignState, package_id: str, faction: str | None = None) -> list[str]:
     """Cancel the flights of a package that are still on the ground (their
     aircraft go back to the squadrons); airborne ones carry on.
+
+    Args:
+        state: The campaign.
+        package_id: The package.
+        faction: Ordering faction (None: the umpire).
 
     Returns:
         Callsigns of the cancelled flights.

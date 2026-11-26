@@ -38,39 +38,86 @@ from ..geo import Vec2
 from ..state import CampaignState
 from ..events import EventKind
 
+# -- Flights and squadrons ---------------------------------------------------
+
+#: Players may still join a flight up to this long after its takeoff time.
 LATE_JOIN_S = 10 * 60.0
-AD_RADIUS_M = 15_000.0
-TARGET_SEARCH_M = 20_000.0
+#: A flight with players is closed this long after its TOT (or station end)
+#: even if they never report landing.
 PLAYER_FLIGHT_TIMEOUT_S = 3 * 3600.0
+#: Servicing time of aircraft back from a mission before they are ready again.
 TURNAROUND_S = 3 * 3600.0
-ARCHIVE_MAX = 2000  # completed packages kept for the event log (see CampaignState.archive)
-REPLACEMENT_INTERVAL_S = 8 * 3600.0  # one new airframe per squadron this often, up to establishment
+#: One new airframe per understrength squadron this often, up to its establishment.
+REPLACEMENT_INTERVAL_S = 8 * 3600.0
+#: Completed packages kept in :attr:`~dynacamp.state.CampaignState.archive`
+#: for the event log (oldest dropped first).
+ARCHIVE_MAX = 2000
+
+# -- Orbits ------------------------------------------------------------------
+
+#: Radius of a CAP orbit around its station.
 CAP_ORBIT_RADIUS_M = 15_000.0
+#: Radius of an AWACS or tanker orbit around its station.
 SUPPORT_ORBIT_RADIUS_M = 30_000.0
-AWACS_SUPPORT_RANGE_M = 350_000.0  # fighters under AWACS control fight better
-AWACS_A2A_BONUS = 1.15  # missiles fired under AWACS control hit more often
-# Air-to-air
-CUE_RANGE_M = 50_000.0  # an AWACS sends its fighters at contacts this close to them
-WVR_RANGE_M = 10_000.0  # the merge: heat seekers and guns
-SHOT_INTERVAL_S = 60.0  # a salvo per flight this often
-PK_BVR = 0.07  # kill probability of a radar missile between equal fighters (combat record: 0.1-0.3)
-PK_WVR = 0.12  # ...of a heat seeker
-PK_GUN = 0.03  # ...of a gun pass (fighters only; unlimited)
-GUN_A2A = 0.5  # types this good in air combat have a usable gun
-CHASE_LIMIT_M = 100_000.0  # an orbiting fighter gives up a chase this far from its station
-REATTACK_S = 30 * 60.0  # after its pass at a target a fighter leaves it alone this long
-SALVO_MAX = 2  # missiles a flight fires at one target in one salvo
-# Fuel
-FUEL_FACTOR = 2.2  # range at takeoff = this x combat radius (the planners use 2x)
-ORBIT_FUEL = 0.6  # fuel burnt on station per metre of cruise
-BINGO_MARGIN = 1.1  # home is this much further than the straight line...
-BINGO_RESERVE_M = 20_000.0  # ...plus this reserve
+
+# -- Attacks on the ground ---------------------------------------------------
+
+#: Radius around a target in which enemy short-range air defence counts.
+AD_RADIUS_M = 15_000.0
+#: An attack hits the planned target if still within this distance of the
+#: target point, else the nearest enemy within it.
+TARGET_SEARCH_M = 20_000.0
+#: Strength a brigade loses per unit of attack effectiveness.
 GROUND_STRENGTH_PER_EFF = 0.006
+#: Organisation a brigade loses per unit of attack effectiveness.
 GROUND_ORG_PER_EFF = 0.03
+
+# -- Air-to-air --------------------------------------------------------------
+
+#: Fighters under an AWACS within this distance fight better.
+AWACS_SUPPORT_RANGE_M = 350_000.0
+#: Kill probability multiplier of missiles fired under AWACS control.
+AWACS_A2A_BONUS = 1.15
+#: An AWACS sends its fighters at contacts this close to them.
+CUE_RANGE_M = 50_000.0
+#: The merge: heat seekers and guns within this distance.
+WVR_RANGE_M = 10_000.0
+#: A flight fires a salvo at most this often, seconds.
+SHOT_INTERVAL_S = 60.0
+#: Kill probability of a radar missile between equal fighters (combat record: 0.1-0.3).
+PK_BVR = 0.07
+#: Kill probability of a heat seeker between equal fighters.
+PK_WVR = 0.12
+#: Kill probability of a gun pass (fighters only; unlimited rounds).
+PK_GUN = 0.03
+#: Aircraft types at least this good in air combat (``a2a``) have a usable gun.
+GUN_A2A = 0.5
+#: An orbiting fighter gives up a chase this far from its station.
+CHASE_LIMIT_M = 100_000.0
+#: After its pass at a target a fighter leaves it alone this long, seconds.
+REATTACK_S = 30 * 60.0
+#: Missiles a flight fires at one target in one salvo.
+SALVO_MAX = 2
+
+# -- Fuel --------------------------------------------------------------------
+
+#: Range at takeoff, as a multiple of the combat radius (the planners use 2).
+FUEL_FACTOR = 2.2
+#: Fuel burnt on station per metre of orbit, as a share of the cruise rate.
+ORBIT_FUEL = 0.6
+#: Bingo: home is reckoned this much further than the straight line...
+BINGO_MARGIN = 1.1
+#: ...plus this reserve.
+BINGO_RESERVE_M = 20_000.0
 
 
 def run(state: CampaignState, dt: float) -> None:
-    """Advance every flight; air combat; cleanup; airframe replacements."""
+    """Advance every flight; air combat; cleanup; airframe replacements.
+
+    Args:
+        state: The campaign.
+        dt: Campaign seconds elapsed.
+    """
     for f in list(state.flights.values()):
         if f.status in (FlightStatus.DONE, FlightStatus.CANCELLED):
             continue
@@ -95,7 +142,11 @@ def run(state: CampaignState, dt: float) -> None:
 
 
 def _replacements(state: CampaignState) -> None:
-    """Every ``REPLACEMENT_INTERVAL_S`` give each understrength squadron one airframe."""
+    """Every ``REPLACEMENT_INTERVAL_S`` give each understrength squadron one airframe.
+
+    Args:
+        state: The campaign.
+    """
     if state.time < state.timers.get("air_replacements", 0.0):
         return
     first = "air_replacements" not in state.timers
@@ -113,7 +164,17 @@ def _replacements(state: CampaignState) -> None:
 
 
 def air_defense(state: CampaignState, fid: str, point: Vec2, radius: float = AD_RADIUS_M) -> float:
-    """Short-range air defence an attacker of ``fid`` meets around ``point``."""
+    """Short-range air defence an attacker of ``fid`` meets around ``point``.
+
+    Args:
+        state: The campaign.
+        fid: The attacker's faction.
+        point: The target point.
+        radius: Search radius in metres.
+
+    Returns:
+        Short-range SAMs plus half the AAA of the enemy divisions within ``radius``.
+    """
     t = state.theater
     total = 0.0
     for d in state.divisions.values():
@@ -148,7 +209,12 @@ def lose_aircraft(state: CampaignState, f: Flight, n: int, cause: str) -> None:
 
 
 def _takeoff(state: CampaignState, f: Flight) -> None:
-    """Launch a scheduled flight (or cancel it if its base fell or it has no crews)."""
+    """Launch a scheduled flight (or cancel it if its base fell or it has no crews).
+
+    Args:
+        state: The campaign.
+        f: The scheduled flight.
+    """
     sq = state.squadrons[f.squadron]
     base = state.airbases[sq.airbase]
     if base.owner(state.theater) != f.faction:
@@ -167,7 +233,13 @@ def _takeoff(state: CampaignState, f: Flight) -> None:
 
 def _load_cargo(state: CampaignState, f: Flight, base) -> None:
     """Load a transport at its home base: from the base's depot, or freely at a
-    rear base outside the map (the strategic supply chain)."""
+    rear base outside the map (the strategic supply chain).
+
+    Args:
+        state: The campaign.
+        f: The transport flight.
+        base: Its home airbase.
+    """
     want = f.aircraft_type.cargo * f.size
     p = state.theater.provinces.get(base.province) if base.province else None
     if p is None:
@@ -180,7 +252,13 @@ def _load_cargo(state: CampaignState, f: Flight, base) -> None:
 
 
 def _cancel(state: CampaignState, f: Flight, reason: str) -> None:
-    """Cancel a flight and release its aircraft and seats."""
+    """Cancel a flight and release its aircraft and seats.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        reason: Why, for the ``flight_cancelled`` event.
+    """
     f.status = FlightStatus.CANCELLED
     state.squadrons[f.squadron].committed -= f.size
     for pid, seat in f.players.items():
@@ -191,7 +269,15 @@ def _cancel(state: CampaignState, f: Flight, reason: str) -> None:
 
 
 def _target_entity(state: CampaignState, f: Flight) -> Division | Convoy | None:
-    """The division or convoy a BAI flight is after, if it still exists."""
+    """The division or convoy a BAI flight is after, if it still exists.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+
+    Returns:
+        The target entity, or None.
+    """
     if f.target_kind == "division":
         return state.divisions.get(f.target_id)
     if f.target_kind == "convoy":
@@ -207,6 +293,10 @@ def ready(state: CampaignState, f: Flight) -> None:
 
     Support aircraft (AWACS, tankers, transports) are not fuel-limited: their
     stations are planned within their endurance.
+
+    Args:
+        state: The campaign.
+        f: The flight, updated in place.
     """
     if f.fuel_m < 0:
         if f.task.support:
@@ -226,12 +316,25 @@ def ready(state: CampaignState, f: Flight) -> None:
 
 
 def winchester(f: Flight) -> bool:
-    """True if a flight that took off with missiles has fired them all."""
+    """True if a flight that took off with missiles has fired them all.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        Whether it is out of air-to-air missiles.
+    """
     return f.aam_loaded > 0 and f.aam_bvr <= 0 and f.aam_wvr <= 0
 
 
 def go_home(state: CampaignState, f: Flight, reason: str) -> None:
-    """Break off and fly straight home (bingo fuel, winchester...)."""
+    """Break off and fly straight home (bingo fuel, winchester...).
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        reason: Why, for the ``flight_rtb`` event.
+    """
     if f.status is FlightStatus.RTB:
         return
     f.status = FlightStatus.RTB
@@ -243,13 +346,23 @@ def go_home(state: CampaignState, f: Flight, reason: str) -> None:
 
 
 def _burn(f: Flight, metres: float) -> None:
-    """Fuel for ``metres`` of flight (nothing for untracked flights)."""
+    """Fuel for ``metres`` of flight (nothing for untracked flights).
+
+    Args:
+        f: The flight.
+        metres: Distance flown.
+    """
     if not math.isinf(f.fuel_m):
         f.fuel_m = max(0.0, f.fuel_m - metres)
 
 
 def _bingo(state: CampaignState, f: Flight) -> None:
-    """Go home when the fuel left only just covers the way back."""
+    """Go home when the fuel left only just covers the way back.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+    """
     if f.status is FlightStatus.RTB or math.isinf(f.fuel_m) or not f.waypoints:
         return
     if f.fuel_m <= f.pos.distance_to(f.waypoints[-1]) * BINGO_MARGIN + BINGO_RESERVE_M:
@@ -258,7 +371,12 @@ def _bingo(state: CampaignState, f: Flight) -> None:
 
 def disengage(state: CampaignState, f: Flight) -> None:
     """End a chase: back to the station (orbiting flights with time left) or
-    on along the route."""
+    on along the route.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+    """
     f.engaging = ""
     if f.status is FlightStatus.RTB:
         return
@@ -271,7 +389,16 @@ def disengage(state: CampaignState, f: Flight) -> None:
 
 
 def _chase(state: CampaignState, f: Flight, dt: float) -> bool:
-    """Fly at the flight's air-to-air target. False if there is nothing to chase."""
+    """Fly at the flight's air-to-air target. False if there is nothing to chase.
+
+    Args:
+        state: The campaign.
+        f: The chasing flight.
+        dt: Seconds of flight.
+
+    Returns:
+        Whether it chased (False: the target is gone and the flight disengaged).
+    """
     tgt = state.flights.get(f.engaging)
     if tgt is None or tgt.status not in ACTIVE_STATUSES or tgt.ai_count + len(tgt.active_seats) <= 0:
         disengage(state, f)
@@ -289,7 +416,13 @@ def _chase(state: CampaignState, f: Flight, dt: float) -> bool:
 
 
 def _fly(state: CampaignState, f: Flight, dt: float) -> None:
-    """Move the AI part along its waypoints; attack, orbit or land on arrival."""
+    """Move the AI part along its waypoints; attack, orbit or land on arrival.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        dt: Seconds of flight.
+    """
     if f.fuel_m < 0 or f.aam_bvr < 0:
         ready(state, f)
     if f.target_kind == "flight":  # scrambled interceptors chase their intruder
@@ -348,7 +481,12 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
 
 
 def _check_complete(state: CampaignState, f: Flight) -> None:
-    """Close a flight whose AI part and players are done (or timed out)."""
+    """Close a flight whose AI part and players are done (or timed out).
+
+    Args:
+        state: The campaign.
+        f: The flight.
+    """
     if state.time > max(f.tot, f.station_until) + PLAYER_FLIGHT_TIMEOUT_S:
         for pid, seat in f.players.items():
             if seat.state is SeatState.ASSIGNED:
@@ -371,7 +509,12 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
 
 def deliver(state: CampaignState, f: Flight) -> None:
     """A transport flight unloads its cargo: into a depot (airlift) or to the
-    brigades near the landing zone (helicopter resupply)."""
+    brigades near the landing zone (helicopter resupply).
+
+    Args:
+        state: The campaign.
+        f: The transport flight at its target.
+    """
     t = state.theater
     cargo = f.cargo * (f.ai_count / f.size if f.size else 0.0)
     f.cargo = 0.0
@@ -395,7 +538,17 @@ def deliver(state: CampaignState, f: Flight) -> None:
 
 
 def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = None, reach: float = AWACS_SUPPORT_RANGE_M) -> Flight | None:
-    """An AWACS of ``faction`` holding its orbit (within ``reach`` of ``near`` if given)."""
+    """An AWACS of ``faction`` holding its orbit (within ``reach`` of ``near`` if given).
+
+    Args:
+        state: The campaign.
+        faction: Faction id.
+        near: Point the AWACS must be close to (None = anywhere).
+        reach: Maximum distance in metres from ``near``.
+
+    Returns:
+        The AWACS flight, or None.
+    """
     for f in state.flights.values():
         if f.faction == faction and f.task is Task.AWACS and f.status is FlightStatus.ON_STATION and f.ai_count + len(f.active_seats) > 0:
             if near is None or f.pos.distance_to(near) <= reach:
@@ -404,7 +557,15 @@ def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = Non
 
 
 def tanker_on_station(state: CampaignState, faction: str) -> Flight | None:
-    """A tanker of ``faction`` on its track."""
+    """A tanker of ``faction`` on its track.
+
+    Args:
+        state: The campaign.
+        faction: Faction id.
+
+    Returns:
+        The tanker flight, or None.
+    """
     for f in state.flights.values():
         if f.faction == faction and f.task is Task.TANKER and f.status is FlightStatus.ON_STATION:
             return f
@@ -412,7 +573,12 @@ def tanker_on_station(state: CampaignState, faction: str) -> Flight | None:
 
 
 def attack(state: CampaignState, f: Flight) -> None:
-    """Abstract attack run by the AI part of ``f`` at its target point."""
+    """Abstract attack run by the AI part of ``f`` at its target point.
+
+    Args:
+        state: The campaign.
+        f: The flight at its target.
+    """
     if f.task is Task.TRANSPORT:
         deliver(state, f)
         return
@@ -439,7 +605,14 @@ def attack(state: CampaignState, f: Flight) -> None:
         return
 
     def campaign_owned(e) -> bool:
-        """True if the campaign (not the game) simulates ``e``."""
+        """True if the campaign (not the game) simulates ``e``.
+
+        Args:
+            e: The entity.
+
+        Returns:
+            Whether its authority is ``CAMPAIGN``.
+        """
         return e.authority is Authority.CAMPAIGN
 
     if f.target_kind == "sam":
@@ -515,6 +688,9 @@ def _nearest_enemy(state: CampaignState, f: Flight, pool, preferred: str):
         f: The attacking flight.
         pool: Candidate entities.
         preferred: Id of the planned target.
+
+    Returns:
+        The target entity, or None if no enemy is within ``TARGET_SEARCH_M`` of the target point.
     """
     t = state.theater
     candidates = [e for e in pool if state.at_war(f.faction, e.faction)]
@@ -530,7 +706,14 @@ def _nearest_enemy(state: CampaignState, f: Flight, pool, preferred: str):
 
 def _hunter(f: Flight) -> bool:
     """A fighter that must engage what it sees: air-to-air task, AI-flown by the
-    campaign, airborne and not going home, with missiles (or only a gun)."""
+    campaign, airborne and not going home, with missiles (or only a gun).
+
+    Args:
+        f: The flight.
+
+    Returns:
+        Whether it hunts.
+    """
     return (
         f.task.air_to_air
         and f.status in (FlightStatus.AIRBORNE, FlightStatus.ON_STATION)
@@ -541,13 +724,25 @@ def _hunter(f: Flight) -> bool:
 
 
 def _quality(shooter: Flight, target: Flight) -> float:
-    """Kill probability multiplier from the two types' air-to-air quality (1 between equals)."""
+    """Kill probability multiplier from the two types' air-to-air quality (1 between equals).
+
+    Args:
+        shooter: The firing flight.
+        target: The target flight.
+
+    Returns:
+        The multiplier, between 0.4 and 1.6.
+    """
     a, b = shooter.aircraft_type.a2a + 0.2, target.aircraft_type.a2a + 0.2
     return min(1.6, max(0.4, 2.0 * a / (a + b)))
 
 
 def _air_combat(state: CampaignState) -> None:
-    """Fighters commit on what they see and fire at it (see the module docstring)."""
+    """Fighters commit on what they see and fire at it (see the module docstring).
+
+    Args:
+        state: The campaign.
+    """
     from .. import sensors
     from . import routing
 
@@ -567,7 +762,15 @@ def _air_combat(state: CampaignState) -> None:
     jams = {f.id: sensors.jam(state, f) for f in flying}
 
     def seen_by(f: Flight, tgt: Flight) -> bool:
-        """``f`` has ``tgt`` on its radar, or its AWACS points it out within ``CUE_RANGE_M``."""
+        """``f`` has ``tgt`` on its radar, or its AWACS points it out within ``CUE_RANGE_M``.
+
+        Args:
+            f: The fighter.
+            tgt: The possible target.
+
+        Returns:
+            Whether ``f`` can engage it.
+        """
         if sensors.radar_sees(f, pos[f.id], tgt, pos[tgt.id], track_only=True, jamming=jams[tgt.id]):
             return True
         return pos[f.id].distance_to(pos[tgt.id]) <= CUE_RANGE_M and any(
@@ -576,7 +779,15 @@ def _air_combat(state: CampaignState) -> None:
         )
 
     def covered(f: Flight, where: Vec2) -> bool:
-        """``where`` is under an enemy SAM umbrella ``f``'s side knows about."""
+        """``where`` is under an enemy SAM umbrella ``f``'s side knows about.
+
+        Args:
+            f: The fighter.
+            where: The point.
+
+        Returns:
+            Whether the point is inside a known SAM umbrella.
+        """
         if f.faction not in umbrellas:
             umbrellas[f.faction] = routing.threats(state, f.faction, sensors.flight_altitude(f))
         return any(u.contains(where) for u in umbrellas[f.faction])
@@ -618,7 +829,14 @@ def _air_combat(state: CampaignState) -> None:
 def _salvo(state: CampaignState, f: Flight, tgt: Flight, d: float) -> None:
     """``f`` fires at ``tgt`` if in range: radar missiles out to their launch
     range, heat seekers or the gun in the merge. In the merge a target with
-    heat seekers fires back."""
+    heat seekers fires back.
+
+    Args:
+        state: The campaign.
+        f: The firing flight.
+        tgt: The target flight.
+        d: Distance between them, metres.
+    """
     if d <= WVR_RANGE_M:
         phase = "WVR"
     elif f.aam_bvr > 0 and d <= f.aam_range_m and state.timers.get(f"aa_pass:{f.id}:{tgt.id}:bvr", 0.0) <= state.time:
@@ -662,7 +880,18 @@ def _salvo(state: CampaignState, f: Flight, tgt: Flight, d: float) -> None:
 
 def _fire(state: CampaignState, f: Flight, tgt: Flight, phase: str, bonus: float) -> tuple[int, int]:
     """One salvo: up to ``SALVO_MAX`` missiles (a gun pass per aircraft).
-    Returns (kills, rounds fired)."""
+    Returns (kills, rounds fired).
+
+    Args:
+        state: The campaign.
+        f: The firing flight.
+        tgt: The target flight.
+        phase: ``"BVR"`` or ``"WVR"``.
+        bonus: Kill probability multiplier (AWACS support).
+
+    Returns:
+        Kills and rounds fired.
+    """
     n = min(f.ai_count, SALVO_MAX)
     if phase == "BVR":
         from .. import sensors
@@ -684,7 +913,11 @@ def _fire(state: CampaignState, f: Flight, tgt: Flight, phase: str, bonus: float
 
 
 def _cleanup(state: CampaignState) -> None:
-    """Drop expired cooldowns and completed packages."""
+    """Drop expired cooldowns and completed packages.
+
+    Args:
+        state: The campaign.
+    """
     for key in [k for k, v in state.timers.items() if k.startswith(("aa:", "aa_pass:", "sam:", "harm:", "evade:", "scramble:", "contested:", "meet:")) and v <= state.time]:
         del state.timers[key]
     for pkg in list(state.packages.values()):

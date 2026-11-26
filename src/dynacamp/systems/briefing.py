@@ -36,8 +36,10 @@ from ..geo import Vec2
 from ..projection import to_latlon
 from ..state import CampaignState
 
+#: Spacing of the route samples checked against threats.
 ROUTE_SAMPLE_M = 5_000.0
 
+#: Mission statement of the briefing, by task.
 MISSION_TEXT = {
     Task.CAS: "Close air support: destroy enemy forces engaged with our troops at the target. Expect friendlies within {friendly_range}.",
     Task.BAI: "Battlefield interdiction: destroy the enemy formation before it reaches the front.",
@@ -52,6 +54,7 @@ MISSION_TEXT = {
     Task.DEAD: "DEAD: destroy the SAM site. The package's SEAD flight goes in two minutes ahead to put its radars down; stay with its ECM cover."
 }
 
+#: Name of the target waypoint of orbiting tasks.
 STATION_NAME = {
     Task.CAP: "CAP STATION",
     Task.AWACS: "AWACS ORBIT",
@@ -63,13 +66,30 @@ STATION_NAME = {
 
 
 def ddm(ll: tuple[float, float] | None) -> str:
-    """Latitude/longitude as degrees and decimal minutes (``N42°10.5' E042°28.9'``)."""
+    """Latitude/longitude as degrees and decimal minutes (``N42°10.5' E042°28.9'``).
+
+    Args:
+        ll: Latitude and longitude in degrees, or None.
+
+    Returns:
+        The coordinates, or ``"-"`` without them.
+    """
     if ll is None:
         return "-"
     lat, lon = ll
 
     def part(v: float, pos: str, neg: str, width: int) -> str:
-        """One coordinate as hemisphere, degrees and decimal minutes."""
+        """One coordinate as hemisphere, degrees and decimal minutes.
+
+        Args:
+            v: The coordinate in degrees.
+            pos: Hemisphere letter for positive values.
+            neg: Hemisphere letter for negative values.
+            width: Digits of the degrees (2 for latitude, 3 for longitude).
+
+        Returns:
+            The formatted coordinate.
+        """
         d = abs(v)
         deg = int(d)
         return f"{pos if v >= 0 else neg}{deg:0{width}d}°{(d - deg) * 60:04.1f}'"
@@ -78,18 +98,42 @@ def ddm(ll: tuple[float, float] | None) -> str:
 
 
 def bearing_range(a: Vec2, b: Vec2, units: Units = UnitDomain.METRIC) -> str:
-    """True bearing and range from ``a`` to ``b`` (``"087° 64 km"`` / ``"087° 35 NM"``)."""
+    """True bearing and range from ``a`` to ``b`` (``"087° 64 km"`` / ``"087° 35 NM"``).
+
+    Args:
+        a: From this point.
+        b: To this point.
+        units: Unit system of the range.
+
+    Returns:
+        The bearing and range label.
+    """
     return f"{math.degrees(a.heading_to(b)) % 360:03.0f}° {U.distance(a.distance_to(b), units)}"
 
 
 def _ll(state: CampaignState, p: Vec2) -> list[float] | None:
-    """``[lat, lon]`` of a campaign point, or None without projection."""
+    """``[lat, lon]`` of a campaign point, or None without projection.
+
+    Args:
+        state: The campaign.
+        p: The point.
+
+    Returns:
+        Latitude and longitude rounded to 6 decimals, or None.
+    """
     ll = to_latlon(state.theater.name, p)
     return None if ll is None else [round(ll[0], 6), round(ll[1], 6)]
 
 
 def _route_samples(points: list[Vec2]) -> list[Vec2]:
-    """Points every ``ROUTE_SAMPLE_M`` along a route."""
+    """Points every ``ROUTE_SAMPLE_M`` along a route.
+
+    Args:
+        points: The route.
+
+    Returns:
+        The sampled points, ending with the last waypoint.
+    """
     out: list[Vec2] = []
     for a, b in zip(points, points[1:]):
         n = max(1, int(a.distance_to(b) // ROUTE_SAMPLE_M))
@@ -99,7 +143,15 @@ def _route_samples(points: list[Vec2]) -> list[Vec2]:
 
 def frequencies(f: Flight, state: CampaignState | None = None) -> dict[str, str]:
     """Package (UHF) and flight (VHF) frequencies, as assigned by the ATO (clear
-    of the theatre's airfields, see :mod:`dynacamp.radio`)."""
+    of the theatre's airfields, see :mod:`dynacamp.radio`).
+
+    Args:
+        f: The flight.
+        state: The campaign (None: frequencies derived from the ids, clear of guard only).
+
+    Returns:
+        The ``package`` and ``flight`` frequencies as briefing strings.
+    """
     from .. import radio
 
     pkg = state.packages.get(f.package) if state is not None else None
@@ -115,7 +167,14 @@ def frequencies(f: Flight, state: CampaignState | None = None) -> dict[str, str]
 
 
 def waypoint_names(f: Flight) -> list[str]:
-    """Names of a flight's waypoints."""
+    """Names of a flight's waypoints.
+
+    Args:
+        f: The flight.
+
+    Returns:
+        One name per waypoint (``TAKEOFF``, ``IP``, ``TARGET``, ``EGRESS``, ``LAND``...).
+    """
     n = len(f.waypoints)
     names = ["WP"] * n
     names[0], names[-1] = "TAKEOFF", "LAND"
@@ -135,6 +194,11 @@ def waypoint_names(f: Flight) -> list[str]:
 def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -> list[dict[str, Any]]:
     """Named waypoints with ETA (counted from the TOT), altitude and speed.
 
+    Args:
+        state: The campaign.
+        f: The flight.
+        units: Units of the notes (default: the campaign's).
+
     Returns:
         ``[{index, name, pos, ll, eta, alt_m, speed_kmh, note}, ...]``.
     """
@@ -145,7 +209,15 @@ def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -
     ti = f.target_index
 
     def dist(i: int, j: int) -> float:
-        """Route distance between waypoints ``i`` and ``j``."""
+        """Route distance between waypoints ``i`` and ``j``.
+
+        Args:
+            i: Index of a waypoint.
+            j: Index of another waypoint.
+
+        Returns:
+            The distance in metres along the route.
+        """
         lo, hi = min(i, j), max(i, j)
         return sum(wps[k].distance_to(wps[k + 1]) for k in range(lo, hi))
 
@@ -190,7 +262,16 @@ def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -
 
 def waypoint_marks(state: CampaignState, f: Flight, units: Units | None = None) -> list[tuple[str, Vec2]]:
     """Map marks for the game: ``(label, position)`` for every waypoint after takeoff
-    (altitudes in ``units``, default the campaign's)."""
+    (altitudes in ``units``, default the campaign's).
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        units: Units of the altitudes (default: the campaign's).
+
+    Returns:
+        The marks.
+    """
     units = units or state.units
     out = []
     for wp in waypoint_plan(state, f)[1:]:
@@ -204,7 +285,17 @@ def waypoint_marks(state: CampaignState, f: Flight, units: Units | None = None) 
 
 
 def target_info(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -> dict[str, Any]:
-    """What the flight is sent against."""
+    """What the flight is sent against.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        units: Units of the texts.
+
+    Returns:
+        Kind, id, name, description, composition, position and coordinates of the target, with
+        bearing and range from the home base.
+    """
     t = state.theater
     point = f.target_point
     base = state.airbases[state.squadrons[f.squadron].airbase]
@@ -267,7 +358,16 @@ def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -
     """Enemy air defences along the route and fighters able to reach the target.
 
     SAM sites are those the faction *knows about* (systems.intel), at their last
-    known position: a site nobody has located is not in the briefing."""
+    known position: a site nobody has located is not in the briefing.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        units: Units of the texts.
+
+    Returns:
+        One entry per known SAM site near the route and per enemy fighter squadron in reach.
+    """
     from . import air, air_defense, ato, intel
 
     t = state.theater
@@ -348,6 +448,9 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
         state: The campaign.
         f: The flight.
         units: Units of the texts (default: the campaign's, see :mod:`dynacamp.units`).
+
+    Returns:
+        The mission package (header, route, target, threats, loadout, frequencies, support).
     """
     units = units or state.units
     t = state.theater
@@ -427,7 +530,16 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
 
 
 def support(state: CampaignState, f: Flight, units: Units = "metric") -> list[dict[str, Any]]:
-    """Friendly AWACS and tankers airborne or planned around the flight's time."""
+    """Friendly AWACS and tankers airborne or planned around the flight's time.
+
+    Args:
+        state: The campaign.
+        f: The flight.
+        units: Units of the texts.
+
+    Returns:
+        The support flights with callsign, aircraft, station and frequency.
+    """
     out = []
     for o in state.flights.values():
         if o.faction != f.faction or o.id == f.id or o.task not in (Task.AWACS, Task.TANKER):
@@ -453,11 +565,26 @@ def support(state: CampaignState, f: Flight, units: Units = "metric") -> list[di
 
 
 def render(b: dict[str, Any], now: float | None = None) -> str:
-    """The briefing as text for in-game messages (in the briefing's units)."""
+    """The briefing as text for in-game messages (in the briefing's units).
+
+    Args:
+        b: A :func:`briefing` result.
+        now: Current campaign time, to show times as relative (None: absolute only).
+
+    Returns:
+        The briefing text.
+    """
     units: Units = b.get("units", U.DEFAULT_UNITS)
 
     def rel(t: float) -> str:
-        """Relative time label, empty when ``now`` is not given."""
+        """Relative time label, empty when ``now`` is not given.
+
+        Args:
+            t: A campaign time.
+
+        Returns:
+            ``" (in N min)"`` or ``" (N min ago)"``, or ``""``.
+        """
         if now is None:
             return ""
         m = round((t - now) / 60)
