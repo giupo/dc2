@@ -1461,7 +1461,7 @@
             },
             "type": "object",
             "title": "Boards",
-            "description": "side -> what players see in the in-game menu"
+            "description": "coalition -> what players see in the in-game menu"
           }
         },
         "additionalProperties": false,
@@ -2021,7 +2021,7 @@
           "radio_callsign": {
             "type": "string",
             "title": "Radio Callsign",
-            "description": "DCS radio callsign (what the AI calls the flight); differs from `callsign` when the squadron's own name is not in DCS' list for the type; empty for eastern sides",
+            "description": "DCS radio callsign (what the AI calls the flight); differs from `callsign` when the squadron's own name is not in DCS' list for the type; empty for armies without named callsigns",
             "default": ""
           },
           "title": {
@@ -3062,9 +3062,30 @@
             "type": "string",
             "title": "Name"
           },
-          "side": {
+          "coalition": {
             "type": "string",
-            "title": "Side"
+            "title": "Coalition",
+            "description": "game coalition (DCS coalition.side key); factions of one coalition share intelligence and bullseye"
+          },
+          "army": {
+            "type": "string",
+            "title": "Army",
+            "description": "catalogue army the faction fields (data/catalog/factions.toml)"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "description": "map colour, #rrggbb"
+          },
+          "quality": {
+            "type": "number",
+            "title": "Quality",
+            "description": "combat quality: multiplier of the effectiveness of its forces (1 = reference)"
+          },
+          "standing": {
+            "type": "number",
+            "title": "Standing",
+            "description": "share of the war it is winning, 0-1, summing to 1 over the factions (dynacamp.standing)"
           },
           "enemies": {
             "items": {
@@ -3098,7 +3119,7 @@
           },
           "bullseye": {
             "$ref": "#/components/schemas/Located",
-            "description": "fixed reference point of the side's bearing/range calls (BULLS)"
+            "description": "fixed reference point of the coalition's bearing/range calls (BULLS)"
           }
         },
         "additionalProperties": false,
@@ -3106,7 +3127,11 @@
         "required": [
           "id",
           "name",
-          "side",
+          "coalition",
+          "army",
+          "color",
+          "quality",
+          "standing",
           "enemies",
           "provinces",
           "victory_points",
@@ -4106,9 +4131,9 @@
             "type": "string",
             "title": "Name"
           },
-          "side": {
+          "coalition": {
             "type": "string",
-            "title": "Side"
+            "title": "Coalition"
           },
           "kind": {
             "$ref": "#/components/schemas/PlayerKind"
@@ -4137,7 +4162,7 @@
           "ll",
           "id",
           "name",
-          "side",
+          "coalition",
           "kind",
           "altitude",
           "flight"

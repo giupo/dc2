@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+import re
 import tomllib
 from pathlib import Path
 from typing import Any
 
-from .adapters.base import Side
 from .air import AIRCRAFT, Airbase, Squadron, Task
 from .air_defense import SYSTEMS, AirDefenseUnit, place_sites
 from .forces import DEFAULT_TEMPLATES, Division, DivisionTemplate
 from .geo import Vec2
 from .projection import from_latlon
-from .state import CampaignState, Faction, Objective
+from .state import ARMIES, CampaignState, Faction, Objective
 from .world import Depot, LinkKind, Province, Terrain, Theater
 from . import bullseye, units
 
 #: Theatre of a scenario that names none (no projection: plain plane coordinates).
 UNNAMED_THEATER = "unnamed"
+#: A faction's map colour: ``#rrggbb``.
+COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
+#: Lowest combat quality a faction may have (a third of the reference).
+MIN_QUALITY = 0.3
+#: Highest combat quality a faction may have (three times the reference).
+MAX_QUALITY = 3.0
 
 
 class ScenarioError(ValueError):
@@ -75,37 +81,69 @@ def point(spec: dict[str, Any], theater: str, what: str) -> Vec2:
         v = spec[key]
         if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) for x in v)):
             raise ScenarioError(f"{what}: {key} must be two numbers, not {v!r}")
+
         return float(v[0]), float(v[1])
 
     if "ll" in spec:
         lat, lon = pair("ll")
         if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             raise ScenarioError(f"{what}: ll = [{lat}, {lon}] is not [lat, lon]")
+
         v = from_latlon(theater, lat, lon)
         if v is None:
             raise ScenarioError(f"{what}: theater {theater!r} has no projection for lat/lon; give pos = [east, north]")
+
         return v
+
     if "pos" in spec:
         return Vec2(*pair("pos"))
+
     raise ScenarioError(f"{what}: no position (ll = [lat, lon])")
 
 
-def _side(value: str, faction_id: str) -> Side:
-    """A faction's game side, checked.
+def _faction(spec: dict[str, Any]) -> Faction:
+    """A faction from its ``[[factions]]`` table, checked.
+
+    ``coalition`` (the game side, e.g. the DCS ``"BLUE"``), ``army`` (an entry
+    of ``data/catalog/factions.toml``) and ``color`` (``"#rrggbb"``) are
+    required: the code has no default side, army or colour. ``quality``
+    (a positive number) is optional: the army's by default.
 
     Args:
-        value: The side named in the scenario (default: the faction id).
-        faction_id: The faction, for the error message.
+        spec: The table.
 
     Returns:
-        The side.
+        The faction, with a placeholder bullseye (see :func:`_set_bullseyes`).
 
     Raises:
-        ScenarioError: If it is not a game side.
+        ScenarioError: On a missing or invalid field.
     """
-    if value not in Side:
-        raise ScenarioError(f"faction {faction_id}: side {value!r} is not one of {', '.join(Side)}")
-    return Side(value)
+    fid = spec["id"]
+    for key in ("coalition", "army", "color"):
+        if not isinstance(spec.get(key), str) or not spec[key]:
+            raise ScenarioError(f"faction {fid}: missing {key} (a string)")
+
+    if spec["army"] not in ARMIES:
+        raise ScenarioError(f"faction {fid}: unknown army {spec['army']!r} (known: {', '.join(ARMIES)})")
+
+    if not COLOR_RE.fullmatch(spec["color"]):
+        raise ScenarioError(f"faction {fid}: color {spec['color']!r} is not #rrggbb")
+
+    quality = spec.get("quality", ARMIES[spec["army"]].quality)
+    if isinstance(quality, bool) or not isinstance(quality, (int, float)) or not MIN_QUALITY <= quality <= MAX_QUALITY:
+        raise ScenarioError(f"faction {fid}: quality {quality!r} is not a number in [{MIN_QUALITY}, {MAX_QUALITY}]")
+
+    return Faction(
+        id=fid,
+        name=spec.get("name", fid),
+        coalition=spec["coalition"],
+        army=spec["army"],
+        color=spec["color"].lower(),
+        enemies=set(spec.get("enemies", [])),
+        objectives=[Objective(o["province"], o.get("priority", 1)) for o in spec.get("objectives", [])],
+        bullseye=Vec2(0.0, 0.0),  # set later, once the provinces are known
+        quality=float(quality),
+    )
 
 
 def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], theater: Theater) -> None:
@@ -113,8 +151,8 @@ def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], th
 
     ``bullseye`` in a ``[[factions]]`` table is a province id (its centre) or
     a point, ``{ ll = [lat, lon] }`` (``{ pos = [east, north] }`` on a theatre
-    without projection). Without it a faction takes its side's: the one another faction
-    of the side gives, else the centre of the provinces the side holds.
+    without projection). Without it a faction takes its coalition's: the one another
+    faction of the coalition gives, else the centre of the provinces the coalition holds.
 
     Args:
         specs: The ``[[factions]]`` tables of the scenario.
@@ -122,10 +160,10 @@ def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], th
         theater: The map (province centres).
 
     Raises:
-        ScenarioError: Unknown province, malformed point, or two factions on the
-            same side with different bullseyes (the game has one per side).
+        ScenarioError: Unknown province, malformed point, or two factions of the
+            same coalition with different bullseyes (the game has one per coalition).
     """
-    given: dict[str, tuple[Vec2, str]] = {}  # side -> (point, faction that set it)
+    given: dict[str, tuple[Vec2, str]] = {}  # coalition -> (point, faction that set it)
     for spec in specs:
         raw = spec.get("bullseye")
 
@@ -145,20 +183,21 @@ def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], th
         else:
             raise ScenarioError(f"faction {fid}: bullseye must be a province id or {{ ll = [lat, lon] }}, not {raw!r}")
 
-        side = factions[fid].side
-        if side in given and given[side][0] != where:
+        coalition = factions[fid].coalition
+        if coalition in given and given[coalition][0] != where:
             raise ScenarioError(
-                f"faction {fid}: bullseye differs from {given[side][1]}'s, on the same side {side!r} (DCS has one per side)"
+                f"faction {fid}: bullseye differs from {given[coalition][1]}'s, in the same coalition {coalition!r}"
+                " (DCS has one per coalition)"
             )
 
-        given[side] = (where, fid)
+        given[coalition] = (where, fid)
 
     for f in factions.values():
-        if f.side in given:
-            f.bullseye = given[f.side][0]
+        if f.coalition in given:
+            f.bullseye = given[f.coalition][0]
             continue
 
-        ids = {o.id for o in factions.values() if o.side == f.side}
+        ids = {o.id for o in factions.values() if o.coalition == f.coalition}
         held = [p.center for p in theater.provinces.values() if p.controller in ids]
         f.bullseye = bullseye.centre(held or [p.center for p in theater.provinces.values()] or [Vec2(0.0, 0.0)])
 
@@ -179,22 +218,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
     meta = data.get("campaign", {})
     theater = Theater(meta.get("theater", UNNAMED_THEATER))
 
-    factions: dict[str, Faction] = {}
-    for f in data.get("factions", []):
-        faction_id = f["id"]
-
-        factions[faction_id] = Faction(
-            id=faction_id,
-            name=f.get("name", faction_id),
-            side=_side(f.get("side", faction_id), faction_id),
-            enemies=set(f.get("enemies", [])),
-            objectives=[
-                Objective(
-                    o["province"],
-                    o.get("priority", 1)) for o in f.get("objectives", [])
-            ],
-            bullseye=Vec2(0.0, 0.0),  # set below, once the provinces are known
-        )
+    factions: dict[str, Faction] = {f["id"]: _faction(f) for f in data.get("factions", [])}
 
     for p in data.get("provinces", []):
         if p["controller"] not in factions:

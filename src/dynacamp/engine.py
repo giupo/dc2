@@ -37,7 +37,7 @@ from .bubble import BubbleConfig, BubbleManager, Player
 from .events import EventKind, LossReason, PlayerExit, Simulator
 from .forces import TRUCK, Authority, Convoy, Division, MobileEntity
 from .state import CampaignState
-from .systems import PIPELINE, air, ato, combat, movement
+from .systems import PIPELINE, air, ato, combat, movement, sitrep
 
 
 
@@ -138,7 +138,7 @@ class Engine:
 
         self._outbox: list[Command] = []
         self._in_game: set[str] = set()  # ids the game currently holds
-        self._published_ato: dict[str, tuple] = {}  # side -> last board sent
+        self._published_ato: dict[str, tuple] = {}  # coalition -> last board sent
 
         # Held for the whole of a step; readers (the HTTP API) take it to see a
         # consistent state between steps.
@@ -190,7 +190,7 @@ class Engine:
 
         # Players are sensors too (see systems.intel).
         self.state.player_positions = {
-            p.id: (p.side, p.position, PlayerKind.GROUND if p.kind is PlayerKind.GROUND else PlayerKind.AIR)
+            p.id: (p.coalition, p.position, PlayerKind.GROUND if p.kind is PlayerKind.GROUND else PlayerKind.AIR)
             for p in self.bubbles.players.values()
         }
         
@@ -291,11 +291,15 @@ class Engine:
         state = self.state
         match r:
             case PlayerSeen():
-                if r.player_id not in self.bubbles.players:
-                    state.emit(EventKind.PLAYER_JOINED, player=r.player_id, name=r.name, side=r.side, player_kind=r.kind.value)
+                joined = r.player_id not in self.bubbles.players
+                if joined:
+                    state.emit(EventKind.PLAYER_JOINED, player=r.player_id, name=r.name, coalition=r.coalition, player_kind=r.kind.value)
                 self.bubbles.update_player(
-                    Player(r.player_id, r.name, r.side, r.kind, r.position, r.altitude, self.wall_clock())
+                    Player(r.player_id, r.name, r.coalition, r.kind, r.position, r.altitude, self.wall_clock())
                 )
+                faction = state.faction_for_coalition(r.coalition)
+                if joined and faction is not None:  # the situation as their side sees it
+                    self._outbox.append(NotifyPlayer(r.player_id, sitrep.text(state, faction.id), duration_s=sitrep.DURATION_S))
 
             case PlayerLeft():
                 if r.player_id in self.bubbles.players:
@@ -307,7 +311,7 @@ class Engine:
                 player = self.bubbles.players.get(r.player_id)
                 if player is None:
                     return
-                ok, text = ato.join(state, r.player_id, player.name, player.side, r.flight_id, r.capable_tasks)
+                ok, text = ato.join(state, r.player_id, player.name, player.coalition, r.flight_id, r.capable_tasks)
                 self._notify(r.player_id, text, with_marks=ok)
 
             case LeaveRequest():
@@ -537,7 +541,7 @@ class Engine:
 
         elif isinstance(ent, AirDefenseUnit):
             return EntitySnapshot(
-                id=ent.id, kind=ent.kind, name=ent.name, faction=ent.faction, side=faction.side,
+                id=ent.id, kind=ent.kind, name=ent.name, faction=ent.faction, coalition=faction.coalition, army=faction.army,
                 position=ent.position(t), heading=ent.heading(t), elements=dict(ent.elements),
                 waypoints=self._waypoints(ent), speed_kmh=ent.system.speed_kmh,
                 attrs={"system": ent.system.id, "road_back": self._road_behind(ent), "deployed": ent.movement is None},
@@ -551,7 +555,8 @@ class Engine:
             kind=ent.kind,
             name=name,
             faction=ent.faction,
-            side=faction.side,
+            coalition=faction.coalition,
+            army=faction.army,
             position=ent.position(t),
             heading=ent.heading(t),
             elements=elements,
@@ -616,7 +621,8 @@ class Engine:
             kind=f.kind,
             name=f.callsign,
             faction=f.faction,
-            side=faction.side,
+            coalition=faction.coalition,
+            army=faction.army,
             position=f.pos,
             heading=f.heading(self.state.theater),
             elements={AIRCRAFT_ELEMENT: float(f.ai_count)},
@@ -629,7 +635,7 @@ class Engine:
                 "aircraft": f.aircraft_type.id,
                 "task": f.task,
                 "callsign": f.callsign,
-                # DCS radio callsign (None for eastern sides); AI after the players' seats
+                # DCS radio callsign (None for armies without named callsigns); AI after the players' seats
                 "radio_callsign": callsigns.radio_callsign(self.state, f),
                 "first_unit": len(f.active_seats) + 1,
                 "helo": f.aircraft_type.helo,
@@ -677,11 +683,11 @@ class Engine:
         if not self.bubbles.active:
             return
 
-        for side in sorted({f.side for f in self.state.factions.values()}):
-            board = tuple(ato.ato_board(self.state, side))
-            if self._published_ato.get(side) != board:
-                self._published_ato[side] = board
-                self._outbox.append(PublishAto(side, board))
+        for coalition in sorted({f.coalition for f in self.state.factions.values()}):
+            board = tuple(ato.ato_board(self.state, coalition))
+            if self._published_ato.get(coalition) != board:
+                self._published_ato[coalition] = board
+                self._outbox.append(PublishAto(coalition, board))
 
     def _sync_game(self) -> None:
         """Despawn vanished entities, send route updates and boards, flush commands."""

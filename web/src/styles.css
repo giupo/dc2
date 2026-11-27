@@ -6,8 +6,6 @@
   --text: #e5e7eb;
   --muted: #8b97ab;
   --accent: #fcd34d;
-  --blue: #4c8dff;
-  --red: #ff5a5a;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 13px;
   color: var(--text);
@@ -42,8 +40,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .conn { width: 8px; height: 8px; border-radius: 50%; }
 .conn.ok { background: #22c55e; }
 .conn.ko { background: #ef4444; }
-.scores { display: flex; gap: 10px; margin-left: auto; overflow-x: auto; }
-.score { border-left: 3px solid; padding: 2px 10px; background: var(--panel-2); border-radius: 0 4px 4px 0; min-width: 200px; }
 .score-name { font-weight: 700; font-size: 12px; }
 .score-stats { display: flex; gap: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
 .objectives { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
@@ -52,12 +48,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------------------------------------------------------------- sidebar */
 
-.sidebar { width: 400px; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
-.sidebar-body { flex: 1; overflow-y: auto; }
-.tabs { display: flex; border-bottom: 1px solid var(--line); }
+.sidebar { width: 400px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
+.sidebar-body { flex: 1; overflow: auto; }
+/* the tab strip scrolls sideways when the tabs do not fit (App.tsx: wheel and active tab) */
+.tabs { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; flex: none; }
 .tabs button {
-  flex: 1; background: none; border: 0; border-bottom: 2px solid transparent;
-  padding: 10px 4px; color: var(--muted); font-weight: 600;
+  flex: 1 0 auto; background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 10px 8px; color: var(--muted); font-weight: 600; white-space: nowrap;
 }
 .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
 .tabs.small { flex-wrap: wrap; gap: 4px; border: 0; margin-bottom: 8px; }
@@ -127,10 +124,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
   display: flex; flex-direction: column; gap: 3px; font-size: 12px; backdrop-filter: blur(4px);
 }
-.layers-body { display: flex; flex-direction: column; gap: 3px; }
-.layers-toggle { display: none; }
+/* the layer menu folds behind its button (App.tsx), on every screen */
+.layers { padding: 0; z-index: 3; max-height: calc(100% - 20px); overflow-y: auto; }
+.layers-toggle { display: block; background: none; border: 0; padding: 6px 10px; font-weight: 700; text-align: left; width: 100%; }
+.layers-body { display: none; flex-direction: column; gap: 3px; padding: 0 10px 8px; }
+.layers.open .layers-body { display: flex; }
 .layers label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
-.viewpoint { display: flex; gap: 4px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.layers .fog { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.layers .viewpoint { margin-top: 2px; }
+/* view controls in the header: whose campaign */
+.view-controls { display: flex; align-items: center; font-size: 12px; min-width: 0; }
+.viewpoint { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.view-controls .viewpoint button { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* who is winning: one bar in the header, the details in a tooltip */
+.standing { position: relative; margin-left: auto; width: 280px; flex: none; outline: none; cursor: default; }
+.standing-bar { display: flex; height: 16px; border-radius: 3px; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line); }
+.standing-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); transition: width 0.6s ease; min-width: 2px; }
+.standing-tip {
+  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 340px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); flex-direction: column; gap: 8px;
+}
+.standing:hover .standing-tip, .standing:focus-within .standing-tip { display: flex; }
+.tip-note { font-size: 10px; }
 .viewpoint span { color: var(--muted); margin-right: 2px; }
 .viewpoint button { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .viewpoint button.on { background: var(--panel-2); border-color: currentColor; }
@@ -254,7 +271,6 @@ button.primary { margin: 6px 0 8px; width: 100%; padding: 7px; border-radius: 4p
 }
 
 /* ---- fog of war */
-.fog { margin-top: 6px; border-top: 1px solid #1f2937; padding-top: 6px; }
 .mk.stale { opacity: 0.55; }
 .mk.stale .unit-label small { color: #fbbf24; font-weight: 400; }
 .mk.track .flight-label { color: #facc15; }
@@ -394,27 +410,24 @@ canvas.picking, .maplibregl-canvas.picking { cursor: crosshair !important; }
   .clock .time { font-size: 17px; white-space: nowrap; }
   .time-controls { margin-left: 0; }
   .time-controls button { padding: 5px 8px; }
-  .scores { width: 100%; margin-left: 0; gap: 6px; }
-  .score { min-width: 0; flex: 1; padding: 2px 6px; }
-  .score .objectives { display: none; }
-  .score-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .standing { width: 100%; margin-left: 0; }
+  .standing-tip { width: auto; left: 0; }
   .score-stats { gap: 8px; font-size: 12px; }
 
   .main { flex-direction: column; }
   .sidebar { width: 100%; flex: none; border-left: 0; border-top: 1px solid var(--line); }
   .sidebar .sidebar-body { display: none; }
   .sidebar.open .sidebar-body { display: block; flex: none; height: 45vh; overflow-x: auto; }
-  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs { scrollbar-width: none; }
   .tabs button { flex: none; padding: 11px 12px; }
 
-  .layers { top: 8px; left: 8px; padding: 0; max-height: calc(100% - 16px); overflow-y: auto; }
-  .layers-toggle { display: block; background: none; border: 0; padding: 8px 12px; font-weight: 700; text-align: left; width: 100%; }
-  .layers .layers-body { display: none; padding: 0 12px 10px; }
-  .layers.open .layers-body { display: flex; }
+  .layers { top: 8px; left: 8px; max-height: calc(100% - 16px); }
+  .layers-toggle { padding: 8px 12px; }
+  .layers .layers-body { padding: 0 12px 10px; }
   .layers label { padding: 3px 0; }
+  .view-controls { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
 
   .details { left: 6px; right: 6px; width: auto; bottom: 6px; max-height: 55%; z-index: 3; }  /* above the map's scale and credits */
-  .layers { z-index: 3; }
   .route-bar { min-width: 0; width: calc(100% - 16px); max-width: none; }
   .bulls-readout { display: none; }  /* no cursor on a touch screen */
 

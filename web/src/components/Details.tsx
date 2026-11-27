@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { battleTitle, factionColor, factionName, fmtAlt, fmtDist, pct, sideOf, intelLabel } from "../lib/format";
+import { battleTitle, factionColor, factionName, fmtAlt, fmtDist, pct, coalitionOf, intelLabel } from "../lib/format";
 import { affiliation, designation, symbol, unitSidc } from "../lib/symbols";
 import type { PanelProps } from "./Panels";
 import { Bar, DivisionRow } from "./Panels";
@@ -40,7 +40,7 @@ export function Details(props: PanelProps & { close: () => void; openBriefing?: 
           <div className="detail-head">
             <span
               dangerouslySetInnerHTML={{
-                __html: symbol(unitSidc(d.template, affiliation(sideOf(campaign, d.faction), viewpoint)), { size: 34, uniqueDesignation: designation(d.name) }).svg,
+                __html: symbol(unitSidc(d.template, affiliation(coalitionOf(campaign, d.faction), viewpoint)), { size: 34, uniqueDesignation: designation(d.name) }).svg,
               }}
             />
             <div>

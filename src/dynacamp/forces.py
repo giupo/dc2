@@ -352,13 +352,16 @@ class Division(MobileEntity):
             return 0.0
         return sum(ELEMENTS[k].hardness * n for k, n in combat.items()) / total
 
-    def combat_power(self) -> float:
+    def combat_power(self, quality: float) -> float:
         """Rough single number used by the AI to compare forces.
 
+        Args:
+            quality: Combat quality of the brigade's faction (``CampaignState.quality``).
+
         Returns:
-            Firepower plus defense, scaled by organisation.
+            Firepower plus defense, scaled by organisation and quality.
         """
-        return (self.firepower(0.3) + self.defense()) * (0.4 + 0.6 * self.org)
+        return (self.firepower(0.3) + self.defense()) * (0.4 + 0.6 * self.org) * quality
 
     def take_losses(self, fraction: float) -> None:
         """Lose the same fraction of every element.

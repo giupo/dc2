@@ -24,7 +24,7 @@ def commands(game, kind):
 
 def test_entity_inside_bubble_is_handed_to_game_and_back(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 10_000))  # 10 km from b1 (at c), 22 km from r1 (at d)
+    game.player("p1", Vec2(40_000, 10_000), coalition="BLUE")  # 10 km from b1 (at c), 22 km from r1 (at d)
     engine.step(1)
     assert {c.entity.id for c in commands(game, Materialize)} == {"b1", "r1"}
     assert line.divisions["b1"].authority is Authority.MATERIALIZING
@@ -43,21 +43,21 @@ def test_entity_inside_bubble_is_handed_to_game_and_back(line):
 
 def test_hysteresis_keeps_entity_near_the_edge(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 55_000))  # 55 km from b1: inside
+    game.player("p1", Vec2(40_000, 55_000), coalition="BLUE")  # 55 km from b1: inside
     engine.step(1)
     engine.step(1)
     assert line.divisions["b1"].authority is Authority.DELEGATED
-    game.player("p1", Vec2(40_000, 65_000))  # 65 km: outside radius, inside hysteresis
+    game.player("p1", Vec2(40_000, 65_000), coalition="BLUE")  # 65 km: outside radius, inside hysteresis
     engine.step(1)
     assert line.divisions["b1"].authority is Authority.DELEGATED
-    game.player("p1", Vec2(40_000, 75_000))  # 75 km: out
+    game.player("p1", Vec2(40_000, 75_000), coalition="BLUE")  # 75 km: out
     engine.step(1)
     assert line.divisions["b1"].authority is Authority.DEMATERIALIZING
 
 
 def test_game_losses_flow_back_into_campaign(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     div = line.divisions["b1"]
@@ -78,7 +78,7 @@ def test_game_losses_flow_back_into_campaign(line):
 
 def test_game_cannot_resurrect_elements(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     div = line.divisions["b1"]
@@ -91,7 +91,7 @@ def test_game_cannot_resurrect_elements(line):
 
 def test_campaign_orders_reach_delegated_entities(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     div = line.divisions["b1"]
@@ -105,7 +105,7 @@ def test_delegated_movement_is_driven_by_game_positions(line):
     engine, game = setup(line)
     div = line.divisions["b1"]
     line.set_order(div, Order(OrderKind.MOVE, "b"))
-    game.player("p1", Vec2(30_000, 0), kind=AIR)
+    game.player("p1", Vec2(30_000, 0), kind=AIR, coalition="BLUE")
     engine.step(1)
     engine.step(1)
     assert div.authority is Authority.DELEGATED
@@ -129,7 +129,7 @@ def test_battle_is_never_split(line):
     t = line.theater
     a, d = b1.position(t), r1.position(t)
     # A helicopter (30 km bubble) that sees the attacker but not the defender 3 km beyond it.
-    game.player("p1", Vec2(a.x - 28_000, 0), kind=PlayerKind.HELO)
+    game.player("p1", Vec2(a.x - 28_000, 0), kind=PlayerKind.HELO, coalition="BLUE")
     assert a.distance_to(Vec2(a.x - 28_000, 0)) < 30_000 < d.distance_to(Vec2(a.x - 28_000, 0))
     engine.step(1)
     ids = {c.entity.id for c in commands(game, Materialize)}
@@ -140,7 +140,7 @@ def test_delegated_battle_takes_no_campaign_damage(line):
     engine, game = setup(line)
     b1, r1 = line.divisions["b1"], line.divisions["r1"]
     line.set_order(b1, Order(OrderKind.ATTACK, "d"))
-    game.player("p1", Vec2(50_000, 0))
+    game.player("p1", Vec2(50_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     before = (b1.strength, r1.strength)
@@ -152,7 +152,7 @@ def test_delegated_battle_takes_no_campaign_damage(line):
 
 def test_disconnect_reclaims_everything(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     game.disconnect()
@@ -163,7 +163,7 @@ def test_disconnect_reclaims_everything(line):
 
 def test_handoff_timeout_reclaims(line):
     engine, game = setup(line, auto_ack=False)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     assert line.divisions["b1"].authority is Authority.MATERIALIZING
     engine.step(engine.config.handoff_timeout_s + 1)
@@ -173,7 +173,7 @@ def test_handoff_timeout_reclaims(line):
 
 def test_entity_removed_while_in_game_is_despawned(line):
     engine, game = setup(line)
-    game.player("p1", Vec2(40_000, 0))
+    game.player("p1", Vec2(40_000, 0), coalition="BLUE")
     engine.step(1)
     engine.step(1)
     del line.divisions["r1"]

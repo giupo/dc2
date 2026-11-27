@@ -11,7 +11,7 @@
 #
 # [elements.<id>.dcs] is read only by the DCS adapter:
 #   ratio         campaign elements one DCS unit stands for
-#   blue, red     DCS unit type per side
+#   (the DCS unit type of each element is per army, in `factions.toml`)
 #
 # [templates.<id>]: composition and logistics of a brigade type. Scenarios use
 # them by id and may add their own ([[templates]] in the scenario).
@@ -30,8 +30,6 @@ hardness = 0.0
 
 [elements.infantry.dcs]
 ratio = 10
-blue = "Soldier M4"
-red = "Infantry AK"
 
 [elements.mbt]
 soft_attack = 1.2
@@ -42,8 +40,6 @@ hardness = 0.9
 
 [elements.mbt.dcs]
 ratio = 6
-blue = "M-1 Abrams"
-red = "T-72B"
 
 [elements.ifv]
 soft_attack = 1.0
@@ -54,8 +50,6 @@ hardness = 0.6
 
 [elements.ifv.dcs]
 ratio = 8
-blue = "M-2 Bradley"
-red = "BMP-2"
 
 [elements.apc]
 soft_attack = 0.5
@@ -66,8 +60,6 @@ hardness = 0.4
 
 [elements.apc.dcs]
 ratio = 8
-blue = "M-113"
-red = "BTR-80"
 
 [elements.artillery]
 soft_attack = 3.0
@@ -78,8 +70,6 @@ hardness = 0.3
 
 [elements.artillery.dcs]
 ratio = 6
-blue = "M-109"
-red = "SAU Msta"
 
 [elements.mlrs]
 soft_attack = 4.0
@@ -90,8 +80,6 @@ hardness = 0.2
 
 [elements.mlrs.dcs]
 ratio = 6
-blue = "MLRS"
-red = "Grad-URAL"
 
 [elements.sam_short]
 soft_attack = 0.1
@@ -102,8 +90,6 @@ hardness = 0.3
 
 [elements.sam_short.dcs]
 ratio = 4
-blue = "M1097 Avenger"
-red = "Strela-10M3"
 
 [elements.aaa]
 soft_attack = 0.5
@@ -114,8 +100,6 @@ hardness = 0.4
 
 [elements.aaa.dcs]
 ratio = 4
-blue = "Vulcan"
-red = "ZSU-23-4 Shilka"
 
 [elements.truck]
 soft_attack = 0.0
@@ -127,8 +111,6 @@ combat = false
 
 [elements.truck.dcs]
 ratio = 3
-blue = "M 818"
-red = "Ural-375"
 
 [templates.mech_brigade]
 name = "Mechanised brigade"

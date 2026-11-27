@@ -284,11 +284,12 @@ end
 DC.deepcopy = deepcopy
 
 ---------------------------------------------------------------- templates
--- Late-activated mission-editor groups named "DC_TPL_<aircraft>[_<TASK>]"
--- (e.g. DC_TPL_f16c_SEAD) give aircraft type, livery and payload to spawns.
+-- Late-activated mission-editor groups give aircraft type, livery and payload
+-- to spawns. The engine names the ones to use (spawn's g.templates): this
+-- script does not know how they are named, it indexes every aircraft group.
 DC.templates = nil
 
--- Collect the template groups of the mission (aircraft and helicopters), by name.
+-- Collect the aircraft and helicopter groups of the mission, by name.
 function DC.index_templates()
   DC.templates = {}
   local mission = env and env.mission
@@ -298,9 +299,7 @@ function DC.index_templates()
       for _, catname in ipairs({ "plane", "helicopter" }) do
         local cat = country[catname]
         for _, grp in ipairs((cat and cat.group) or {}) do
-          if type(grp.name) == "string" and grp.name:find("^DC_TPL") then
-            DC.templates[grp.name] = grp
-          end
+          if type(grp.name) == "string" then DC.templates[grp.name] = grp end
         end
       end
     end
@@ -558,11 +557,13 @@ function DC.collect_units(id)
 end
 
 -- Send the human players (coalition and unit category by name) and refresh their menus.
+-- Every coalition DCS has, in name order: the engine knows which ones the factions play.
 function DC.report_players()
-  local players, seen = {}, {}
-  for _, side in ipairs({ coalition.side.RED, coalition.side.BLUE }) do
-    local side_name = DC.enum_name(coalition.side, side)
-    for _, u in ipairs(coalition.getPlayers(side) or {}) do
+  local players, seen, sides = {}, {}, {}
+  for name in pairs(coalition.side) do sides[#sides + 1] = name end
+  table.sort(sides)
+  for _, side_name in ipairs(sides) do
+    for _, u in ipairs(coalition.getPlayers(coalition.side[side_name]) or {}) do
       if u and u:isExist() then
         local p = u:getPoint()
         local desc = u:getDesc() or {}

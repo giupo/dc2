@@ -373,6 +373,8 @@ class Flight(MobileEntity):
         aam_wvr: Heat-seeking air-to-air missiles left on the AI aircraft.
         aam_range_m: Launch range of its radar-guided missiles.
         aam_loaded: Missiles it took off with (0: guns only).
+        arm: Anti-radiation missiles left on the AI aircraft (SEAD).
+        arm_range_m: Their launch range.
         track: Direction it last flew, radians (0 = north): where its radar looks.
         engaging: Hostile flight it is committed against ("" = none).
     """
@@ -404,6 +406,8 @@ class Flight(MobileEntity):
     aam_wvr: int = 0  # heat seekers left
     aam_range_m: float = 0.0  # launch range of the radar missiles
     aam_loaded: int = 0  # missiles at takeoff (0: guns only)
+    arm: int = 0  # anti-radiation missiles left on the AI aircraft
+    arm_range_m: float = 0.0  # their launch range
     track: float = 0.0  # direction last flown, radians (0 = north): where the radar looks
     engaging: str = ""  # hostile flight it is committed against
     kind: EntityKind = EntityKind.FLIGHT

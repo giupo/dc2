@@ -21,7 +21,6 @@ import math
 from dataclasses import dataclass, replace
 
 from ..air import CAP_ALT_M, FlightStatus, Flight, Package, Seat, SeatState, Squadron, TargetKind, Task
-from ..adapters.base import Side
 from ..forces import EntityKind
 from ..events import clock
 from ..geo import Vec2
@@ -197,7 +196,7 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
     stations = sorted(
         (pid for pid in state.front_provinces(fid) if pid not in covered),
         key=lambda pid: -sum(
-            d.combat_power() for n in t.neighbors(pid) for d in intel.known_divisions_in(state, fid, n)
+            d.combat_power(state.quality(d.faction)) for n in t.neighbors(pid) for d in intel.known_divisions_in(state, fid, n)
         ),
     )
     for pid in stations[: max(0, CAP_STATIONS - len(active_caps))]:
@@ -1084,7 +1083,7 @@ def _add_flight(
 
 
 def join(
-    state: CampaignState, player_id: str, name: str, side: Side, flight_id: str, capable: frozenset[Task] | None
+    state: CampaignState, player_id: str, name: str, coalition: str, flight_id: str, capable: frozenset[Task] | None
 ) -> tuple[bool, str]:
     """A player asks for a seat.
 
@@ -1092,7 +1091,7 @@ def join(
         state: The campaign.
         player_id: Player id.
         name: Player name.
-        side: Player's game side.
+        coalition: Player's game coalition.
         flight_id: Requested flight.
         capable: Tasks the player's aircraft can fly (None = no restriction).
 
@@ -1102,7 +1101,7 @@ def join(
     f = state.flights.get(flight_id)
     if f is None or f.status in (FlightStatus.DONE, FlightStatus.CANCELLED):
         return False, "That flight no longer exists."
-    if state.factions[f.faction].side != side:
+    if state.factions[f.faction].coalition != coalition:
         return False, "That flight belongs to the other side."
     if player_id in f.players and f.players[player_id].state in (SeatState.ASSIGNED, SeatState.AIRBORNE):
         return True, briefing_text(state, f)
@@ -1251,12 +1250,12 @@ def waypoint_marks(state: CampaignState, f: Flight) -> list[tuple[str, Vec2]]:
     return briefing.waypoint_marks(state, f)
 
 
-def ato_board(state: CampaignState, side: Side, limit: int = 8) -> list[dict]:
-    """What players of ``side`` can join, for in-game menus.
+def ato_board(state: CampaignState, coalition: str, limit: int = 8) -> list[dict]:
+    """What players of ``coalition`` can join, for in-game menus.
 
     Args:
         state: The campaign.
-        side: Game side.
+        coalition: Game coalition.
         limit: Maximum number of packages.
 
     Returns:
@@ -1264,7 +1263,7 @@ def ato_board(state: CampaignState, side: Side, limit: int = 8) -> list[dict]:
     """
     board = []
     for pkg in sorted(state.packages.values(), key=lambda p: (p.tot, p.id)):
-        if pkg.done or state.factions[pkg.faction].side != side:
+        if pkg.done or state.factions[pkg.faction].coalition != coalition:
             continue
         flights = [
             {

@@ -45,8 +45,8 @@ def line_scenario() -> CampaignState:
         {
             "campaign": {"name": "line", "seed": 1},
             "factions": [
-                {"id": "blue", "side": "blue", "enemies": ["red"], "objectives": [{"province": "e"}]},
-                {"id": "red", "side": "red", "enemies": ["blue"], "objectives": [{"province": "a"}]},
+                {"id": "blue", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"], "objectives": [{"province": "e"}]},
+                {"id": "red", "coalition": "RED", "army": "russia", "color": "#ff5a5a", "enemies": ["blue"], "objectives": [{"province": "a"}]},
             ],
             "provinces": provinces,
             "links": [{"a": a, "b": b} for a, b in zip("abcd", "bcde")],

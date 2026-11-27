@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection } from "geojson";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Flight } from "../api/client";
-import { ageLabel, battleTitle, bullsLabel, factionColor, fmtAlt, intelLabel, levelColor, sideOf, type Units } from "../lib/format";
+import { ageLabel, battleTitle, bullsLabel, factionColor, fmtAlt, intelLabel, levelColor, coalitionOf, type Units } from "../lib/format";
 import { useLiveFeed, type LiveFeed } from "../lib/livePositions";
 import { affiliation, airbaseSidc, airSidc, convoySidc, designation, knownStatus, samSidc, symbol, unitSidc } from "../lib/symbols";
 import type { CampaignData } from "../lib/useCampaign";
@@ -348,7 +348,7 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
   }, [map, layers]);
 
   // ---- HTML markers: NATO APP-6 symbols (milsymbol)
-  const aff = (faction: string | null | undefined) => affiliation(sideOf(campaign, faction), viewpoint);
+  const aff = (faction: string | null | undefined) => affiliation(coalitionOf(campaign, faction), viewpoint);
 
   const divisionMarkers = useMemo<MarkerSpec[]>(() => {
     if (!layers.divisions) return [];
@@ -428,7 +428,7 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     }
     for (const pl of campaign?.players ?? []) {
       const at = lngLat(pl.ll);
-      if (at) out.push({ id: `pl-${pl.id}`, at, html: `<b>◉</b><span class="flight-label">${pl.name}</span>`, cls: "player", title: `${pl.name} (${pl.side}, ${pl.kind})` });
+      if (at) out.push({ id: `pl-${pl.id}`, at, html: `<b>◉</b><span class="flight-label">${pl.name}</span>`, cls: "player", title: `${pl.name} (${pl.coalition}, ${pl.kind})` });
     }
     return out;
   }, [data.map, data.ato, campaign, selected, layers.air, viewpoint]);
@@ -464,9 +464,9 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     };
   }, [map, picking]);
 
-  // Bullseye of the viewpoint side: a marker, and the BULLS call of the cursor
+  // Bullseye of the viewpoint coalition: a marker, and the BULLS call of the cursor
   // (written straight into the DOM: no React render on every mouse move).
-  const bulls = campaign?.factions.find((f) => f.side === viewpoint)?.bullseye.ll ?? null;
+  const bulls = campaign?.factions.find((f) => f.coalition === viewpoint)?.bullseye.ll ?? null;
   const variation = campaign?.magnetic_variation_deg ?? 0;
   const bullsMarkers = useMemo<MarkerSpec[]>(() => {
     const at = lngLat(bulls);

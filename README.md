@@ -44,7 +44,7 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 | **IA** | Per fazione: sicurezza di retrovie e fianchi, schieramento sul fronte, offensive con superiorità locale, riserve. |
 | **Logistica** | Depositi, rifornimento diretto, **convogli fisici** sulle strade, ricomplementi, ricostituzione delle brigate distrutte. |
 | **Artiglieria** | Missioni di fuoco continue sul fronte, a gittate realistiche. |
-| **Aviazione / ATO** | 64 tipi di aereo degli anni '80, '90 e 2000. Pacchetti CAS, BAI, STRIKE, CAP e DEAD con scorte, SEAD con ECM, **rotte attorno ai SAM noti**, **scramble** di due intercettori contro chi si avvicina a basi e asset, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10. |
+| **Aviazione / ATO** | 64 tipi di aereo degli anni '80, '90 e 2000. Pacchetti CAS, BAI, STRIKE, CAP e DEAD con scorte, SEAD con ECM, **rotte attorno ai SAM noti**, **scramble** di due intercettori contro chi si avvicina a basi e asset, budget di sortite, turnaround, rimpiazzi. **I giocatori prendono posto nei voli** dal menu F10, e all'ingresso ricevono un **SITREP** della situazione vista dalla loro coalizione. |
 | **Supporto aereo** | **AWACS** in orbita dietro il fronte (sensore principale, controllo dei caccia), **tanker** che allungano raggio d'azione e permanenza delle CAP, **trasporti** con ponte aereo verso i depositi avanzati e rifornimento in elicottero delle brigate isolate. |
 | **Nebbia di guerra** | Ogni fazione vede solo quello che i suoi sensori hanno trovato: radar e occhi degli aerei, AWACS, radar a terra, ricognizione, ELINT, lanci SAM. Contatti con età, fonte e identificazione. **Anche IA, ATO, artiglieria e briefing decidono sul quadro informativo**, non sulla verità. |
 | **ATO stile BMS** | Ogni package ha un **numero a 4 cifre**, come in Falcon/BMS. La UI mostra l'ATO come lista di voli ordinata per decollo: package, volo, missione, aereo, T/O, TOT, stato. |
@@ -497,19 +497,24 @@ Gli scenari sono file TOML in `scenarios/`:
 - `western_georgia.toml` (mappa Caucaso): il rosso attacca dall'Abkhazia verso
   Kutaisi;
 - `syria_m5.toml` (mappa Syria): la battaglia per il corridoio dell'autostrada
-  M5.
+  M5;
+- `golan_1973.toml` (mappa Syria): ottobre 1973, la Siria attacca le alture
+  del Golan. Mezzi d'epoca (eserciti `israel` e `syria`, F-4E, MiG-21, SA-2,
+  SA-3, SA-6) e qualità diverse (1,5 contro 0,75): in aria un F-4E israeliano
+  vale circa due MiG-21, e fa SEAD con lo Shrike (18 km). Dove DCS non ha il tipo
+  d'epoca si usa il più vicino (Mirage F1 per il Nesher, Su-17M4 per il Su-7).
 
 | Sezione | Contenuto |
 |---|---|
 | `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `start_hour` (il seed non sta qui: `--seed`, `DYNACAMP_SEED` o l'orologio) |
-| `[[factions]]` | `id`, `name`, `side` (`blue`/`red`), `enemies`, `objectives`, `bullseye` (id di provincia o `{ ll = [lat, lon] }`; senza: il centro delle province del lato; uno per lato) |
+| `[[factions]]` | `id`, `name`, `coalition` (chiave DCS di `coalition.side`: `BLUE`, `RED`; le fazioni della stessa coalizione condividono intelligence, bullseye e menu ATO), `army` (voce di `data/catalog/factions.toml`: `us`, `russia`), `color` (`"#rrggbb"`, colore sulla mappa), `quality` (facoltativo: moltiplicatore dell'efficacia in combattimento, di default quello dell'esercito), `enemies`, `objectives`, `bullseye` (id di provincia o `{ ll = [lat, lon] }`; senza: il centro delle province della coalizione; uno per coalizione). `coalition`, `army` e `color` sono obbligatori |
 | `[[provinces]]` | `id`, `name`, `ll = [lat, lon]`, `terrain`, `controller`, `infrastructure`, `victory_points`, `depot = {...}` |
 | `[[links]]` | `a`, `b`, `kind` (`road`/`track`/`rail`), `river` |
 | `[[divisions]]` | `id`, `name`, `faction`, `template`, `province` |
 | `[[templates]]` | template di brigata personalizzati (opzionale) |
 | `[[airbases]]` | `id`, `name` (nome dell'aeroporto DCS), `ll = [lat, lon]`, `province` oppure `faction` |
 | `[[squadrons]]` | `id`, `name`, `faction`, `airbase`, `aircraft` (`f16c`, `fa18c`, `f15c`, `a10c`, `ah64d`, `su27`, `mig29s`, `su25t`, `su24m`, `mi24p`), `count`, `callsign`, `insignia` (file in `web/public/insignia/`, fonti e licenze in `CREDITS.md` lì) |
-| `[[air_defense]]` | `id`, `name`, `faction`, `system` (`patriot`, `s300ps`, `hawk`, `nasams`, `buk`, `kub`, `tor`, `osa`, `avenger`, `ewr_fps117`, `ewr_1l13`, `ewr_55g6`), `province` |
+| `[[air_defense]]` | `id`, `name`, `faction`, `system` (`patriot`, `s300ps`, `s75`, `hawk`, `s125`, `nasams`, `buk`, `kub`, `tor`, `osa`, `avenger`, `ewr_fps117`, `ewr_1l13`, `ewr_55g6`, `ewr_p19`), `province` |
 
 Tutte le coordinate dei file degli scenari sono `ll = [lat, lon]`, in gradi
 decimali WGS84 (6 decimali, circa 10 cm). Le stesse convenzioni valgono per
@@ -598,7 +603,7 @@ src/dynacamp/
   air.py air_defense.py                            aviazione e difesa aerea (modello)
   catalog.py                                       caricatore del catalogo (data/catalog/*.toml)
   loadouts.py radio.py units.py                    armamento, frequenze radio, unità di misura
-  data/catalog/                                    catalogo: aircraft, air_defense, ground, callsigns (TOML, a mano)
+  data/catalog/                                    catalogo: aircraft, air_defense, ground, factions, callsigns (TOML, a mano)
   data/                                            loadouts.json, radio.json (generati dai dati di DCS)
   systems/                                         simulazione:
     ai.py                                            IA di teatro (retrovie, fronte, offensive, riserve)
@@ -672,7 +677,7 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     - *Più azione:* artiglieria continua, fronte presidiato.
     - *Sostenibilità:* ricomplementi e ricostituzione delle brigate.
 11. **Difesa aerea e IADS.**
-    - *Contenuto:* 12 sistemi, rete EWR, SEAD/DEAD, sistemi mobili sulle
+    - *Contenuto:* 15 sistemi, rete EWR, SEAD/DEAD, sistemi mobili sulle
       strade, spawn dei SAM in DCS quando un giocatore entra nella loro
       portata.
     - *Calibrazione:* la prima versione annientava le aviazioni in 5 giorni;

@@ -37,6 +37,8 @@ class StoreKind(StrEnum):
     WVR = "wvr"
     #: A self-protection jamming pod.
     ECM = "ecm"
+    #: Anti-radiation missiles, fired by SEAD flights; ``count`` and ``range_m``.
+    ARM = "arm"
 
 
 @cache
@@ -131,6 +133,36 @@ def air_to_air(aircraft: str, task: Task) -> AirToAir:
         elif kind == StoreKind.WVR:
             wvr += s["count"]
     return AirToAir(bvr, reach, wvr)
+
+
+@dataclass(frozen=True)
+class AntiRadiation:
+    """Anti-radiation missiles of one aircraft for a task.
+
+    Attributes:
+        count: Missiles.
+        range_m: Launch range of the shortest-reaching of them (0 without): a
+            flight fires its whole load from there.
+    """
+    count: int = 0
+    range_m: float = 0.0
+
+
+@cache
+def anti_radiation(aircraft: str, task: Task) -> AntiRadiation:
+    """Anti-radiation missiles one aircraft carries for a task (from its loadout).
+
+    Args:
+        aircraft: Campaign aircraft id.
+        task: Task name.
+
+    Returns:
+        The count and the launch range.
+    """
+    arms = [s for s in stores(aircraft, task) if s.get("kind") == StoreKind.ARM]
+    if not arms:
+        return AntiRadiation()
+    return AntiRadiation(sum(s["count"] for s in arms), min(s["range_m"] for s in arms))
 
 
 @cache

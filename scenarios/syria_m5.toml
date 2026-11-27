@@ -15,7 +15,9 @@ units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metr
 [[factions]]
 id = "blue"
 name = "Coalition Task Force"
-side = "blue"
+coalition = "BLUE"  # DCS coalition
+army = "us"         # data/catalog/factions.toml
+color = "#4c8dff"   # map colour
 enemies = ["red"]
 objectives = [{ province = "homs", priority = 3 }, { province = "hama", priority = 2 }, { province = "tartus", priority = 2 }]
 bullseye = { ll = [35.706252, 34.602944] }
@@ -23,7 +25,9 @@ bullseye = { ll = [35.706252, 34.602944] }
 [[factions]]
 id = "red"
 name = "Southern Army Group"
-side = "red"
+coalition = "RED"
+army = "russia"
+color = "#ff5a5a"
 enemies = ["blue"]
 objectives = [{ province = "aleppo", priority = 3 }, { province = "idlib", priority = 2 }, { province = "latakia", priority = 2 }]
 bullseye = { ll = [33.908100, 35.509073] }

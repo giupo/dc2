@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AuthError, api, token, type Auth, type SaveStatus } from "../api/client";
-import { factionColor } from "../lib/format";
+import { coalitionColor, factionColor, pct } from "../lib/format";
+import type { Campaign } from "../api/client";
 
 // Campaign seconds per real second; labels as in flight sims' time acceleration.
 const SPEEDS = [1, 10, 60, 300, 900, 3600];
@@ -170,7 +171,63 @@ function TimeControls({ data }: { data: CampaignData }) {
 }
 import type { CampaignData } from "../lib/useCampaign";
 
-export function Header({ data }: { data: CampaignData }) {
+/** Who is winning: one bar split by faction (``standing``, computed by the
+ * engine: dynacamp/standing.py); the details
+ * (score, objectives, pilots online) in a tooltip on hover, or on tap. */
+function Standing({ campaign }: { campaign: Campaign | undefined }) {
+  if (!campaign?.factions.length) return null;
+  const shares = campaign.factions.map((f) => ({ id: f.id, share: f.standing }));
+  return (
+    <div className="standing" tabIndex={0} aria-label="Who is winning">
+      <div className="standing-bar">
+        {shares.map(({ id, share }) => (
+          <div key={id} className="standing-seg" style={{ width: pct(share), background: factionColor(campaign, id) }}>
+            {share >= 0.12 ? pct(share) : ""}
+          </div>
+        ))}
+      </div>
+      <div className="standing-tip">
+        {campaign.factions.map((f) => (
+          <div key={f.id} className="tip-faction">
+            <div className="score-name" style={{ color: factionColor(campaign, f.id) }}>
+              {f.name} · {pct(shares.find((x) => x.id === f.id)?.share ?? 0)}
+            </div>
+            <div className="score-stats">
+              <span title="victory points">★ {f.victory_points}</span>
+              <span title="provinces">▦ {f.provinces}</span>
+              <span title="brigades">⚑ {f.divisions}</span>
+              <span title="aircraft">✈ {f.aircraft}</span>
+            </div>
+            <div className="objectives">
+              {f.objectives.map((o) => (
+                <span key={o.province} className={`objective ${o.achieved ? "done" : ""}`}>
+                  {o.achieved ? "✔" : "◇"} {o.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+        {!!campaign.players.length && (
+          <div className="tip-faction">
+            <div className="score-name">Pilots online</div>
+            <div className="objectives">
+              {campaign.players.map((p) => (
+                <span key={p.id} className="objective" style={{ color: coalitionColor(campaign, p.coalition) }}>
+                  {p.name}
+                  {p.flight ? ` · ${p.flight}` : ""}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="muted tip-note">Weighted: victory points, objectives, brigades, aircraft, provinces.</div>
+      </div>
+    </div>
+  );
+}
+
+/** The top bar; ``children`` are the view controls (whose campaign). */
+export function Header({ data, children }: { data: CampaignData; children?: React.ReactNode }) {
   const { campaign, clock, live, connected } = data;
   return (
     <header className="header">
@@ -193,41 +250,9 @@ export function Header({ data }: { data: CampaignData }) {
         <span className={`conn ${connected ? "ok" : "ko"}`} title={connected ? "connected" : data.error ?? "disconnected"} />
       </div>
 
-      <div className="scores">
-        {campaign?.factions.map((f) => (
-          <div key={f.id} className="score" style={{ borderColor: factionColor(campaign, f.id) }}>
-            <div className="score-name" style={{ color: factionColor(campaign, f.id) }}>
-              {f.name}
-            </div>
-            <div className="score-stats">
-              <span title="victory points">★ {f.victory_points}</span>
-              <span title="provinces">▦ {f.provinces}</span>
-              <span title="brigades">⚑ {f.divisions}</span>
-              <span title="aircraft">✈ {f.aircraft}</span>
-            </div>
-            <div className="objectives">
-              {f.objectives.map((o) => (
-                <span key={o.province} className={`objective ${o.achieved ? "done" : ""}`} title={`priority ${o.priority}`}>
-                  {o.achieved ? "✔" : "◇"} {o.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-        {!!campaign?.players.length && (
-          <div className="score players">
-            <div className="score-name">Pilots online</div>
-            <div className="objectives">
-              {campaign.players.map((p) => (
-                <span key={p.id} className="objective" style={{ color: factionColor(campaign, p.side === "blue" ? "blue" : "red") }}>
-                  {p.name}
-                  {p.flight ? ` · ${p.flight}` : ""}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {children}
+
+      <Standing campaign={campaign} />
     </header>
   );
 }

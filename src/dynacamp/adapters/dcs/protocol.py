@@ -19,7 +19,6 @@ from ...air import AIRCRAFT_ELEMENT, Task
 from ...forces import TRUCK, EntityKind
 from ...geo import Vec2
 from ..base import (
-    Side,
     BriefingRequest,
     Command,
     DematerializeAck,
@@ -52,6 +51,8 @@ class Cmd(StrEnum):
     DESPAWN = "despawn"
     #: Give an entity's groups a new route.
     ROUTE = "route"
+    #: Liveness check: the bridge answers :attr:`Msg.PONG` (by hand, e.g. with ``nc``).
+    PING = "ping"
     #: The packages a coalition's players can join (F10 menu).
     ATO = "ato"
     #: Text and map marks for one player.
@@ -60,6 +61,10 @@ class Cmd(StrEnum):
 
 class Msg(StrEnum):
     """Messages from the Lua bridge (``msg`` of an incoming line)."""
+    #: The bridge connected (with the mission's theatre): informational.
+    HELLO = "hello"
+    #: Answer to :attr:`Cmd.PING`, with the mission time: informational.
+    PONG = "pong"
     #: The human players in the game, with position, coalition and category.
     PLAYERS = "players"
     #: Outcome of a spawn command.
@@ -104,10 +109,6 @@ WEAPON_AUTO = "Weapon.flag.Auto"
 #: Values the bridge falls back to if DCS lacks an enum: only for the names above
 #: not yet checked in the game. The bridge logs when it uses one.
 ENUM_FALLBACK = {ECM_USING: 13, ECM_ALWAYS: 3, WEAPON_AUTO: 1073741822}
-#: Campaign side of each DCS coalition (``coalition.side`` key).
-COALITION_SIDE = {"RED": Side.RED, "BLUE": Side.BLUE}
-#: DCS coalition (``coalition.side`` key) of each campaign side.
-SIDE_COALITION = {v: k for k, v in COALITION_SIDE.items()}
 #: Kind of player by the DCS category of their unit (``Unit.Category`` key).
 CATEGORY_KIND = {
     "AIRPLANE": PlayerKind.AIR,
@@ -205,6 +206,19 @@ def unit_name(entity_id: str, element: str, index: int) -> str:
     return f"{UNIT_PREFIX}.{entity_id}.{element}.{index}"
 
 
+def template_name(aircraft: str, task: Task | None = None) -> str:
+    """Name of a template group of the mission: the generator creates it, spawns ask for it.
+
+    Args:
+        aircraft: Campaign aircraft id.
+        task: The task it is loaded for (None: the aircraft's default template).
+
+    Returns:
+        ``DC_TPL_<aircraft>[_<TASK>]``.
+    """
+    return f"{TEMPLATE_PREFIX}_{aircraft}" + (f"_{task.value}" if task else "")
+
+
 def parse_unit_name(name: str) -> tuple[str, str] | None:
     """(entity id, element) from a unit name, or None.
 
@@ -262,20 +276,21 @@ class DcsTranslator:
                 return self._spawn(snap)
             case Dematerialize(entity_id=eid):
                 return {"cmd": Cmd.DESPAWN, "id": eid}
-            case PublishAto(side=side, packages=packages):
+            case PublishAto(coalition=coalition, packages=packages):
                 self.ato_version += 1
                 return {
                     "cmd": Cmd.ATO,
-                    "coalition": SIDE_COALITION[side],
+                    "coalition": coalition,
                     "version": self.ato_version,
                     "packages": list(packages),
                 }
-            case NotifyPlayer(player_id=pid, text=text, marks=marks):
+            case NotifyPlayer(player_id=pid, text=text, marks=marks, duration_s=duration):
                 return {
                     "cmd": Cmd.NOTIFY,
                     "player": pid,
                     "text": text,
                     "marks": [{"text": label, "x": to_dcs(p)[0], "z": to_dcs(p)[1]} for label, p in marks],
+                    **({"duration": duration} if duration is not None else {}),
                 }
             case UpdateRoute(entity_id=eid, waypoints=wps, speed_kmh=speed, snapshot=snap):
                 sp = self.spawned.get(eid)
@@ -305,9 +320,9 @@ class DcsTranslator:
                 if n >= 0.5 and el in types
             ]
         elif snap.kind is EntityKind.CONVOY:
-            plans = catalog.plan_convoy(snap.side, snap.elements.get(TRUCK, 0.0))
+            plans = catalog.plan_convoy(snap.army, snap.elements.get(TRUCK, 0.0))
         else:
-            plans = catalog.plan_division(snap.side, snap.elements, self.max_units_per_entity)
+            plans = catalog.plan_division(snap.army, snap.elements, self.max_units_per_entity)
 
         units: list[dict[str, Any]] = []
         for plan in plans:
@@ -340,7 +355,7 @@ class DcsTranslator:
             points += [route_point(p + side * lateral, snap.speed_kmh) for p in snap.waypoints]
             groups.append(
                 {
-                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.side]}"),
+                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.army]}"),
                     "category": dcs_enum(GroupCategory.GROUND),
                     "data": {
                         "name": name,
@@ -394,7 +409,7 @@ class DcsTranslator:
             points += [route_point(p, snap.speed_kmh) for p in snap.waypoints]
             groups.append(
                 {
-                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.side]}"),
+                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.army]}"),
                     "category": dcs_enum(GroupCategory.GROUND),
                     "snap_to_road": True,
                     "data": {
@@ -432,7 +447,7 @@ class DcsTranslator:
         speed = snap.speed_kmh / 3.6
         name = f"{UNIT_PREFIX}.{snap.id}.g0"
         back = Vec2(-math.sin(snap.heading), -math.cos(snap.heading))
-        radio = a.get("radio_callsign")  # callsigns.RadioCallsign, None for eastern sides
+        radio = a.get("radio_callsign")  # callsigns.RadioCallsign, None for armies without named callsigns
         first = int(a.get("first_unit", 1))
         units = []
         for i in range(count):
@@ -459,10 +474,10 @@ class DcsTranslator:
             "id": snap.id,
             "groups": [
                 {
-                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.side]}"),
+                    "country": dcs_enum(f"country.id.{catalog.COUNTRY[snap.army]}"),
                     "category": dcs_enum(GroupCategory.HELICOPTER if helo else GroupCategory.AIRPLANE),
                     # Mission-editor groups named like this give type, livery and payload.
-                    "templates": [f"{TEMPLATE_PREFIX}_{aircraft}_{task}", f"{TEMPLATE_PREFIX}_{aircraft}"],
+                    "templates": [template_name(aircraft, task), template_name(aircraft)],
                     "land_at": a.get("home"),
                     "data": {
                         "name": name,
@@ -654,7 +669,7 @@ class DcsTranslator:
             self.spawned.clear()
             self.known_players.clear()
             return [GameDisconnected(msg.get("reason", "connection closed"))]
-        return []  # hello, pong, log ... are informational
+        return []  # Msg.HELLO, Msg.PONG and unknown messages are informational
 
     def _players(self, players: list[dict[str, Any]]) -> list[Report]:
         """Player reports, including players that disappeared.
@@ -669,8 +684,8 @@ class DcsTranslator:
         out: list[Report] = []
         seen: set[str] = set()
         for p in players:
-            side = COALITION_SIDE.get(str(p.get("coalition", "")))
-            if side is None:
+            coalition = str(p.get("coalition", ""))  # the ``coalition.side`` key, as the scenario names it
+            if not coalition:
                 continue
             pid = str(p["id"])
             seen.add(pid)
@@ -679,7 +694,7 @@ class DcsTranslator:
                 PlayerSeen(
                     player_id=pid,
                     name=str(p.get("name", pid)),
-                    side=side,
+                    coalition=coalition,
                     kind=CATEGORY_KIND.get(str(p.get("category", "")), PlayerKind.AIR),
                     position=from_dcs(p["x"], p["z"]),
                     altitude=float(p.get("alt", 0.0)),

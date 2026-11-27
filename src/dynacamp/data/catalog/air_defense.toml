@@ -56,7 +56,43 @@ radar = "S-300PS 40B6M tr"
 cp = "S-300PS 54K6 cp"
 launcher = "S-300PS 5P85C ln"
 
+[s75]
+name = "SA-2 Guideline"
+role = "long"
+range_m = 40_000
+detection_m = 120_000
+ceiling_m = 25_000
+missiles = 6  # one per launcher rail
+pk = 0.2
+speed_kmh = 25
+setup_s = 5400  # 90 min: a semi-fixed site
+elements = { search_radar = 1, radar = 1, launcher = 6 }
+reload_per_hour = 2
+
+[s75.dcs]
+search_radar = "p-19 s-125 sr"
+radar = "SNR_75V"
+launcher = "S_75M_Volhov"
+
 # ---- medium range
+
+[s125]
+name = "SA-3 Goa"
+role = "medium"
+range_m = 22_000
+detection_m = 110_000
+ceiling_m = 18_000
+missiles = 8  # two per launcher
+pk = 0.25
+speed_kmh = 25
+setup_s = 3600  # 60 min
+elements = { search_radar = 1, radar = 1, launcher = 4 }
+reload_per_hour = 2
+
+[s125.dcs]
+search_radar = "p-19 s-125 sr"
+radar = "snr s-125 tr"
+launcher = "5p73 s-125 ln"
 
 [hawk]
 name = "Hawk"
@@ -193,6 +229,21 @@ elements = { radar = 1 }
 
 [ewr_1l13.dcs]
 radar = "1L13 EWR"
+
+[ewr_p19]
+name = "P-19 Flat Face"
+role = "ewr"
+range_m = 0
+detection_m = 160_000
+ceiling_m = 0
+missiles = 0
+pk = 0.0
+speed_kmh = 40
+setup_s = 900  # 15 min
+elements = { radar = 1 }
+
+[ewr_p19.dcs]
+radar = "p-19 s-125 sr"
 
 [ewr_55g6]
 name = "55G6 Tall Rack"

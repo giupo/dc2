@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .adapters.base import PlayerKind, Side
+from .adapters.base import PlayerKind
 from .forces import Authority, MobileEntity
 from .geo import Vec2
 from .state import BattleKind, CampaignState
@@ -46,7 +46,7 @@ class Player:
     Attributes:
         id: Player id (adapter-defined).
         name: Display name.
-        side: Game side.
+        coalition: Game coalition.
         kind: Aircraft, helicopter or ground.
         position: Last reported position.
         altitude: Metres.
@@ -54,7 +54,7 @@ class Player:
     """
     id: str
     name: str
-    side: Side
+    coalition: str
     kind: PlayerKind
     position: Vec2
     altitude: float

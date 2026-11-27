@@ -192,3 +192,14 @@ def test_a_sam_launch_reveals_the_site():
     assert [e for e in state.events if e.kind == "sam_engagement"]
     c = intel.knows(state, "blue", "s1")
     assert c is not None and c.source.startswith("launch on")
+
+
+def test_observers_outside_a_scan_see_where_things_are_now():
+    """No position cache outlives a scan round: the AI and the API asking later
+    (or another campaign in the same process) see current positions."""
+    state = line_scenario()
+    intel.run(state, 0.0)  # a scan round
+    d = next(x for x in state.divisions.values() if x.faction == "blue")
+    d.location = next(p for p in state.theater.provinces if p != d.location)
+    now = d.position(state.theater)
+    assert any(pos == now and name == f"recon {d.name}" for pos, _, name in intel.ground_observers(state, "blue"))

@@ -122,7 +122,7 @@ def run(state: CampaignState, dt: float) -> None:
         if not targets:
             continue
         target = min(targets, key=lambda d: d.position(t).distance_to(here))
-        effect = g * (0.5 + 0.5 * shooter.org)
+        effect = g * (0.5 + 0.5 * shooter.org) * state.quality(shooter.faction)
         if isinstance(target, Division):
             target.take_losses(STRENGTH_PER_GUN * effect)
             target.org = max(0.0, target.org - ORG_PER_GUN * effect)

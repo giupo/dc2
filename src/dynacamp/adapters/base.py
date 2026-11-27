@@ -18,15 +18,6 @@ from ..forces import EntityKind
 from ..geo import Vec2
 
 
-
-class Side(StrEnum):
-    """A game side (a DCS coalition): factions are mapped to one."""
-    #: The blue coalition.
-    BLUE = "blue"
-    #: The red coalition.
-    RED = "red"
-
-
 # ------------------------------------------------------------------ core -> game
 
 
@@ -39,7 +30,8 @@ class EntitySnapshot:
         kind: What the entity is.
         name: Display name.
         faction: Owning faction.
-        side: Game side.
+        coalition: Game coalition of the faction.
+        army: Catalogue army of the faction (picks the game's unit types).
         position: Current position.
         heading: Radians, 0 = north.
         elements: Element counts in campaign units.
@@ -52,7 +44,8 @@ class EntitySnapshot:
     kind: EntityKind
     name: str
     faction: str
-    side: Side
+    coalition: str
+    army: str
     position: Vec2
     heading: float  # radians, 0 = north
     elements: dict[str, float]
@@ -91,19 +84,21 @@ class UpdateRoute:
 
 @dataclass(frozen=True, slots=True)
 class PublishAto:
-    """The flights players of ``side`` can join (see systems.ato.ato_board)."""
+    """The flights players of ``coalition`` can join (see systems.ato.ato_board)."""
 
-    side: Side
+    coalition: str
     packages: tuple[dict[str, Any], ...]
 
 
 @dataclass(frozen=True, slots=True)
 class NotifyPlayer:
-    """Show a message (and optionally map marks) to one player."""
+    """Show a message (and optionally map marks) to one player, for
+    ``duration_s`` seconds (None: the game's default)."""
 
     player_id: str
     text: str
     marks: tuple[tuple[str, Vec2], ...] = ()
+    duration_s: float | None = None
 
 
 Command = Materialize | Dematerialize | UpdateRoute | PublishAto | NotifyPlayer
@@ -128,7 +123,7 @@ class PlayerSeen:
     Attributes:
         player_id: Player id.
         name: Display name.
-        side: Game side.
+        coalition: Game coalition.
         kind: Aircraft, helicopter or ground.
         position: Position.
         altitude: Metres.
@@ -136,7 +131,7 @@ class PlayerSeen:
     """
     player_id: str
     name: str
-    side: Side
+    coalition: str
     kind: PlayerKind
     position: Vec2
     altitude: float = 0.0

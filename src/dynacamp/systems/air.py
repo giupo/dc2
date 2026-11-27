@@ -323,6 +323,8 @@ def ready(state: CampaignState, f: Flight) -> None:
         n = max(f.ai_count, 0)
         f.aam_bvr, f.aam_wvr, f.aam_range_m = load.bvr * n, load.wvr * n, load.bvr_range_m
         f.aam_loaded = f.aam_bvr + f.aam_wvr
+        arms = loadouts.anti_radiation(f.aircraft_type.id, f.task)
+        f.arm, f.arm_range_m = arms.count * n, arms.range_m
 
 
 def winchester(f: Flight) -> bool:
@@ -608,7 +610,7 @@ def attack(state: CampaignState, f: Flight) -> None:
     p_loss = min(0.5, p_loss)
     lost = sum(1 for _ in range(f.ai_count) if state.rng.random() < p_loss)
     lose_aircraft(state, f, lost, LossReason.AIR_DEFENCE)
-    eff = f.ai_count * f.aircraft_type.a2g
+    eff = f.ai_count * f.aircraft_type.a2g * state.quality(f.faction)
     result: dict[str, object] = {"lost": lost}
     if eff <= 0:
         state.emit(EventKind.AIR_STRIKE, flight=f.id, faction=f.faction, task=f.task.value, **result)
@@ -733,17 +735,20 @@ def _hunter(f: Flight) -> bool:
     )
 
 
-def _quality(shooter: Flight, target: Flight) -> float:
-    """Kill probability multiplier from the two types' air-to-air quality (1 between equals).
+def _quality(state: CampaignState, shooter: Flight, target: Flight) -> float:
+    """Kill probability multiplier from the two types' air-to-air quality and
+    their armies' quality (1 between equals).
 
     Args:
+        state: The campaign (the factions' quality).
         shooter: The firing flight.
         target: The target flight.
 
     Returns:
         The multiplier, between 0.4 and 1.6.
     """
-    a, b = shooter.aircraft_type.a2a + 0.2, target.aircraft_type.a2a + 0.2
+    a = (shooter.aircraft_type.a2a + 0.2) * state.quality(shooter.faction)
+    b = (target.aircraft_type.a2a + 0.2) * state.quality(target.faction)
     return min(1.6, max(0.4, 2.0 * a / (a + b)))
 
 
@@ -917,7 +922,7 @@ def _fire(state: CampaignState, f: Flight, tgt: Flight, phase: Phase, bonus: flo
         shots, pk = f.ai_count, PK_GUN
     else:
         return 0, 0
-    pk = min(0.9, pk * _quality(f, tgt) * bonus)
+    pk = min(0.9, pk * _quality(state, f, tgt) * bonus)
     kills = sum(1 for _ in range(shots) if state.rng.random() < pk)
     return min(kills, tgt.ai_count), shots
 

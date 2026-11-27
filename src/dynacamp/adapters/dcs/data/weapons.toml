@@ -35,3 +35,15 @@ per_pylon = '(\d+)\s*x\s'
 "Super 530" = 30_000
 "SD-10" = 50_000
 "PL-12" = 50_000
+
+# Anti-radiation missiles (SEAD): effective launch range in metres against a
+# SAM radar. The first fragment that matches wins. The Shrike must be fired
+# from inside the umbrella of most SAMs it hunts.
+[arm_range_m]
+"AGM-88" = 60_000
+"Kh-58" = 60_000
+"Kh-31P" = 60_000
+"LD-10" = 60_000
+"ALARM" = 45_000
+"Kh-25MPU" = 25_000
+"AGM-45" = 18_000

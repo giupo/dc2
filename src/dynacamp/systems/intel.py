@@ -385,24 +385,28 @@ def seed_prewar(state: CampaignState) -> None:
 # ---------------------------------------------------------------- scanning
 
 
-def _pos(state: CampaignState, ent) -> Vec2:
-    """Position of an entity, computed once per scan.
+#: Positions of entities computed during one scan round, by entity id. A round
+#: makes a fresh one and passes it down; nothing outlives the round.
+Positions = dict[str, Vec2]
+
+
+def _pos(state: CampaignState, ent, cache: Positions | None) -> Vec2:
+    """Position of an entity, computed once per scan round.
 
     Args:
         state: The campaign.
         ent: The entity.
+        cache: The round's positions (None: compute it, no caching).
 
     Returns:
-        The position, cached for the current scan.
+        The position now.
     """
-    p = _POS.get(ent.id)
+    if cache is None:
+        return ent.position(state.theater)
+    p = cache.get(ent.id)
     if p is None:
-        p = _POS[ent.id] = ent.position(state.theater)
+        p = cache[ent.id] = ent.position(state.theater)
     return p
-
-
-#: Positions computed during the current scan, by entity id (cleared when a scan starts).
-_POS: dict[str, Vec2] = {}
 
 
 def run(state: CampaignState, dt: float) -> None:
@@ -420,9 +424,9 @@ def run(state: CampaignState, dt: float) -> None:
         return
 
     state.timers[Timer.INTEL] = state.time + SCAN_INTERVAL_S
-    _POS.clear()
+    cache: Positions = {}  # nothing moves during the round: every faction shares it
     for fid in state.factions:
-        scan(state, fid)
+        scan(state, fid, cache)
         _expire(state, fid)
 
 
@@ -439,13 +443,16 @@ def _expire(state: CampaignState, fid: str) -> None:
             del pic[eid]
 
 
-def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]]:
+def air_sensors(
+    state: CampaignState, fid: str, cache: Positions | None = None
+) -> list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]]:
     """Friendly air-search sensors: (position, range, kind, name, can identify,
     the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`).
 
     Args:
         state: The campaign.
         fid: Faction id.
+        cache: Positions of the current scan round (None: computed afresh).
 
     Returns:
         The sensors.
@@ -458,31 +465,32 @@ def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, Senso
         r = f.aircraft_type.air_radar_m
 
         if f.task is Task.AWACS and f.status is FlightStatus.ON_STATION:
-            out.append((_pos(state, f), r, SensorKind.AWACS, f"AWACS {f.callsign}", False, None))
+            out.append((_pos(state, f, cache), r, SensorKind.AWACS, f"AWACS {f.callsign}", False, None))
 
         elif r > 0:
-            out.append((_pos(state, f), r, SensorKind.AIRCRAFT, f.callsign, True, f))
+            out.append((_pos(state, f, cache), r, SensorKind.AIRCRAFT, f.callsign, True, f))
 
     for u in state.air_defense.values():
         if u.faction != fid or not u.operational or u.status is not SamStatus.ACTIVE or not u.system.radar:
             continue
-        out.append((_pos(state, u), u.system.detection_m, SensorKind.GROUND_RADAR, f"{u.system.name} radar", False, None))
+        out.append((_pos(state, u, cache), u.system.detection_m, SensorKind.GROUND_RADAR, f"{u.system.name} radar", False, None))
 
-    side = state.factions[fid].side
+    coalition = state.factions[fid].coalition
 
-    for pid, (pside, pos, pkind) in state.player_positions.items():
-        if pside == side and pkind is PlayerKind.AIR:  # heading unknown: all round
+    for pid, (pcoalition, pos, pkind) in state.player_positions.items():
+        if pcoalition == coalition and pkind is PlayerKind.AIR:  # heading unknown: all round
             out.append((pos, PLAYER_RADAR_M, SensorKind.AIRCRAFT, f"player {pid}", True, None))
 
     return out
 
 
-def ground_observers(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str]]:
+def ground_observers(state: CampaignState, fid: str, cache: Positions | None = None) -> list[tuple[Vec2, float, str]]:
     """Friendly observers of ground units: (position, range, name).
 
     Args:
         state: The campaign.
         fid: Faction id.
+        cache: Positions of the current scan round (None: computed afresh).
 
     Returns:
         The observers.
@@ -492,44 +500,46 @@ def ground_observers(state: CampaignState, fid: str) -> list[tuple[Vec2, float, 
 
     for d in state.divisions.values():
         if d.faction == fid:
-            out.append((_pos(state, d), RECON_M[EntityKind.DIVISION], f"recon {d.name}"))
+            out.append((_pos(state, d, cache), RECON_M[EntityKind.DIVISION], f"recon {d.name}"))
 
     for c in state.convoys.values():
         if c.faction == fid:
-            out.append((_pos(state, c), RECON_M[EntityKind.CONVOY], f"convoy {c.id}"))
+            out.append((_pos(state, c, cache), RECON_M[EntityKind.CONVOY], f"convoy {c.id}"))
 
     for u in state.air_defense.values():
         if u.faction == fid:
-            out.append((_pos(state, u), RECON_M[EntityKind.SAM], u.name))
+            out.append((_pos(state, u, cache), RECON_M[EntityKind.SAM], u.name))
 
     for f in state.flights.values():
         if f.faction == fid and f.status in ACTIVE_STATUSES and f.aircraft_type.ground_sensor_m > 0:
-            out.append((_pos(state, f), f.aircraft_type.ground_sensor_m, f.callsign))
-    side = state.factions[fid].side
+            out.append((_pos(state, f, cache), f.aircraft_type.ground_sensor_m, f.callsign))
+    coalition = state.factions[fid].coalition
 
-    for pid, (pside, pos, _) in state.player_positions.items():
-        if pside == side:
+    for pid, (pcoalition, pos, _) in state.player_positions.items():
+        if pcoalition == coalition:
             out.append((pos, PLAYER_EYES_M, f"player {pid}"))
 
     return out
 
 
-def scan(state: CampaignState, fid: str) -> None:
+def scan(state: CampaignState, fid: str, cache: Positions | None = None) -> None:
     """One sweep of all the faction's sensors.
 
     Args:
         state: The campaign.
         fid: Faction id.
+        cache: Positions of the current scan round (None: a round of its own).
     """
     from . import air_defense
 
+    cache = {} if cache is None else cache
     t = state.theater
     # -- air picture
-    sensors = air_sensors(state, fid)
+    sensors = air_sensors(state, fid, cache)
     for f in state.flights.values():
         if not state.at_war(fid, f.faction) or f.status not in ACTIVE_STATUSES or f.ai_count + len(f.active_seats) <= 0:
             continue
-        pos = _pos(state, f)
+        pos = _pos(state, f, cache)
         low = radar.low(f)
         jamming = radar.jam(state, f)
         seen_by, identify = None, False
@@ -548,7 +558,7 @@ def scan(state: CampaignState, fid: str) -> None:
             observe(state, fid, f, EntityKind.FLIGHT, seen_by, identified=identify, pos=pos)
 
     # -- ground picture
-    observers = ground_observers(state, fid)
+    observers = ground_observers(state, fid, cache)
     targets = [
         (EntityKind.DIVISION, d)
         for d in state.divisions.values()
@@ -568,7 +578,7 @@ def scan(state: CampaignState, fid: str) -> None:
     ]
     
     for kind, ent in targets:
-        pos = _pos(state, ent)
+        pos = _pos(state, ent, cache)
         for opos, rng, name in observers:
             if abs(opos.x - pos.x) <= rng and abs(opos.y - pos.y) <= rng and opos.distance_to(pos) <= rng:
                 observe(state, fid, ent, kind, name, pos=pos)
@@ -587,19 +597,19 @@ def scan(state: CampaignState, fid: str) -> None:
             continue
 
         if f.task is Task.AWACS and f.status is FlightStatus.ON_STATION:
-            listeners.append((_pos(state, f), ELINT_AWACS_M, f"ELINT AWACS {f.callsign}"))
+            listeners.append((_pos(state, f, cache), ELINT_AWACS_M, f"ELINT AWACS {f.callsign}"))
 
         elif f.task is Task.SEAD:
-            listeners.append((_pos(state, f), ELINT_SEAD_M, f"ELINT {f.callsign}"))
+            listeners.append((_pos(state, f, cache), ELINT_SEAD_M, f"ELINT {f.callsign}"))
 
     for u in state.air_defense.values():
         if u.faction == fid and u.system.role is SamRole.EWR and u.operational:
-            listeners.append((_pos(state, u), ELINT_EWR_M, f"ELINT {u.name}"))
+            listeners.append((_pos(state, u, cache), ELINT_EWR_M, f"ELINT {u.name}"))
 
     for u in state.air_defense.values():
         if not state.at_war(fid, u.faction) or not (u.emitting or (u.system.role is SamRole.EWR and u.operational)):
             continue
-        pos = _pos(state, u)
+        pos = _pos(state, u, cache)
         
         for lpos, rng, name in listeners:
             if lpos.distance_to(pos) <= rng:
@@ -616,7 +626,7 @@ def scan(state: CampaignState, fid: str) -> None:
         if c is not None and c.seen == state.time:
             continue  # radar has it this sweep, precisely
 
-        pos = _pos(state, f)
+        pos = _pos(state, f, cache)
 
         for lpos, rng, name in listeners:
             if lpos.distance_to(pos) <= rng:

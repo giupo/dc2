@@ -207,7 +207,7 @@ org, supply` (0..1), `elements` (mezzi per tipo), `order {kind, target}`,
   e `archived` (sempre `false` qui; `true` per i package conclusi letti per id).
 - `squadrons[]`: forza, disponibili, impegnati, in turnaround, compiti.
 - `sortie_budget_left` per fazione, `flights_airborne`.
-- `boards[side]`: esattamente ciò che vedono i giocatori nel menu F10.
+- `boards[coalition]`: esattamente ciò che vedono i giocatori nel menu F10.
 
 ### `GET /api/ato/packages/{package_id}` e `GET /api/ato/flights/{flight_id}/package`
 Un package (con i voli), come in `/api/ato`, letto per id o tramite uno dei

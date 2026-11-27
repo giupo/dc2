@@ -16,7 +16,7 @@ def data(theater, a, b):
     """Two linked provinces on ``theater`` with the coordinate tables ``a`` and ``b``."""
     return {
         "campaign": {"name": "t", "theater": theater},
-        "factions": [{"id": "blue", "side": "blue", "enemies": ["red"]}, {"id": "red", "side": "red", "enemies": ["blue"]}],
+        "factions": [{"id": "blue", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"]}, {"id": "red", "coalition": "RED", "army": "russia", "color": "#ff5a5a", "enemies": ["blue"]}],
         "provinces": [{"id": "a", "controller": "blue", **a}, {"id": "b", "controller": "red", **b}],
         "links": [{"a": "a", "b": "b"}],
         "airbases": [{"id": "ab", "name": "AB", "province": "a", **a}],

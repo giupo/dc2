@@ -29,7 +29,6 @@ from .base import (
     PlayerLeft,
     PlayerSeen,
     Report,
-    Side,
     UpdateRoute,
 )
 
@@ -106,16 +105,16 @@ class FakeGame(GameAdapter):
 
     # ------------------------------------------------------------ scripting
 
-    def player(self, pid: str, pos: Vec2, side: Side = Side.BLUE, kind: PlayerKind = PlayerKind.AIR) -> None:
+    def player(self, pid: str, pos: Vec2, coalition: str, kind: PlayerKind = PlayerKind.AIR) -> None:
         """Report a player at ``pos``.
 
         Args:
             pid: Player id (also used as the name).
             pos: Where the player is.
-            side: The player's coalition side.
+            coalition: The player's game coalition.
             kind: Air or ground player.
         """
-        self._reports.append(PlayerSeen(pid, pid, side, kind, pos))
+        self._reports.append(PlayerSeen(pid, pid, coalition, kind, pos))
 
     def join(self, pid: str, flight_id: str, tasks: frozenset[Task] | None = None) -> None:
         """A player asks to join a flight.

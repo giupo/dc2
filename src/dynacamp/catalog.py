@@ -6,7 +6,8 @@ supply use. It lives in TOML files under ``dynacamp/data/catalog/``:
 
 * ``aircraft.toml``: one table per aircraft type;
 * ``air_defense.toml``: one table per SAM system or early-warning radar;
-* ``ground.toml``: ``[elements.<id>]`` and ``[templates.<id>]``.
+* ``ground.toml``: ``[elements.<id>]`` and ``[templates.<id>]``;
+* ``factions.toml``: one table per army a scenario's faction can field.
 
 Each entry may have a ``dcs`` sub-table (DCS unit types, callsigns,
 representation ratios). The engine ignores it; only the DCS adapter and the
@@ -14,7 +15,7 @@ callsign module read it, through :func:`dcs`.
 
 This module knows nothing about the domain classes: each owner module builds
 its own objects with :func:`build` (``air.AIRCRAFT``, ``air_defense.SYSTEMS``,
-``forces.ELEMENTS``, ``forces.DEFAULT_TEMPLATES``), so there are no import
+``forces.ELEMENTS``, ``forces.DEFAULT_TEMPLATES``, ``state.ARMIES``), so there are no import
 cycles. Loading is strict: unknown or missing fields and values of the wrong
 type raise :class:`CatalogError`, naming the file and the entry.
 """
@@ -222,6 +223,7 @@ def build(
             except LookupError as exc:
                 if fname in convert:
                     raise CatalogError(f"{where} {eid}.{fname}: unknown value {exc}") from exc
+
                 raise CatalogError(f"{cls.__name__}.{fname} ({f.type}) needs a converter") from exc
 
             except (TypeError, ValueError) as exc:

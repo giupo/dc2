@@ -46,8 +46,6 @@ SEAD_PK_FACTOR = 0.7
 DEFENSIVE_FACTOR = 0.5
 #: A site engages the same flight at most this often, seconds.
 PAIR_COOLDOWN_S = 10 * 60.0
-#: Launch range of anti-radiation missiles.
-HARM_RANGE_M = 60_000.0
 #: A SEAD flight fires anti-radiation missiles at most this often, seconds.
 HARM_COOLDOWN_S = 15 * 60.0
 #: A suppressed site keeps its radar off this long, seconds.
@@ -250,7 +248,7 @@ def _engage(state: CampaignState) -> None:
         networked = network_node(state, u) is not None
         state.timers[Timer.SAM.key(u.id, f.id)] = state.time + PAIR_COOLDOWN_S
         pk = (
-            u.system.pk * DEFENSIVE_FACTOR
+            u.system.pk * DEFENSIVE_FACTOR * state.quality(u.faction)
             * (NETWORK_PK_BONUS if networked else 1.0)
             * (SEAD_PK_FACTOR if f.task is Task.SEAD else 1.0)
             * sensors.jam_pk(jams[f.id], f)
@@ -335,14 +333,17 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
 
 
 def _sead(state: CampaignState) -> None:
-    """SEAD flights fire anti-radiation missiles at emitting radars in reach.
+    """SEAD flights fire anti-radiation missiles at emitting radars in reach of
+    their loadout's missiles (an AGM-88 from 60 km, a Shrike from 18 km), one
+    per aircraft a salvo, until they have none left.
 
     Args:
         state: The campaign.
     """
     t = state.theater
     for f in state.flights.values():
-        if f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or not f.simulated_by_campaign or f.ai_count <= 0:
+        if (f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or not f.simulated_by_campaign
+                or f.ai_count <= 0 or f.arm <= 0):
             continue
         key = Timer.HARM.key(f.id)
         if state.timers.get(key, 0.0) > state.time:
@@ -350,13 +351,15 @@ def _sead(state: CampaignState) -> None:
         emitters = [
             u for u in state.air_defense.values()
             if state.at_war(f.faction, u.faction) and u.emitting and u.authority is Authority.CAMPAIGN
-            and u.position(t).distance_to(f.pos) <= HARM_RANGE_M
+            and u.position(t).distance_to(f.pos) <= f.arm_range_m
         ]
         if not emitters:
             continue
         state.timers[key] = state.time + HARM_COOLDOWN_S
         u = min(emitters, key=lambda x: (x.position(t).distance_to(f.pos), x.id))
-        hit_on_radar(state, u, f.ai_count * f.aircraft_type.a2g, by=f.callsign)
+        shots = min(f.arm, f.ai_count)
+        f.arm -= shots
+        hit_on_radar(state, u, shots * f.aircraft_type.a2g * state.quality(f.faction), by=f.callsign)
 
 
 def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str) -> None:
@@ -374,9 +377,11 @@ def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str
         return
     roll = state.rng.random()
     if roll < min(0.6, 0.12 * effort):
-        for k in RADAR_ELEMENTS:
-            if k in u.elements:
-                u.elements[k] = 0.0
+        radars = [k for k in RADAR_ELEMENTS if k in u.elements]
+        for k in radars:
+            u.elements[k] = 0.0
+        if not radars:  # radar on the launcher itself (SA-8, SA-15...): one vehicle is lost
+            u.elements[LAUNCHER] = max(0.0, u.elements.get(LAUNCHER, 0.0) - 1)
         result = StrikeResult.RADAR_DESTROYED
     elif roll < 0.75:
         _suppress(state, u, SUPPRESS_S)

@@ -3,7 +3,7 @@
 // SIDC (letter based, 2525C): S + affiliation (F friend, H hostile) + battle
 // dimension (G ground, A air) + status (P present, A anticipated = dashed frame)
 // + function id (6) + modifier + echelon. Affiliation depends on the viewer:
-// the "viewpoint" side is friendly. In a fog-of-war view, stale contacts are
+// the "viewpoint" coalition is friendly. In a fog-of-war view, stale contacts are
 // drawn with the dashed frame and unidentified radar tracks as "unknown" (U).
 import ms from "milsymbol";
 
@@ -11,9 +11,9 @@ export type Affiliation = "F" | "H" | "N" | "U";
 /** P = present; A = anticipated/suspected (dashed frame): a stale contact. */
 export type Status = "P" | "A";
 
-export function affiliation(side: string, viewpoint: string): Affiliation {
-  if (!side) return "U";
-  return side === viewpoint ? "F" : "H";
+export function affiliation(coalition: string, viewpoint: string): Affiliation {
+  if (!coalition) return "U";
+  return coalition === viewpoint ? "F" : "H";
 }
 
 // campaign template -> (function id, echelon)

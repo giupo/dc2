@@ -64,13 +64,13 @@ def test_loadouts_use_real_weapons():
 
 @pytest.mark.skipif(LUA51 is None, reason="Lua 5.1 not installed")
 def test_bridge_applies_templates_from_generated_mission(tmp_path):
-    state = scenario.load(SCENARIOS[0])
+    state = scenario.load(next(p for p in SCENARIOS if p.stem == "western_georgia"))  # has A-10Cs at Kobuleti
     out = tmp_path / "m.miz"
     write_mission(state, out)
     with zipfile.ZipFile(out) as z:
         z.extract("mission", tmp_path)
     snap = EntitySnapshot(
-        id="fl9", kind=EntityKind.FLIGHT, name="X", faction="blue", side="blue", position=Vec2(640_000, -300_000),
+        id="fl9", kind=EntityKind.FLIGHT, name="X", faction="blue", coalition="BLUE", army="us", position=Vec2(640_000, -300_000),
         heading=1.0, elements={"aircraft": 2.0}, waypoints=(Vec2(650_000, -280_000),), speed_kmh=550, altitude=6000,
         attrs={"aircraft": "a10c", "task": "CAS", "target": Vec2(650_000, -280_000), "target_index": 0, "home": "Kobuleti"},
     )

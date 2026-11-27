@@ -80,7 +80,7 @@ def test_events_paging(demo):
 def live_engine(demo):
     game = FakeGame()
     engine = Engine(demo, game)
-    game.player("Pilot", Vec2(650_000, -290_000))
+    game.player("Pilot", Vec2(650_000, -290_000), coalition="BLUE")
     engine.run_for(2 * 3600, dt=300)
     return engine
 

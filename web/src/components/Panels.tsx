@@ -8,7 +8,7 @@ import {
   factionName,
   levelColor,
   pct,
-  sideOf,
+  coalitionOf,
   TEMPLATE_SHORT,
   ageLabel,
   intelLabel,
@@ -38,13 +38,13 @@ export interface PanelProps {
 /** Inline NATO symbol (APP-6) for lists. */
 export function UnitSymbol({ d, data, viewpoint, size = 18 }: { d: Division; data: CampaignData; viewpoint: string; size?: number }) {
   // No text modifiers in lists: the name is right next to it.
-  const sym = symbol(unitSidc(d.template, affiliation(sideOf(data.campaign, d.faction), viewpoint), knownStatus(d.intel)), { size, infoFields: false });
+  const sym = symbol(unitSidc(d.template, affiliation(coalitionOf(data.campaign, d.faction), viewpoint), knownStatus(d.intel)), { size, infoFields: false });
   return <span className="symbol" dangerouslySetInnerHTML={{ __html: sym.svg }} />;
 }
 
 export function FlightSymbol({ f, data, viewpoint }: { f: Flight; data: CampaignData; viewpoint: string }) {
   const unidentified = f.intel != null && !f.intel.identified;
-  const aff = unidentified ? "U" : affiliation(sideOf(data.campaign, f.faction), viewpoint);
+  const aff = unidentified ? "U" : affiliation(coalitionOf(data.campaign, f.faction), viewpoint);
   const sym = symbol(airSidc(unidentified ? null : f.task, f.helo, aff, knownStatus(f.intel)), { size: 14, infoFields: false });
   return <span className="symbol air" dangerouslySetInnerHTML={{ __html: sym.svg }} />;
 }
@@ -306,19 +306,14 @@ function AtoList({ packages, data, selected, select }: PanelProps & { packages: 
 }
 
 export function AtoPanel(props: PanelProps) {
-  const { data, selected, select } = props;
+  const { data, selected, select, viewpoint } = props;
   const { ato, campaign } = data;
-  const [faction, setFaction] = useState<string>("all");
   const [view, setView] = useState<"list" | "packages">("list");
-  const packages = (ato?.packages ?? []).filter((p) => faction === "all" || p.faction === faction);
+  // Whose ATO: the viewpoint coalition's (chosen once, in the header's "View as").
+  const packages = (ato?.packages ?? []).filter((p) => coalitionOf(campaign, p.faction) === viewpoint);
   return (
     <div className="panel">
       <div className="tabs small">
-        {["all", ...(campaign?.factions.map((f) => f.id) ?? [])].map((f) => (
-          <button key={f} className={faction === f ? "on" : ""} onClick={() => setFaction(f)} style={f !== "all" ? { color: factionColor(campaign, f) } : undefined}>
-            {f === "all" ? "All" : factionName(campaign, f)}
-          </button>
-        ))}
         <span className="grow" />
         <button className={view === "list" ? "on" : ""} onClick={() => setView("list")} title="Falcon/BMS-style list of flights by takeoff time">ATO</button>
         <button className={view === "packages" ? "on" : ""} onClick={() => setView("packages")}>Packages</button>
@@ -342,7 +337,19 @@ export function AtoPanel(props: PanelProps) {
           ))}
         </div>
       ))}
-      <h3>Squadrons</h3>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- squadrons
+
+export function SquadronsPanel({ data, viewpoint }: PanelProps) {
+  const { ato, campaign } = data;
+  const squadrons = (ato?.squadrons ?? []).filter((s) => coalitionOf(campaign, s.faction) === viewpoint);
+  const budgets = Object.entries(ato?.sortie_budget_left ?? {}).filter(([f]) => coalitionOf(campaign, f) === viewpoint);
+  return (
+    <div className="panel">
+      <h3>Squadrons ({squadrons.length})</h3>
       <table className="table">
         <thead>
           <tr>
@@ -350,32 +357,30 @@ export function AtoPanel(props: PanelProps) {
             <th>Squadron</th>
             <th>Type</th>
             <th title="available / strength">Avail</th>
+            <th title="flying or about to">Out</th>
             <th title="being turned around">Svc</th>
           </tr>
         </thead>
         <tbody>
-          {ato?.squadrons
-            .filter((s) => faction === "all" || s.faction === faction)
-            .map((s) => (
-              <tr key={s.id}>
-                <td>
-                  <span className="side-dot" style={{ background: factionColor(campaign, s.faction) }} />
-                </td>
-                <td>{s.name}</td>
-                <td>{s.aircraft_name}</td>
-                <td>
-                  {s.available}/{s.strength}
-                </td>
-                <td>{s.servicing || ""}</td>
-              </tr>
-            ))}
+          {squadrons.map((s) => (
+            <tr key={s.id} title={`${s.airbase} · ${s.tasks.join(" ")}`}>
+              <td>
+                {s.insignia ? <img className="kv-insignia" src={s.insignia} alt="" /> : <span className="side-dot" style={{ background: factionColor(campaign, s.faction) }} />}
+              </td>
+              <td>{s.name}</td>
+              <td>{s.aircraft_name}</td>
+              <td>
+                {s.available}/{s.strength}
+              </td>
+              <td>{s.committed || ""}</td>
+              <td>{s.servicing || ""}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
+      {!squadrons.length && <p className="muted pad">No squadrons.</p>}
       <p className="muted">
-        Sortie budget left (24 h):{" "}
-        {Object.entries(ato?.sortie_budget_left ?? {})
-          .map(([f, n]) => `${factionName(campaign, f)} ${n}`)
-          .join(" · ")}
+        Sortie budget left (24 h): {budgets.map(([f, n]) => `${factionName(campaign, f)} ${n}`).join(" · ") || "—"}
       </p>
     </div>
   );
@@ -489,7 +494,7 @@ export function AirDefensePanel({ data, selected, select, viewpoint, units }: Pa
                 <div key={role}>
                   <div className="group muted">{ROLE_LABEL[role]}</div>
                   {list.map((s) => {
-                    const sym = symbol(samSidc(s.role, affiliation(sideOf(campaign, s.faction), viewpoint)), { size: 15, infoFields: false });
+                    const sym = symbol(samSidc(s.role, affiliation(coalitionOf(campaign, s.faction), viewpoint)), { size: 15, infoFields: false });
                     return (
                       <div key={s.id} className={`row clickable ${isSel(selected, "sam", s.id) ? "sel" : ""}`} onClick={() => select({ kind: "sam", id: s.id }, s.ll)}>
                         <span className="symbol" dangerouslySetInnerHTML={{ __html: sym.svg }} />

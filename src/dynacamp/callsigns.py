@@ -13,11 +13,12 @@ know the names of a fixed list. The list depends on the role and the type:
 The campaign callsign of a squadron (``Lobo``, ``Victory``...) is used as is
 when it is in the list of its type. Otherwise the squadron gets a **radio
 callsign** from the generic list (or the AWACS/tanker one), chosen
-deterministically among the names no other squadron of the side uses. The
+deterministically among the names no other squadron of the coalition uses. The
 briefing shows it, so the players know what the AI will call them.
 
-Eastern aircraft (``red`` side, Russian country in the missions) use numeric
-callsigns: nothing is sent and DCS keeps the template's.
+Only the armies with ``western_callsigns = true`` in their ``dcs`` table
+(``data/catalog/factions.toml``) get named callsigns; the others (eastern
+countries) use numeric ones: nothing is sent and DCS keeps the template's.
 
 The type lists are copied from pydcs (``callnames``) into the aircraft
 catalogue (``callsigns`` in the ``dcs`` sub-table of
@@ -31,7 +32,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from . import catalog
-from .adapters.base import Side
 from .air import Task
 
 if TYPE_CHECKING:
@@ -54,8 +54,10 @@ TYPE_NAMES: dict[str, tuple[str, ...]] = {
     aid: tuple(d["callsigns"]) for aid, d in catalog.dcs("aircraft").items() if d.get("callsigns")
 }
 
-#: The side with western callsigns (the missions put it in the USA country).
-WESTERN_SIDE = Side.BLUE
+#: Armies whose aircraft take named callsigns (``western_callsigns`` in their ``dcs`` table).
+WESTERN_ARMIES: frozenset[str] = frozenset(
+    aid for aid, d in catalog.dcs("factions").items() if d.get("western_callsigns", False)
+)
 
 
 @dataclass(frozen=True)
@@ -166,9 +168,10 @@ def squadron_callsign(state: CampaignState, sq: Squadron, task: Task | None = No
         task: Task of the flight (default: the squadron's main role).
 
     Returns:
-        The callsign, or None for sides without western callsigns.
+        The callsign, or None for armies without western callsigns.
     """
-    if state.factions[sq.faction].side != WESTERN_SIDE:
+    faction = state.factions[sq.faction]
+    if faction.army not in WESTERN_ARMIES:
         return None
     task = task or _main_task(sq)
     table = names(sq.aircraft_type.id, task)
@@ -176,14 +179,15 @@ def squadron_callsign(state: CampaignState, sq: Squadron, task: Task | None = No
         return SquadronCallsign(sq.callsign, table[sq.callsign], True)
 
     # Stand-in: generic names in order, skipping those other squadrons of the
-    # side already use; squadrons sorted by id, so it is deterministic. With
+    # coalition already use; squadrons sorted by id, so it is deterministic. With
     # more squadrons than names they wrap, and share the flight numbers.
     fallback = AWACS if task is Task.AWACS else TANKER if task is Task.TANKER else GENERIC
-    side = [q for q in sorted(state.squadrons.values(), key=lambda q: q.id)
-            if state.factions[q.faction].side == WESTERN_SIDE]
-    pool = [n for n in fallback if n not in {q.callsign for q in side}] or list(fallback)
+    allies = [q for q in sorted(state.squadrons.values(), key=lambda q: q.id)
+              if state.factions[q.faction].coalition == faction.coalition
+              and state.factions[q.faction].army in WESTERN_ARMIES]
+    pool = [n for n in fallback if n not in {q.callsign for q in allies}] or list(fallback)
     kind = _main_task(sq)
-    unvoiced = [q.id for q in side
+    unvoiced = [q.id for q in allies
                 if _main_task(q) is kind and q.callsign not in names(q.aircraft_type.id, kind)]
     if sq.id not in unvoiced:  # flown on a task outside its role: no sharing to plan
         return SquadronCallsign(pool[0], table[pool[0]], False)
@@ -204,7 +208,7 @@ def radio_callsign(state: CampaignState, f: Flight) -> RadioCallsign | None:
         f: Flight.
 
     Returns:
-        The callsign, or None for sides without western callsigns.
+        The callsign, or None for armies without western callsigns.
     """
     sq = state.squadrons.get(f.squadron)
     found = squadron_callsign(state, sq, f.task) if sq else None

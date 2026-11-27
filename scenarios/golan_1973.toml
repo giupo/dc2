@@ -1,0 +1,973 @@
+# Scenario on the DCS Syria map, after the opening of the October War (6 October
+# 1973): the Syrian army attacks the Israeli line on the Golan Heights.
+#
+# Israel holds the Golan up to the 1967 cease-fire line (the "Purple Line"):
+# Quneitra, the Nafah camp, the Hermon outpost and the southern plateau, with
+# the Jordan bridges (Bnot Ya'akov) and the Galilee behind. Syria attacks from
+# the Sasa line and the Hauran plain, under a dense SAM umbrella (SA-2, SA-3
+# and the new, mobile SA-6). Israeli reserves come up from the Galilee.
+#
+# The order of battle follows the historical one at brigade level, simplified.
+# DCS has few period types: the armies of data/catalog/factions.toml (israel,
+# syria) use the closest available vehicles, and some aircraft stand in for
+# others: Mirage F1 for the Nesher/Shahak, Su-17M4 for the Su-7/Su-20.
+#
+# Coordinates: ll = [lat, lon], WGS84 decimal degrees, town centres approximate
+# (~1 km).
+
+[campaign]
+name = "Golan 1973"
+theater = "syria"
+start_hour = 14  # the attack began at 14:00
+units = "metric"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
+
+[[factions]]
+id = "idf"
+name = "IDF Northern Command"
+coalition = "BLUE"  # DCS coalition
+army = "israel"     # data/catalog/factions.toml
+color = "#3b82f6"   # map colour
+enemies = ["saa"]
+objectives = [{ province = "quneitra", priority = 3 }, { province = "nafah", priority = 2 }, { province = "sasa", priority = 2 }]
+bullseye = "rosh_pina"
+
+[[factions]]
+id = "saa"
+name = "Syrian Arab Army"
+coalition = "RED"
+army = "syria"
+color = "#dc2626"
+enemies = ["idf"]
+objectives = [{ province = "quneitra", priority = 3 }, { province = "nafah", priority = 3 }, { province = "mount_hermon", priority = 2 }, { province = "bnot_yaakov", priority = 2 }]
+bullseye = "kiswe"
+
+# ------------------------------------------------------------------ provinces (Israel)
+
+[[provinces]]
+id = "haifa"
+name = "Haifa"
+ll = [32.794000, 34.990000]
+terrain = "urban"
+controller = "idf"
+infrastructure = 5
+victory_points = 10
+depot = { stock = 8000, capacity = 12000, production_per_hour = 150, trucks = 150 }
+
+[[provinces]]
+id = "afula"
+name = "Afula"
+ll = [32.607000, 35.290000]
+terrain = "plains"
+controller = "idf"
+infrastructure = 4
+victory_points = 3
+depot = { stock = 4000, capacity = 6000, production_per_hour = 60, trucks = 80 }
+
+[[provinces]]
+id = "beit_shean"
+name = "Beit She'an"
+ll = [32.497000, 35.497000]
+terrain = "plains"
+controller = "idf"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "tiberias"
+name = "Tiberias"
+ll = [32.795000, 35.531000]
+terrain = "urban"
+controller = "idf"
+infrastructure = 4
+victory_points = 5
+
+[[provinces]]
+id = "rosh_pina"
+name = "Rosh Pina"
+ll = [32.969000, 35.543000]
+terrain = "hills"
+controller = "idf"
+infrastructure = 4
+victory_points = 3
+depot = { stock = 2500, capacity = 4000, production_per_hour = 40, trucks = 60 }
+
+[[provinces]]
+id = "kiryat_shmona"
+name = "Kiryat Shmona"
+ll = [33.207000, 35.570000]
+terrain = "urban"
+controller = "idf"
+infrastructure = 3
+victory_points = 3
+
+[[provinces]]
+id = "bnot_yaakov"
+name = "Bnot Ya'akov Bridge"
+ll = [33.010000, 35.630000]
+terrain = "marsh"
+controller = "idf"
+infrastructure = 3
+victory_points = 3
+
+[[provinces]]
+id = "nafah"
+name = "Nafah"
+ll = [33.073000, 35.734000]
+terrain = "hills"
+controller = "idf"
+infrastructure = 3
+victory_points = 5
+depot = { stock = 800, capacity = 1500, production_per_hour = 0, trucks = 30 }
+
+[[provinces]]
+id = "quneitra"
+name = "Quneitra"
+ll = [33.125000, 35.824000]
+terrain = "urban"
+controller = "idf"
+infrastructure = 3
+victory_points = 5
+
+[[provinces]]
+id = "mount_hermon"
+name = "Mount Hermon"
+ll = [33.280000, 35.770000]
+terrain = "mountain"
+controller = "idf"
+infrastructure = 1
+victory_points = 3
+
+[[provinces]]
+id = "khushniye"
+name = "Khushniye"
+ll = [32.992000, 35.805000]
+terrain = "hills"
+controller = "idf"
+infrastructure = 2
+victory_points = 2
+
+[[provinces]]
+id = "el_al"
+name = "El Al"
+ll = [32.815000, 35.745000]
+terrain = "hills"
+controller = "idf"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "acre"
+name = "Acre"
+ll = [32.927000, 35.082000]
+terrain = "urban"
+controller = "idf"
+infrastructure = 4
+victory_points = 3
+
+[[provinces]]
+id = "hadera"
+name = "Hadera"
+ll = [32.434000, 34.919000]
+terrain = "plains"
+controller = "idf"
+infrastructure = 5
+victory_points = 5
+depot = { stock = 6000, capacity = 10000, production_per_hour = 120, trucks = 120 }
+
+# ------------------------------------------------------------------ provinces (Syria)
+
+[[provinces]]
+id = "damascus"
+name = "Damascus"
+ll = [33.513000, 36.292000]
+terrain = "urban"
+controller = "saa"
+infrastructure = 5
+victory_points = 10
+depot = { stock = 9000, capacity = 14000, production_per_hour = 170, trucks = 180 }
+
+[[provinces]]
+id = "dumayr"
+name = "Al-Dumayr"
+ll = [33.643000, 36.693000]
+terrain = "plains"
+controller = "saa"
+infrastructure = 3
+victory_points = 1
+
+[[provinces]]
+id = "qatana"
+name = "Qatana"
+ll = [33.437000, 36.078000]
+terrain = "hills"
+controller = "saa"
+infrastructure = 3
+victory_points = 2
+
+[[provinces]]
+id = "kiswe"
+name = "Al-Kiswah"
+ll = [33.358000, 36.240000]
+terrain = "plains"
+controller = "saa"
+infrastructure = 4
+victory_points = 2
+depot = { stock = 3000, capacity = 5000, production_per_hour = 50, trucks = 80 }
+
+[[provinces]]
+id = "sasa"
+name = "Sa'sa'"
+ll = [33.300000, 36.030000]
+terrain = "hills"
+controller = "saa"
+infrastructure = 3
+victory_points = 3
+depot = { stock = 1500, capacity = 2500, production_per_hour = 0, trucks = 50 }
+
+[[provinces]]
+id = "beit_jinn"
+name = "Beit Jinn"
+ll = [33.310000, 35.880000]
+terrain = "mountain"
+controller = "saa"
+infrastructure = 1
+victory_points = 1
+
+[[provinces]]
+id = "khan_arnabah"
+name = "Khan Arnabah"
+ll = [33.183000, 35.886000]
+terrain = "hills"
+controller = "saa"
+infrastructure = 2
+victory_points = 2
+
+[[provinces]]
+id = "kafr_shams"
+name = "Kafr Shams"
+ll = [33.120000, 36.110000]
+terrain = "hills"
+controller = "saa"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "rafid"
+name = "Rafid"
+ll = [32.950000, 35.900000]
+terrain = "plains"
+controller = "saa"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "sheikh_miskin"
+name = "Sheikh Miskin"
+ll = [32.830000, 36.160000]
+terrain = "plains"
+controller = "saa"
+infrastructure = 3
+victory_points = 2
+depot = { stock = 1500, capacity = 2500, production_per_hour = 0, trucks = 50 }
+
+[[provinces]]
+id = "izra"
+name = "Izra"
+ll = [32.857000, 36.250000]
+terrain = "plains"
+controller = "saa"
+infrastructure = 2
+victory_points = 1
+
+[[provinces]]
+id = "daraa"
+name = "Daraa"
+ll = [32.618000, 36.102000]
+terrain = "urban"
+controller = "saa"
+infrastructure = 3
+victory_points = 3
+
+[[provinces]]
+id = "suwayda"
+name = "As-Suwayda"
+ll = [32.709000, 36.567000]
+terrain = "hills"
+controller = "saa"
+infrastructure = 2
+victory_points = 2
+
+# ------------------------------------------------------------------ links
+
+# Galilee
+[[links]]
+a = "haifa"
+b = "afula"
+
+[[links]]
+a = "haifa"
+b = "rosh_pina"     # through the Galilee hills
+
+[[links]]
+a = "afula"
+b = "beit_shean"
+
+[[links]]
+a = "afula"
+b = "tiberias"
+
+[[links]]
+a = "beit_shean"
+b = "tiberias"      # Jordan valley
+
+[[links]]
+a = "tiberias"
+b = "rosh_pina"
+
+[[links]]
+a = "rosh_pina"
+b = "kiryat_shmona"
+
+[[links]]
+a = "rosh_pina"
+b = "bnot_yaakov"
+
+[[links]]
+a = "haifa"
+b = "acre"
+
+[[links]]
+a = "acre"
+b = "kiryat_shmona"  # across the Upper Galilee
+
+[[links]]
+a = "hadera"
+b = "haifa"         # coastal road
+
+[[links]]
+a = "hadera"
+b = "afula"         # Wadi Ara
+
+# Up the Golan
+[[links]]
+a = "bnot_yaakov"
+b = "nafah"         # the Tapline road up from the Jordan
+
+[[links]]
+a = "kiryat_shmona"
+b = "mount_hermon"  # by Banias and Mas'ade
+kind = "track"
+
+[[links]]
+a = "tiberias"
+b = "el_al"         # up from the Kinneret
+kind = "track"
+
+[[links]]
+a = "nafah"
+b = "quneitra"
+
+[[links]]
+a = "nafah"
+b = "khushniye"
+
+[[links]]
+a = "khushniye"
+b = "el_al"
+
+[[links]]
+a = "mount_hermon"
+b = "quneitra"
+kind = "track"
+
+# Across the Purple Line
+[[links]]
+a = "quneitra"
+b = "khan_arnabah"
+
+[[links]]
+a = "mount_hermon"
+b = "beit_jinn"
+kind = "track"
+
+[[links]]
+a = "khushniye"
+b = "rafid"
+
+[[links]]
+a = "el_al"
+b = "rafid"
+kind = "track"
+
+# Syrian side
+[[links]]
+a = "khan_arnabah"
+b = "sasa"          # Quneitra-Damascus road
+
+[[links]]
+a = "khan_arnabah"
+b = "beit_jinn"
+kind = "track"
+
+[[links]]
+a = "beit_jinn"
+b = "qatana"
+
+[[links]]
+a = "sasa"
+b = "qatana"
+
+[[links]]
+a = "sasa"
+b = "kiswe"
+
+[[links]]
+a = "sasa"
+b = "kafr_shams"
+
+[[links]]
+a = "qatana"
+b = "damascus"
+
+[[links]]
+a = "kiswe"
+b = "damascus"
+
+[[links]]
+a = "kafr_shams"
+b = "rafid"
+
+[[links]]
+a = "kafr_shams"
+b = "sheikh_miskin"
+
+[[links]]
+a = "rafid"
+b = "sheikh_miskin"
+kind = "track"
+
+[[links]]
+a = "kiswe"
+b = "sheikh_miskin"  # Damascus-Daraa highway
+
+[[links]]
+a = "sheikh_miskin"
+b = "daraa"
+
+[[links]]
+a = "sheikh_miskin"
+b = "izra"
+
+[[links]]
+a = "izra"
+b = "suwayda"
+
+[[links]]
+a = "suwayda"
+b = "kiswe"
+
+[[links]]
+a = "damascus"
+b = "dumayr"
+
+# ------------------------------------------------------------------ brigade templates (1973)
+
+[[templates]]
+id = "idf_armoured"
+name = "Armoured brigade (1973)"
+elements = { infantry = 40, apc = 30, mbt = 100, artillery = 12, aaa = 4, truck = 50 }
+speed_kmh = 30
+supply_capacity = 72
+supply_use_per_hour = 1.3
+
+[[templates]]
+id = "idf_infantry"
+name = "Infantry brigade (1973)"
+elements = { infantry = 220, apc = 50, mbt = 10, artillery = 12, aaa = 4, truck = 60 }
+speed_kmh = 35
+supply_capacity = 72
+supply_use_per_hour = 0.7
+
+[[templates]]
+id = "idf_artillery"
+name = "Artillery group (1973)"
+elements = { infantry = 30, artillery = 48, truck = 50 }
+speed_kmh = 30
+supply_capacity = 72
+supply_use_per_hour = 1.2
+
+[[templates]]
+id = "saa_armoured"
+name = "Armoured brigade (1973)"
+elements = { infantry = 40, ifv = 30, mbt = 100, artillery = 18, aaa = 8, truck = 60 }
+speed_kmh = 30
+supply_capacity = 72
+supply_use_per_hour = 1.3
+
+[[templates]]
+id = "saa_infantry"
+name = "Mechanised infantry brigade (1973)"
+elements = { infantry = 160, apc = 60, mbt = 30, artillery = 18, sam_short = 4, aaa = 6, truck = 70 }
+speed_kmh = 30
+supply_capacity = 72
+supply_use_per_hour = 0.9
+
+# ------------------------------------------------------------------ order of battle: Israel
+
+[[divisions]]
+id = "i7"
+name = "7th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "quneitra"
+
+[[divisions]]
+id = "i188"
+name = "188th \"Barak\" Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "khushniye"
+
+[[divisions]]
+id = "i1"
+name = "1st \"Golani\" Infantry Bde"
+faction = "idf"
+template = "idf_infantry"
+province = "mount_hermon"
+
+[[divisions]]
+id = "i_art"
+name = "Golan Artillery Group"
+faction = "idf"
+template = "idf_artillery"
+province = "nafah"
+
+# Reserves coming up from the Galilee
+[[divisions]]
+id = "i679"
+name = "679th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "bnot_yaakov"
+
+[[divisions]]
+id = "i17"
+name = "17th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "tiberias"
+
+[[divisions]]
+id = "i19"
+name = "19th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "rosh_pina"
+
+[[divisions]]
+id = "i9"
+name = "9th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "afula"
+
+[[divisions]]
+id = "i205"
+name = "205th Armoured Bde"
+faction = "idf"
+template = "idf_armoured"
+province = "kiryat_shmona"
+
+[[divisions]]
+id = "i317"
+name = "317th Paratroop Bde"
+faction = "idf"
+template = "idf_infantry"
+province = "haifa"
+
+# ------------------------------------------------------------------ order of battle: Syria
+
+# 7th Infantry Division (north)
+[[divisions]]
+id = "s68"
+name = "68th Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "khan_arnabah"
+
+[[divisions]]
+id = "s85"
+name = "85th Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "khan_arnabah"
+
+[[divisions]]
+id = "s78"
+name = "78th Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "sasa"
+
+# 9th Infantry Division (centre)
+[[divisions]]
+id = "s33"
+name = "33rd Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "kafr_shams"
+
+[[divisions]]
+id = "s52"
+name = "52nd Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "kafr_shams"
+
+[[divisions]]
+id = "s43"
+name = "43rd Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "kafr_shams"
+
+# 5th Infantry Division (south)
+[[divisions]]
+id = "s61"
+name = "61st Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "rafid"
+
+[[divisions]]
+id = "s112"
+name = "112th Infantry Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "rafid"
+
+[[divisions]]
+id = "s47"
+name = "47th Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "sheikh_miskin"
+
+# 1st and 3rd Armoured Divisions (second echelon)
+[[divisions]]
+id = "s91"
+name = "91st Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "sheikh_miskin"
+
+[[divisions]]
+id = "s2"
+name = "2nd Mechanised Bde"
+faction = "saa"
+template = "saa_infantry"
+province = "sasa"
+
+[[divisions]]
+id = "s20"
+name = "20th Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "kiswe"
+
+[[divisions]]
+id = "s65"
+name = "65th Armoured Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "qatana"
+
+[[divisions]]
+id = "s_art"
+name = "Golan Front Artillery Group"
+faction = "saa"
+template = "artillery_group"
+province = "sasa"
+
+[[divisions]]
+id = "s82"
+name = "82nd Parachute Bn Group"
+faction = "saa"
+template = "infantry_brigade"
+province = "beit_jinn"
+
+[[divisions]]
+id = "s_rg"
+name = "Republican Guard Bde"
+faction = "saa"
+template = "saa_armoured"
+province = "damascus"
+
+# ------------------------------------------------------------------ airbases (DCS airfield names)
+
+[[airbases]]
+id = "ramat_david"
+name = "Ramat David"
+ll = [32.666411, 35.184166]
+province = "afula"
+
+[[airbases]]
+id = "megiddo"
+name = "Megiddo"
+ll = [32.597107, 35.230082]
+province = "afula"
+
+[[airbases]]
+id = "rosh_pina"
+name = "Rosh Pina"
+ll = [32.982648, 35.570738]
+province = "rosh_pina"
+
+# Rear base outside the province map (central Israel).
+[[airbases]]
+id = "eyn_shemer"
+name = "Eyn Shemer"
+ll = [32.440932, 35.006998]
+faction = "idf"
+
+[[airbases]]
+id = "damascus"
+name = "Damascus"
+ll = [33.425508, 36.518512]
+province = "damascus"
+
+[[airbases]]
+id = "mezzeh"
+name = "Mezzeh"
+ll = [33.477795, 36.224216]
+province = "damascus"
+
+[[airbases]]
+id = "marj_ruhayyil"
+name = "Marj Ruhayyil"
+ll = [33.288761, 36.455438]
+province = "kiswe"
+
+[[airbases]]
+id = "khalkhalah"
+name = "Khalkhalah"
+ll = [33.078369, 36.541100]
+province = "izra"
+
+[[airbases]]
+id = "dumayr"
+name = "Al-Dumayr"
+ll = [33.609697, 36.749135]
+province = "dumayr"
+
+# ------------------------------------------------------------------ squadrons: Israeli Air Force
+
+[[squadrons]]
+id = "i69"
+name = '69 Sqn "Hammers"'
+faction = "idf"
+airbase = "ramat_david"
+aircraft = "f4e"
+count = 12
+callsign = "Hammer"
+
+[[squadrons]]
+id = "i201"
+name = '201 Sqn "The One"'
+faction = "idf"
+airbase = "ramat_david"
+aircraft = "f4e"
+count = 12
+callsign = "Falcon"
+
+[[squadrons]]
+id = "i119"
+name = '119 Sqn "Bat"'
+faction = "idf"
+airbase = "eyn_shemer"
+aircraft = "f4e"
+count = 12
+callsign = "Bat"
+
+[[squadrons]]
+id = "i101"
+name = '101 Sqn "First Fighter"'  # Mirage F1 standing in for the Nesher
+faction = "idf"
+airbase = "megiddo"
+aircraft = "mirage_f1"
+count = 12
+callsign = "Viper"
+
+[[squadrons]]
+id = "i131"
+name = '131 Sqn "Yellow Bird"'
+faction = "idf"
+airbase = "eyn_shemer"
+aircraft = "c130"
+count = 4
+callsign = "Hercules"
+
+# ------------------------------------------------------------------ squadrons: Syrian Arab Air Force
+
+[[squadrons]]
+id = "s5"
+name = "5 Sqn"
+faction = "saa"
+airbase = "dumayr"
+aircraft = "mig21bis"
+count = 12
+callsign = "Saqr"
+
+[[squadrons]]
+id = "s8"
+name = "8 Sqn"
+faction = "saa"
+airbase = "marj_ruhayyil"
+aircraft = "mig21bis"
+count = 12
+callsign = "Nisr"
+
+[[squadrons]]
+id = "s9"
+name = "9 Sqn"
+faction = "saa"
+airbase = "damascus"
+aircraft = "mig21bis"
+count = 12
+callsign = "Shahin"
+
+[[squadrons]]
+id = "s15"
+name = "15 Sqn"  # Su-17M4 standing in for the Su-7/Su-20
+faction = "saa"
+airbase = "khalkhalah"
+aircraft = "su17m4"
+count = 12
+callsign = "Raad"
+
+[[squadrons]]
+id = "s_helo"
+name = "Mi-8 Sqn"
+faction = "saa"
+airbase = "mezzeh"
+aircraft = "mi8mt"
+count = 8
+callsign = "Hip"
+
+[[squadrons]]
+id = "s_trans"
+name = "Transport Sqn"
+faction = "saa"
+airbase = "damascus"
+aircraft = "an26"
+count = 4
+callsign = "Curl"
+
+# ------------------------------------------------------------------ air defence
+
+# Israel: Hawk batteries over the Galilee, the Hermon radar post.
+[[air_defense]]
+id = "ad_i1"
+name = "Hawk Bty Haifa"
+faction = "idf"
+system = "hawk"
+province = "haifa"
+
+[[air_defense]]
+id = "ad_i2"
+name = "Hawk Bty Afula"
+faction = "idf"
+system = "hawk"
+province = "afula"
+
+[[air_defense]]
+id = "ad_i3"
+name = "Hawk Bty Rosh Pina"
+faction = "idf"
+system = "hawk"
+province = "rosh_pina"
+
+[[air_defense]]
+id = "ad_i_ewr"
+name = "Hermon Radar"  # AN/FPS-117 standing in for the period radar
+faction = "idf"
+system = "ewr_fps117"
+province = "mount_hermon"
+
+# Syria: the SAM umbrella over the front and the capital.
+[[air_defense]]
+id = "ad_s1"
+name = "SA-6 Bty Sasa"
+faction = "saa"
+system = "kub"
+province = "sasa"
+
+[[air_defense]]
+id = "ad_s2"
+name = "SA-6 Bty Khan Arnabah"
+faction = "saa"
+system = "kub"
+province = "khan_arnabah"
+
+[[air_defense]]
+id = "ad_s3"
+name = "SA-6 Bty Kafr Shams"
+faction = "saa"
+system = "kub"
+province = "kafr_shams"
+
+[[air_defense]]
+id = "ad_s4"
+name = "SA-6 Bty Sheikh Miskin"
+faction = "saa"
+system = "kub"
+province = "sheikh_miskin"
+
+[[air_defense]]
+id = "ad_s5"
+name = "SA-6 Bty Rafid"
+faction = "saa"
+system = "kub"
+province = "rafid"
+
+[[air_defense]]
+id = "ad_s6"
+name = "SA-2 Site Damascus"
+faction = "saa"
+system = "s75"
+province = "damascus"
+
+[[air_defense]]
+id = "ad_s7"
+name = "SA-2 Site Kiswe"
+faction = "saa"
+system = "s75"
+province = "kiswe"
+
+[[air_defense]]
+id = "ad_s8"
+name = "SA-3 Site Qatana"
+faction = "saa"
+system = "s125"
+province = "qatana"
+
+[[air_defense]]
+id = "ad_s9"
+name = "SA-3 Site Damascus"
+faction = "saa"
+system = "s125"
+province = "damascus"
+
+[[air_defense]]
+id = "ad_s_ewr1"
+name = "P-19 Radar Qatana"
+faction = "saa"
+system = "ewr_p19"
+province = "qatana"
+
+[[air_defense]]
+id = "ad_s_ewr2"
+name = "P-19 Radar Izra"
+faction = "saa"
+system = "ewr_p19"
+province = "izra"

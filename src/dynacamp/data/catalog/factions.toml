@@ -1,0 +1,92 @@
+# Factions catalogue: the armies of the scenarios' factions.
+#
+# One table per army, keyed by the id scenarios use (`army = "us"` in
+# [[factions]]). The scenario gives the rest of the faction: name, DCS
+# coalition, map colour, enemies, objectives, bullseye.
+#
+#   name               display name
+#   quality            training, doctrine and leadership: multiplier of combat
+#                      effectiveness (default 1.0); a scenario faction may set its own
+#
+# [<id>.dcs] is read only by the DCS adapter and the callsign module:
+#   country            DCS country (key of `country.id` in the DCS scripting environment)
+#   western_callsigns  true if its aircraft take named callsigns (Enfield, Viper...);
+#                      false keeps DCS' numeric ones (default false)
+#
+# [<id>.dcs.ground]: DCS unit type of each ground element (`ground.toml`).
+
+[us]
+name = "United States"
+quality = 1.2  # training and doctrine: the western edge (eastern types are also a step below in aircraft.toml)
+
+[us.dcs]
+country = "USA"
+western_callsigns = true
+
+[us.dcs.ground]
+infantry = "Soldier M4"
+mbt = "M-1 Abrams"
+ifv = "M-2 Bradley"
+apc = "M-113"
+artillery = "M-109"
+mlrs = "MLRS"
+sam_short = "M1097 Avenger"
+aaa = "Vulcan"
+truck = "M 818"
+
+[russia]
+name = "Russian Federation"
+
+[russia.dcs]
+country = "RUSSIA"
+
+[russia.dcs.ground]
+infantry = "Infantry AK"
+mbt = "T-72B"
+ifv = "BMP-2"
+apc = "BTR-80"
+artillery = "SAU Msta"
+mlrs = "Grad-URAL"
+sam_short = "Strela-10M3"
+aaa = "ZSU-23-4 Shilka"
+truck = "Ural-375"
+
+# ---- 1970s (scenarios/golan_1973.toml). DCS has few period vehicles: the
+# closest available types stand in (noted where they do).
+
+[israel]
+name = "Israel Defense Forces"
+quality = 1.5
+
+[israel.dcs]
+country = "ISRAEL"
+western_callsigns = true
+
+[israel.dcs.ground]
+infantry = "Soldier M4"
+mbt = "M-60"              # Magach (M48/M60); also standing in for the Sho't (Centurion)
+ifv = "M-113"             # no IFV in 1973
+apc = "M-113"             # stands in for the M3 half-track
+artillery = "M-109"
+mlrs = "M-109"            # no rocket artillery in 1973
+sam_short = "M48 Chaparral"
+aaa = "Vulcan"
+truck = "M 818"
+
+[syria]
+name = "Syrian Arab Army"
+quality = 0.75
+
+[syria.dcs]
+country = "SYRIA"
+
+[syria.dcs.ground]
+infantry = "Infantry AK"
+mbt = "T-55"              # also standing in for the T-62
+ifv = "BMP-1"
+apc = "BTR-60"
+artillery = "SAU Gvozdika"
+mlrs = "Grad-URAL"
+sam_short = "Strela-1 9P31"
+aaa = "ZSU-23-4 Shilka"
+truck = "Ural-375"

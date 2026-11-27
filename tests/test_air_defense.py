@@ -8,6 +8,7 @@ from dynacamp.air import AIRCRAFT, Airbase, Flight, FlightStatus, Package, Squad
 from dynacamp.air_defense import SYSTEMS, AirDefenseUnit, SamStatus
 from dynacamp.engine import Engine
 from dynacamp.geo import Vec2
+from dynacamp.systems import air as air_sys
 from dynacamp.systems import air_defense as ada
 from dynacamp.systems import ato
 
@@ -88,10 +89,36 @@ def test_sead_suppresses_or_destroys_emitting_radar():
     for seed in range(12):
         state = world()
         f = flight(state, Vec2(60_000, 40_000), task=Task.SEAD)
+        air_sys.ready(state, f)  # its AGM-88s
         state.rng.seed(seed)
         ada._sead(state)
         results |= {e.data["result"] for e in state.events if e.kind == "harm_strike"}
     assert results & {"suppressed", "radar destroyed"}
+
+
+@pytest.mark.parametrize("sam", ["osa", "kub", "s75"])
+def test_f4e_shrikes_hit_sa8_sa6_and_sa2_from_inside_their_reach(sam):
+    hits = 0
+    for seed in range(20):
+        state = world(sam=sam)
+        state.squadrons["sq"] = Squadron("sq", "Hammers", "blue", "ab", AIRCRAFT["f4e"], 12, "Hammer")
+        site = state.air_defense["s1"]
+        here = site.position(state.theater)
+        f = flight(state, here + Vec2(0, 30_000), task=Task.SEAD)
+        f.aircraft_type = AIRCRAFT["f4e"]
+        air_sys.ready(state, f)
+        assert (f.arm, f.arm_range_m) == (4, 18_000)  # two AGM-45 each
+        ada._sead(state)
+        assert f.arm == 4  # 30 km: out of Shrike range
+        f.pos = here + Vec2(0, 15_000)
+        state.rng.seed(seed)
+        ada._sead(state)
+        assert f.arm == 2
+        result = state.events.of_kind("harm_strike")[-1].data["result"]
+        hits += result in ("suppressed", "radar destroyed")
+        if result == "radar destroyed":
+            assert not site.operational or site.elements.get("launcher", 0) < SYSTEMS[sam].elements["launcher"]
+    assert hits >= 8
 
 
 def test_networked_site_can_go_dark():
@@ -161,7 +188,7 @@ def test_player_inside_sam_range_brings_the_site_into_the_game():
     engine = Engine(state, game)
     site_pos = state.air_defense["s1"].position(state.theater)
     # 70 km away: outside the 60 km air bubble, inside the S-300's 75 km range
-    game.player("p1", site_pos + Vec2(0, 70_000), kind=PlayerKind.AIR)
+    game.player("p1", site_pos + Vec2(0, 70_000), kind=PlayerKind.AIR, coalition="BLUE")
     engine.step(1)
     assert "s1" in {c.entity.id for c in game.received if isinstance(c, Materialize)}
 

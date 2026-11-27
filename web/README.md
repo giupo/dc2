@@ -12,13 +12,15 @@ intelligence and a live event feed.
   - brigades, convoys, flights, airbases and SAM sites as APP-6 symbols;
   - SAM rings and the IADS network;
   - the named waypoints of the selected flight;
-  - the bullseye of the "View as" side (target rings), with the cursor's
+  - the bullseye of the "View as" coalition (target rings), with the cursor's
     BULLS call ("BULLS 085/55": magnetic bearing / range in the chosen units)
     at the bottom left. It is computed in the browser (`bullsLabel` in
     `lib/format.ts`) with the same rule as the engine: great circle from the
     bullseye minus the theatre's `magnetic_variation_deg`.
 
-  Every layer can be toggled.
+  Every layer can be toggled in the "☰ Layers" menu on the map, closed by
+  default (its state is remembered in the browser), which also holds *Fog of
+  war* and the display *Units*.
 - **Smooth movement:** positions stream at 5 Hz (`/api/positions/stream`) and
   are interpolated at 60 fps (`src/lib/livePositions.ts`).
   - *How:* entity interpolation, as in game netcode. The map is drawn ~2
@@ -29,6 +31,13 @@ intelligence and a live event feed.
     every 3 s.
   - *Debugging:* `window.__dynacampFeed` exposes the feed in the browser
     console.
+- **Header:** one row: clock and time controls, *View as*, and a bar of who
+  is winning. The bar splits by faction the weighted standing the engine
+  computes (`factions[].standing` in `/api/campaign`, from
+  `dynacamp/standing.py`: victory points 35%, own objectives 20%, brigades
+  20%, aircraft 15%, provinces 10%, each as the faction's share of the total);
+  hovering it (or tapping it) shows each faction's numbers and objectives, and
+  the pilots online.
 - **Time controls** (header): pause/play and 1×, 10×, 60×, 300×, 900×, 3600×
   (`POST /api/control`). **Space** toggles pause (not while typing in a
   field). They are disabled while a game is live, because time must then run
@@ -50,9 +59,9 @@ intelligence and a live event feed.
     interval. It refreshes with the campaign view.
   - *Disabled:* when the server runs without `--save`, or while commands are
     locked.
-- **ATO orders** (need the token; given as the "View as" side's faction,
+- **ATO orders** (need the token; given as the "View as" coalition's faction,
   validated by the server, which explains refusals in red):
-  - *New package* (ATO tab): task, a target the side knows (or a point picked
+  - *New package* (ATO tab): task, a target the coalition knows (or a point picked
     on the map for CAP/AWACS/tanker), squadron; SEAD and escort are added by
     the planner, TOT is the earliest possible.
   - *Edit route* (flight details): draggable waypoints on the map, "+" on a
@@ -61,9 +70,12 @@ intelligence and a live event feed.
   - *TOT and cancel* (package details): −15/−5/+5/+15/+60 min or ASAP while
     every flight is on the ground; cancel the grounded flights (two clicks).
   - Code: `src/components/Planner.tsx` (`PlannerContext` in `App.tsx`).
-- **View as + Fog of war:** "View as" picks the friendly side. With "Fog of
-  war" on (the default), every request carries `?faction=`, and the UI shows
-  only what that side's sensors found (see *Symbology*). The **Intel** tab
+- **View as + Fog of war:** "View as" (header) is the one place that picks
+  whose campaign you look at: the friendly coalition (one button per
+  coalition, named after its first faction) for the symbols, the ATO and
+  Squadrons tabs, the bullseye and the orders. With "Fog of
+  war" (Layers menu) on (the default), every request carries `?faction=`, and the UI shows
+  only what that coalition's sensors found (see *Symbology*). The **Intel** tab
   lists the contacts with source and age, and the AWACS radar coverage is
   drawn as a dashed circle. With it off you get the umpire view.
 - **ATO tab:** the default is a Falcon/BMS-style list:
@@ -73,7 +85,13 @@ intelligence and a live event feed.
   - takeoffs within 30 min are highlighted, and players are shown;
   - completed flights on request.
 
-  "Packages" groups the flights by package.
+  "Packages" groups the flights by package. Only the "View as" coalition's.
+- **Side panel tabs:** when they do not fit, the tab strip scrolls sideways
+  (mouse wheel, trackpad or drag), and the active tab is always scrolled into
+  view; each panel scrolls on its own.
+- **Squadrons tab:** the "View as" coalition's squadrons (insignia,
+  aircraft, available/strength, flying, in turnaround) and sortie budget, in
+  a tab of their own so the ATO list does not jump as they change.
 - **Mission briefing:** opens from a flight's details as a kneeboard card.
   **Print** gives an A4 sheet: the card is a portal on `<body>`, and print CSS
   removes the app and sets the page margins.
@@ -84,12 +102,13 @@ intelligence and a live event feed.
   Wikimedia Commons; rasters are scaled to 256 px WebP.
 - **Phones and narrow screens** (under 760 px, `@media` block at the end of
   `styles.css`): the map fills the screen and the header packs into rows
-  (clock and speed controls scroll sideways, objectives are hidden). The tabs
+  (clock and speed controls scroll sideways; the standing bar takes the full
+  width, tap it for the details). The tabs
   sit under the map: tap one to open its panel as a sheet (45% of the screen,
   and the map shrinks above it), tap it again to close it. The layer list folds
-  behind "☰ Layers". Details and the briefing card take the full width; the
+  behind "☰ Layers", as on a desktop. Details and the briefing card take the full width; the
   briefing's flight plan scrolls sideways. The cursor's BULLS readout is hidden
-  (no cursor on a touch screen). Desktop layout is unchanged.
+  (no cursor on a touch screen).
 - **Events tab:** an event about a package or a flight is clickable. It opens
   the package or flight details, centres the map, and highlights every event
   about the same flight. Air combat events show one button per callsign.
@@ -128,8 +147,10 @@ rendered by [milsymbol](https://github.com/spatialillusions/milsymbol)
 
 Flights carry the standard direction-of-movement arrow and their callsign;
 brigades their designation (e.g. "15th"). Affiliation is relative to the
-viewer: the **View as** switch on the map chooses which side is friendly
-(rectangle, blue) and which hostile (diamond, red).
+viewer: the **View as** switch in the header chooses which coalition is friendly
+(rectangle, blue) and which hostile (diamond, red). Faction colours on the map
+come from the scenario (`color` in `[[factions]]`, served in
+`/api/campaign` `factions[].color`).
 
 With fog of war on:
 - enemies appear only at their **last known position**;

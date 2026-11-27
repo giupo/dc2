@@ -13,7 +13,9 @@ units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metr
 [[factions]]
 id = "blue"
 name = "Georgian-Coalition Forces"
-side = "blue"
+coalition = "BLUE"  # DCS coalition
+army = "us"         # data/catalog/factions.toml
+color = "#4c8dff"   # map colour
 enemies = ["red"]
 objectives = [{ province = "sukhumi", priority = 3 }, { province = "ochamchire", priority = 1 }]
 bullseye = "samtredia"  # BULLS reference: a province (its centre) or [east, north] metres
@@ -21,7 +23,9 @@ bullseye = "samtredia"  # BULLS reference: a province (its centre) or [east, nor
 [[factions]]
 id = "red"
 name = "Northern Expeditionary Group"
-side = "red"
+coalition = "RED"
+army = "russia"
+color = "#ff5a5a"
 enemies = ["blue"]
 objectives = [{ province = "kutaisi", priority = 3 }, { province = "senaki", priority = 2 }, { province = "poti", priority = 2 }]
 bullseye = "ochamchire"  # BULLS reference: a province (its centre) or [east, north] metres

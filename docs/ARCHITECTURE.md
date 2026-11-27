@@ -35,15 +35,20 @@ sta nell'adapter.
 
 
 **Catalogo** (`catalog.py`, `data/catalog/`). Ciò che il motore sa dei *tipi*
-di cose, indipendente dallo scenario, sta in tre file TOML scritti a mano:
-`aircraft.toml` (64 aerei), `air_defense.toml` (12 sistemi) e `ground.toml`
-(`[elements.*]` e `[templates.*]`). Ogni voce ha una sottotabella `dcs` con
+di cose, indipendente dallo scenario, sta in file TOML scritti a mano:
+`aircraft.toml` (64 aerei), `air_defense.toml` (15 sistemi), `ground.toml`
+(`[elements.*]` e `[templates.*]`) e `factions.toml` (gli *eserciti*:
+`us`, `russia`, `israel`, `syria`; ciascuno con la sua `quality`, il
+moltiplicatore dell'efficacia in combattimento (aria, terra, artiglieria,
+SAM, SEAD: la qualità bilancia la quantità, misurato da
+`tests/test_air_quality.py`), e con paese DCS, tipi DCS delle
+unità di terra e `western_callsigns` nella sottotabella `dcs`). Ogni voce ha una sottotabella `dcs` con
 i dati per DCS (tipo d'unità, call sign, rapporto di rappresentanza), che il
 motore ignora: la legge solo l'adapter (`adapters/dcs/catalog.py`) e
 `callsigns.py`. `catalog.py` non conosce le classi del dominio: ogni modulo
 costruisce i suoi oggetti con `catalog.build(file, Classe, convert=...)`
 (`air.AIRCRAFT`, `air_defense.SYSTEMS`, `forces.ELEMENTS`,
-`forces.DEFAULT_TEMPLATES`), quindi niente cicli d'import. Il caricamento è
+`forces.DEFAULT_TEMPLATES`, `state.ARMIES`), quindi niente cicli d'import. Il caricamento è
 stretto: campi sconosciuti o mancanti e tipi sbagliati danno `CatalogError`
 con file e voce. Restano nel codice gli Enum, il comportamento (proprietà
 derivate) e le costanti di calibrazione delle regole (`combat.py`,
@@ -174,7 +179,6 @@ tipi TypeScript non possono divergere. Le principali:
 | `EntityKind` | `forces` | divisione, convoglio, volo, sito SAM (entità, snapshot, contatti) |
 | `TargetKind`, `FlightReason` | `air` | contro cosa vola un volo; perché rientra o non parte |
 | `BattleKind`, `Timer`, `IdPrefix` | `state` | assalto o scontro d'incontro; chiavi di `state.timers`; prefissi degli id |
-| `Side` | `adapters/base` | lato del gioco (blu, rosso) |
 | `TheaterMap` | `projection` | mappe DCS con proiezione |
 | `UnitDomain` | `units` | sistema di unità dei testi |
 
@@ -256,8 +260,8 @@ un volo IA dentro una bolla lo fa volare DCS.
    squadrone se è nell'elenco, altrimenti gli dà un nome generico stabile.
    Gli squadroni che condividono lo stesso nome si dividono i numeri di volo.
    Il bridge lo applica alle unità IA (`DC.apply_callsign`), e il briefing
-   mostra il "radio callsign" quando è diverso. Il lato rosso usa i numeri
-   del template.
+   mostra il "radio callsign" quando è diverso. Gli eserciti senza
+   `western_callsigns` (orientali) usano i numeri del template.
 
 **Risoluzione astratta** (fuori dalle bolle): perdite contro la difesa aerea
 (SHORAD/AAA delle divisioni entro 15 km, ridotte se il SEAD del pacchetto è
@@ -312,8 +316,15 @@ di sortite.
 in un volo pianificato dall'ATO e sostituisce uno degli aerei IA dello
 squadrone. Il resto del volo resta IA. Flusso:
 
+All'ingresso in uno slot il giocatore riceve un **SITREP** (`systems/sitrep.py`,
+in inglese, 60 s a schermo): la situazione come la vede la sua coalizione, con la
+nebbia di guerra. Contiene il punteggio (`standing.py`, lo stesso della barra
+della UI), gli obiettivi, il fronte e le province prese o perse nelle ultime 24 h,
+i SAM noti e i contatti aerei con il BULLS, i package della coalizione (volati
+dall'IA: nessun posto offerto), AWACS e tanker in stazione e il bullseye.
+
 ```
-engine ──PublishAto(side, board)──► gioco: menu "DynaCamp ATO" per i giocatori
+engine ──PublishAto(coalition, board)──► gioco: menu "DynaCamp ATO" per i giocatori
 gioco  ──JoinRequest(player, flight, compiti possibili per il suo aereo)──► engine
 engine ──NotifyPlayer(briefing + waypoint sulla mappa)──► gioco
 gioco  ──PlayerEvent(takeoff | landed | lost)──► engine (contabilità squadrone)
@@ -389,7 +400,11 @@ stazione fuori dall'ombrello (o rientra se non può), un volo in transito
 devia attorno al sito sulla tratta corrente (`flight_rerouted`). I voli con
 giocatori seduti tengono la rotta del briefing; i voli SEAD restano.
 
-**SEAD, ECM e DEAD.** I voli SEAD colpiscono i radar accesi entro 60 km. Il
+**SEAD, ECM e DEAD.** I voli SEAD colpiscono i radar accesi con i missili
+antiradar del loro carico: un missile per aereo a salva, finché ne hanno, dalla
+gittata dell'arma (`[arm_range_m]` in `weapons.toml`: AGM-88 60 km, Shrike
+18 km, cioè dentro l'ombrello di quasi tutti i SAM). Su un sito senza radar
+separato (SA-8, SA-15) un colpo distrugge un lanciatore. Il
 SEAD di un package parte 2 minuti prima degli altri e fa anche da jammer (vedi
 **Disturbo** più sotto): gli aerei amici entro 40 km da lui sono visti più
 tardi da ogni radar e subiscono il 60% della Pk dei missili radar. In DCS
@@ -579,7 +594,9 @@ Ogni entità ha un'`Authority` con questa macchina a stati:
 * **Voli:** il gruppo prende tipo, livrea e **carico armi** da un gruppo
   *template* messo nel mission editor (late activation) con nome
   `DC_TPL_<aereo>_<COMPITO>` o `DC_TPL_<aereo>` (es. `DC_TPL_f16c_SEAD`,
-  `DC_TPL_a10c`). Rotta con task DCS: EngageTargets (CAP/scorta/SEAD), Orbit
+  `DC_TPL_a10c`). Il nome viene solo da `protocol.template_name`, usato sia da
+  `miz.py` che crea i template sia dagli spawn che li chiedono; il bridge non
+  conosce il formato e cerca per nome tra i gruppi di aerei della missione. Rotta con task DCS: EngageTargets (CAP/scorta/SEAD), Orbit
   per la durata del CAP, EngageTargetsInZone (CAS/BAI), Bombing (STRIKE),
   atterraggio alla base di casa.
 * **Menu F10:** per ogni gruppo con un giocatore, "DynaCamp ATO" con i
@@ -617,7 +634,10 @@ quindi non stanno nel codice:
   (`DC.resolve`); in entrata il bridge manda il nome della chiave
   (`"BLUE"`, `"HELICOPTER"`, con `DC.enum_name`). Se DCS non ha un nome, il
   bridge usa il valore di riserva di `protocol.ENUM_FALLBACK` (solo per i nomi
-  non ancora verificati nel gioco) e lo scrive nel log.
+  non ancora verificati nel gioco) e lo scrive nel log;
+* il **vocabolario del protocollo** è scritto due volte, nel bridge e nelle
+  enum Python (`protocol.Cmd`, `protocol.Msg`, `base.PlayerEventKind`):
+  `test_bridge_and_engine_speak_the_same_protocol` li confronta.
 
 Coordinate: core `(x est, y nord)` ⇄ DCS `(x nord, z est)`. Nelle tabelle dei
 gruppi DCS l'est si chiama `y`.

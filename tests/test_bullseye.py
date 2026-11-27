@@ -17,8 +17,8 @@ def line_data(blue=None, red=None):
     data = {
         "campaign": {"name": "line", "seed": 1},
         "factions": [
-            {"id": "blue", "side": "blue", "enemies": ["red"]},
-            {"id": "red", "side": "red", "enemies": ["blue"]},
+            {"id": "blue", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"]},
+            {"id": "red", "coalition": "RED", "army": "russia", "color": "#ff5a5a", "enemies": ["blue"]},
         ],
         "provinces": [
             {"id": pid, "pos": [i * 20_000.0, 0.0], "controller": "blue" if pid in "abc" else "red"}
@@ -48,14 +48,14 @@ def test_scenario_rejects_bad_bullseyes(bad):
         scenario.from_dict(line_data(blue=bad))
 
 
-def test_one_bullseye_per_side():
+def test_one_bullseye_per_coalition():
     data = line_data(blue="a")
-    data["factions"].append({"id": "ally", "side": "blue", "enemies": ["red"], "bullseye": "b"})
-    with pytest.raises(ScenarioError, match="same side"):
+    data["factions"].append({"id": "ally", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"], "bullseye": "b"})
+    with pytest.raises(ScenarioError, match="same coalition"):
         scenario.from_dict(data)
     data["factions"][-1]["bullseye"] = "a"
     assert scenario.from_dict(data).factions["ally"].bullseye == Vec2(0, 0)
-    del data["factions"][-1]["bullseye"]  # takes the side's
+    del data["factions"][-1]["bullseye"]  # takes the coalition's
     assert scenario.from_dict(data).factions["ally"].bullseye == Vec2(0, 0)
 
 

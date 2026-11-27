@@ -44,7 +44,8 @@ if TYPE_CHECKING:  # pragma: no cover
 #: Marks a save file's envelope.
 MAGIC = "dynacamp-save"
 #: Version of the save format: bumped only for incompatible changes (renamed fields, changed types).
-FORMAT_VERSION = 1
+#: 2: factions have coalition, army and color instead of the old side.
+FORMAT_VERSION = 2
 #: First bytes of a gzip file: how a save is told from a scenario.
 _GZIP_MAGIC = b"\x1f\x8b"
 #: Classes moved or renamed since saves were first written: (module, name) as
@@ -248,8 +249,8 @@ def _add_missing_fields(state: CampaignState) -> None:
         if not hasattr(faction, "bullseye"):  # saved before bullseyes: the default one
             from . import bullseye
 
-            side = {o.id for o in state.factions.values() if o.side == faction.side}
-            held = [p.center for p in state.theater.provinces.values() if p.controller in side]
+            allies = {o.id for o in state.factions.values() if o.coalition == faction.coalition}
+            held = [p.center for p in state.theater.provinces.values() if p.controller in allies]
             faction.bullseye = bullseye.centre(held or [p.center for p in state.theater.provinces.values()])
 
 
@@ -260,12 +261,9 @@ def _strings_to_enums(state: CampaignState) -> None:
     Args:
         state: The unpickled campaign, updated in place.
     """
-    from .adapters.base import Side
     from .air import TargetKind
     from .state import BattleKind
 
-    for faction in state.factions.values():
-        faction.side = Side(faction.side)
     for battle in state.battles.values():
         battle.kind = BattleKind(battle.kind)
     for ent in [*state.entities(), *state.archived_flights.values()]:

@@ -1,4 +1,5 @@
 import json
+import re
 import socket
 import subprocess
 import time
@@ -16,7 +17,8 @@ from dynacamp.adapters.base import (
     PlayerSeen,
 )
 from dynacamp.adapters.dcs import LUA_BRIDGE, DcsAdapter, DcsTranslator
-from dynacamp.adapters.dcs.protocol import from_dcs, to_dcs
+from dynacamp.adapters.base import PlayerEventKind
+from dynacamp.adapters.dcs.protocol import Cmd, Msg, from_dcs, to_dcs
 from dynacamp.forces import EntityKind
 from dynacamp.geo import Vec2
 
@@ -29,7 +31,8 @@ def snapshot(**kw):
         kind=EntityKind.DIVISION,
         name="Tank Bde",
         faction="blue",
-        side="blue",
+        coalition="BLUE",
+        army="us",
         position=Vec2(650_000, -280_000),
         heading=0.0,
         elements={"mbt": 90.0, "ifv": 40.0, "truck": 60.0},
@@ -82,7 +85,7 @@ def test_state_converts_alive_units_back_to_campaign_elements():
 def test_players_diff():
     tr = DcsTranslator()
     reps = tr.decode({"msg": "players", "players": [{"id": "Pilot", "coalition": "BLUE", "category": "HELICOPTER", "x": 1, "z": 2}]})
-    assert isinstance(reps[0], PlayerSeen) and reps[0].kind is PlayerKind.HELO and reps[0].side == "blue"
+    assert isinstance(reps[0], PlayerSeen) and reps[0].kind is PlayerKind.HELO and reps[0].coalition == "BLUE"
     reps = tr.decode({"msg": "players", "players": []})
     assert reps == [PlayerLeft("Pilot")]
 
@@ -98,7 +101,7 @@ def test_adapter_over_tcp():
         while not reports and time.monotonic() < deadline:
             reports = adapter.poll()
             time.sleep(0.01)
-        assert isinstance(reports[0], PlayerSeen) and reports[0].side == "red"
+        assert isinstance(reports[0], PlayerSeen) and reports[0].coalition == "RED"
         assert adapter.connected
 
         adapter.send([Materialize(snapshot())])
@@ -154,7 +157,7 @@ def test_flight_spawn_uses_templates_and_tasks():
     assert target_wp["task"]["params"]["tasks"][0]["id"] == "EngageTargetsInZone"
     assert target_wp["alt"] == 6000.0
 
-    board = tr.encode(PublishAto("blue", ({"id": "pk1", "label": "x", "flights": []},)))
+    board = tr.encode(PublishAto("BLUE", ({"id": "pk1", "label": "x", "flights": []},)))
     assert board["cmd"] == "ato" and board["coalition"] == "BLUE" and board["version"] == 1
 
 
@@ -207,5 +210,15 @@ def test_shipped_missions_have_the_scenario_bullseyes(miz):
     m = dcs.Mission()
     m.load_file(str(miz))
     for f in state.factions.values():
-        b = m.coalition[f.side].bullseye
-        assert (round(b["x"]), round(b["y"])) == (round(f.bullseye.y), round(f.bullseye.x)), f.side
+        b = m.coalition[f.coalition.lower()].bullseye
+        assert (round(b["x"]), round(b["y"])) == (round(f.bullseye.y), round(f.bullseye.x)), f.coalition
+
+
+def test_bridge_and_engine_speak_the_same_protocol():
+    """The vocabulary is written twice, in the Lua bridge and in the Python enums: they must match."""
+    lua = LUA_BRIDGE.read_text()
+    assert set(re.findall(r"^function handlers\.(\w+)\(", lua, re.M)) == set(Cmd)
+    sent = set(re.findall(r'msg = "(\w+)"', lua))
+    assert sent == set(Msg) - {Msg.DISCONNECTED}  # the adapter queues that one itself
+    assert set(re.findall(r'PLAYER_EVENTS\[[^\]]+\] = "(\w+)"', lua)) == set(PlayerEventKind)
+    assert "DC_TPL" not in lua  # template names come from the engine (protocol.template_name)

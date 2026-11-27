@@ -2,18 +2,19 @@ import type { Campaign, CampaignEvent, EventKind, MapData } from "../api/client"
 
 // ---------------------------------------------------------------- colours
 
-const SIDE_COLOR: Record<string, string> = { blue: "#4c8dff", red: "#ff5a5a" };
-const SIDE_FILL: Record<string, string> = { blue: "#2563eb", red: "#dc2626" };
+// Faction colours come from the scenario (`color` in [[factions]]).
 export const NEUTRAL = "#9ca3af";
 
-export function sideOf(campaign: Campaign | undefined, faction: string | null | undefined): string {
-  return campaign?.factions.find((f) => f.id === faction)?.side ?? faction ?? "";
+/** The game coalition of a faction ("" if unknown): factions of one coalition are friends. */
+export function coalitionOf(campaign: Campaign | undefined, faction: string | null | undefined): string {
+  return campaign?.factions.find((f) => f.id === faction)?.coalition ?? "";
 }
 export function factionColor(campaign: Campaign | undefined, faction: string | null | undefined): string {
-  return SIDE_COLOR[sideOf(campaign, faction)] ?? NEUTRAL;
+  return campaign?.factions.find((f) => f.id === faction)?.color ?? NEUTRAL;
 }
-export function factionFill(campaign: Campaign | undefined, faction: string | null | undefined): string {
-  return SIDE_FILL[sideOf(campaign, faction)] ?? NEUTRAL;
+/** Colour of a coalition: its first faction's. */
+export function coalitionColor(campaign: Campaign | undefined, coalition: string): string {
+  return campaign?.factions.find((f) => f.coalition === coalition)?.color ?? NEUTRAL;
 }
 export function factionName(campaign: Campaign | undefined, faction: string | null | undefined): string {
   return campaign?.factions.find((f) => f.id === faction)?.name ?? faction ?? "?";
@@ -204,7 +205,7 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
     case "aircraft_lost":
       return `${fac(d.faction)} lost ${d.count} aircraft (${d.cause})`;
     case "player_joined":
-      return `${d.name ?? d.player} joined (${d.side})`;
+      return `${d.name ?? d.player} joined (${d.coalition})`;
     case "player_left":
       return `${d.player} left`;
     case "seat_taken":

@@ -6,7 +6,9 @@ for ``ratio`` campaign elements. Losses scale back the same way.
 
 The DCS unit types and ratios come from the ``dcs`` sub-tables of the
 campaign catalogue (``dynacamp/data/catalog/*.toml``, see
-:mod:`dynacamp.catalog`): add a type there, next to its campaign data. Type
+:mod:`dynacamp.catalog`): add a type there, next to its campaign data. The
+ground unit types and the country depend on the army a faction fields
+(``factions.toml``). Type
 names are DCS unit type strings; check them against your DCS version (Mission
 Editor or ``Scripts/Database``).
 
@@ -27,7 +29,7 @@ from typing import Any
 from ... import catalog
 from ...air import Task
 from ...forces import TRUCK
-from ..base import PlayerKind, Side
+from ..base import PlayerKind
 
 #: The DCS data files (``weapons.toml``, ``players.toml``, ``recipes.toml``).
 DATA_DIR = Path(__file__).parent / "data"
@@ -35,16 +37,17 @@ DATA_DIR = Path(__file__).parent / "data"
 #: The ``dcs`` tables of the ground elements (``ground.toml``), by element id.
 _GROUND = catalog.dcs("ground", "elements")
 
-#: DCS unit type of each ground element, by side (from the catalogue's ``[<id>.dcs]`` tables).
-UNIT_TYPES: dict[Side, dict[str, str]] = {
-    side: {element: d[side] for element, d in _GROUND.items() if side in d} for side in Side
-}
+#: The ``dcs`` tables of the armies (``factions.toml``), by army id.
+_ARMIES = catalog.dcs("factions")
+
+#: DCS unit type of each ground element, by army (``[<army>.dcs.ground]``).
+UNIT_TYPES: dict[str, dict[str, str]] = {army: dict(d.get("ground", {})) for army, d in _ARMIES.items()}
 
 #: Campaign elements one DCS unit stands for, by element (default 5).
 RATIO: dict[str, float] = {element: float(d["ratio"]) for element, d in _GROUND.items() if "ratio" in d}
 
-#: DCS country of each side (key of ``country.id`` in the DCS scripting environment).
-COUNTRY: dict[Side, str] = {Side.BLUE: "USA", Side.RED: "RUSSIA"}
+#: DCS country of each army (key of ``country.id`` in the DCS scripting environment).
+COUNTRY: dict[str, str] = {army: d["country"] for army, d in _ARMIES.items()}
 #: DCS type name of each campaign aircraft id (used if no template group is found).
 AIRCRAFT_TYPES: dict[str, str] = {aid: d["type"] for aid, d in catalog.dcs("aircraft").items() if "type" in d}
 #: DCS group task of a flight, by campaign task.
@@ -79,11 +82,11 @@ class SpawnPlan:
     represents: float  # campaign elements they stand for
 
 
-def plan_division(side: Side, elements: dict[str, float], max_units: int = 40, include_trucks: bool = False) -> list[SpawnPlan]:
+def plan_division(army: str, elements: dict[str, float], max_units: int = 40, include_trucks: bool = False) -> list[SpawnPlan]:
     """Turn element counts into DCS unit counts, capped at ``max_units`` in total.
 
     Args:
-        side: Side picking the DCS unit types.
+        army: Army picking the DCS unit types.
         elements: Element counts of the division by element id.
         max_units: Cap on the total number of DCS units.
         include_trucks: Also spawn the division's trucks.
@@ -96,7 +99,7 @@ def plan_division(side: Side, elements: dict[str, float], max_units: int = 40, i
     for element, count in elements.items():
         if count <= 0 or (element == TRUCK and not include_trucks):
             continue
-        dcs_type = UNIT_TYPES[side].get(element)
+        dcs_type = UNIT_TYPES[army].get(element)
         if dcs_type is None:
             continue
         units = max(1, round(count / RATIO.get(element, 5.0)))
@@ -108,11 +111,11 @@ def plan_division(side: Side, elements: dict[str, float], max_units: int = 40, i
     return plans
 
 
-def plan_convoy(side: Side, trucks: float, max_units: int = 20) -> list[SpawnPlan]:
+def plan_convoy(army: str, trucks: float, max_units: int = 20) -> list[SpawnPlan]:
     """Trucks to spawn for a convoy, capped at ``max_units``.
 
     Args:
-        side: Side picking the truck type.
+        army: Army picking the truck type.
         trucks: Trucks in the convoy.
         max_units: Cap on the DCS units spawned.
 
@@ -120,7 +123,7 @@ def plan_convoy(side: Side, trucks: float, max_units: int = 20) -> list[SpawnPla
         A single truck plan.
     """
     units = max(1, min(max_units, round(trucks / RATIO[TRUCK])))
-    return [SpawnPlan(TRUCK, UNIT_TYPES[side][TRUCK], units, trucks)]
+    return [SpawnPlan(TRUCK, UNIT_TYPES[army][TRUCK], units, trucks)]
 
 
 # ---------------------------------------------------------------- aircraft
@@ -202,7 +205,7 @@ def classify_store(name: str) -> dict[str, Any]:
     Returns:
         The fields to write next to the store in ``loadouts.json``: ``kind``
         (a :class:`~dynacamp.loadouts.StoreKind`), plus ``count`` and, for
-        radar missiles, ``range_m``; empty for anything else.
+        radar and anti-radiation missiles, ``range_m``; empty for anything else.
     """
     from ...loadouts import StoreKind
 
@@ -210,6 +213,9 @@ def classify_store(name: str) -> dict[str, Any]:
     if not any(k in name for k in rules["not_live"]):
         found = re.findall(rules["per_pylon"], name)
         count = int(found[-1]) if found else 1
+        arm = next((float(r) for k, r in rules["arm_range_m"].items() if k in name), None)
+        if arm is not None:
+            return {"kind": StoreKind.ARM.value, "count": count, "range_m": arm}
         reach = next((float(r) for k, r in rules["bvr_range_m"].items() if k in name), None)
         if reach is not None:
             return {"kind": StoreKind.BVR.value, "count": count, "range_m": reach}

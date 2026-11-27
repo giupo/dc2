@@ -7,11 +7,11 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from . import catalog
 from .geo import Vec2
 from .air import Airbase, Flight, Package, Squadron
 from .air_defense import AirDefenseUnit
 from .events import EventKind, EventLog
-from .adapters.base import Side
 from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
 from .units import UnitDomain
@@ -28,25 +28,56 @@ class Objective:
     priority: int = 1
 
 
+@dataclass(frozen=True)
+class Army:
+    """An army of the catalogue (``data/catalog/factions.toml``): what a
+    faction fields. Its game data (country, unit types, callsigns) is in the
+    entry's ``dcs`` sub-table, read only by the adapters.
+
+    Attributes:
+        id: Army id, as scenarios name it (``army = "us"``).
+        name: Display name.
+        quality: Training, doctrine and leadership, as a multiplier of combat
+            effectiveness (1 = the reference; see :attr:`Faction.quality`).
+    """
+    id: str
+    name: str
+    quality: float = 1.0
+
+
+#: The armies of the catalogue, by id.
+ARMIES: dict[str, Army] = catalog.build("factions", Army)
+
+
 @dataclass
 class Faction:
-    """A side of the war.
+    """A side of the war, as the scenario defines it.
 
     Attributes:
         id: Faction id.
         name: Display name.
-        bullseye: The side's fixed reference point for bearing/range calls
+        bullseye: The coalition's fixed reference point for bearing/range calls
             (``BULLS 045/32``, see :mod:`dynacamp.bullseye`).
-        side: Game side, mapped to a coalition by adapters.
+        coalition: Game coalition, an opaque name the adapters understand
+            (the DCS ``coalition.side`` key). Factions of one coalition share
+            the game side, its bullseye and its intelligence.
+        army: Catalogue army it fields (see :data:`ARMIES`).
+        color: Map colour, ``#rrggbb``.
         enemies: Factions it is at war with.
         objectives: Provinces it wants.
+        quality: Multiplier of the effectiveness of everything it fights
+            with: brigades (fire and resilience), artillery, air strikes, air
+            combat, SAM and SEAD. The army's, unless the scenario sets its own.
     """
     id: str
     name: str
     bullseye: Vec2
-    side: Side
+    coalition: str
+    army: str
+    color: str
     enemies: set[str] = field(default_factory=set)
     objectives: list[Objective] = field(default_factory=list)
+    quality: float = 1.0
 
 
 class BattleKind(StrEnum):
@@ -219,7 +250,7 @@ class CampaignState:
     reforming_ad: list = field(default_factory=list)  # air defence batteries waiting for replacement
     # Fog of war: faction -> entity id -> Contact (see systems.intel).
     intel: dict[str, dict] = field(default_factory=dict)
-    # Players as last reported by the engine: id -> (side, position, kind).
+    # Players as last reported by the engine: id -> (coalition, position, kind).
     player_positions: dict[str, tuple] = field(default_factory=dict)
     events: EventLog = field(default_factory=EventLog)
     rng: random.Random = field(init=False)
@@ -369,16 +400,28 @@ class CampaignState:
             if p.controller == faction and any(self.hostile_province(faction, n) for n in t.neighbors(pid))
         ]
 
-    def faction_for_side(self, side: Side) -> Faction | None:
-        """The faction playing a game side.
+    def quality(self, faction: str) -> float:
+        """Combat quality of a faction (see :attr:`Faction.quality`).
 
         Args:
-            side: The game side.
+            faction: Faction id.
 
         Returns:
-            The first faction of that side, or None.
+            The multiplier, 1 for an unknown faction.
         """
-        return next((f for f in self.factions.values() if f.side == side), None)
+        f = self.factions.get(faction)
+        return f.quality if f is not None else 1.0
+
+    def faction_for_coalition(self, coalition: str) -> Faction | None:
+        """The faction playing a game coalition.
+
+        Args:
+            coalition: The game coalition.
+
+        Returns:
+            The first faction of that coalition, or None.
+        """
+        return next((f for f in self.factions.values() if f.coalition == coalition), None)
 
     # ------------------------------------------------------------ orders
 

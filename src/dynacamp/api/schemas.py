@@ -68,21 +68,25 @@ class FactionView(Model):
     """A faction with its score."""
     id: str
     name: str
-    side: str
+    coalition: str = Field(description="game coalition (DCS coalition.side key); factions of one coalition share intelligence and bullseye")
+    army: str = Field(description="catalogue army the faction fields (data/catalog/factions.toml)")
+    color: str = Field(description="map colour, #rrggbb")
+    quality: float = Field(description="combat quality: multiplier of the effectiveness of its forces (1 = reference)")
+    standing: float = Field(description="share of the war it is winning, 0-1, summing to 1 over the factions (dynacamp.standing)")
     enemies: list[str]
     provinces: int
     victory_points: int
     divisions: int
     aircraft: int
     objectives: list[ObjectiveView]
-    bullseye: Located = Field(description="fixed reference point of the side's bearing/range calls (BULLS)")
+    bullseye: Located = Field(description="fixed reference point of the coalition's bearing/range calls (BULLS)")
 
 
 class PlayerView(Located):
     """A connected player."""
     id: str
     name: str
-    side: str
+    coalition: str
     kind: PlayerKind
     altitude: int
     flight: str | None = Field(description="flight id of the seat the player holds")
@@ -419,7 +423,7 @@ class AtoView(Model):
     sortie_budget_left: dict[str, int]
     flights_airborne: int
     tracks: list[FlightView] = Field(default_factory=list, description="enemy flights detected (faction view)")
-    boards: dict[str, list[BoardPackage]] = Field(description="side -> what players see in the in-game menu")
+    boards: dict[str, list[BoardPackage]] = Field(description="coalition -> what players see in the in-game menu")
 
 
 # ---------------------------------------------------------------- briefing
@@ -510,7 +514,7 @@ class BriefingView(Model):
     callsign: str
     radio_callsign: str = Field(
         "", description="DCS radio callsign (what the AI calls the flight); differs from `callsign` when "
-        "the squadron's own name is not in DCS' list for the type; empty for eastern sides")
+        "the squadron's own name is not in DCS' list for the type; empty for armies without named callsigns")
     title: str
     task: Task
     aircraft: str

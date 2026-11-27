@@ -566,7 +566,7 @@ export interface components {
             tracks?: components["schemas"]["FlightView"][];
             /**
              * Boards
-             * @description side -> what players see in the in-game menu
+             * @description coalition -> what players see in the in-game menu
              */
             boards: {
                 [key: string]: components["schemas"]["BoardPackage"][];
@@ -841,7 +841,7 @@ export interface components {
             callsign: string;
             /**
              * Radio Callsign
-             * @description DCS radio callsign (what the AI calls the flight); differs from `callsign` when the squadron's own name is not in DCS' list for the type; empty for eastern sides
+             * @description DCS radio callsign (what the AI calls the flight); differs from `callsign` when the squadron's own name is not in DCS' list for the type; empty for armies without named callsigns
              * @default
              */
             radio_callsign: string;
@@ -1265,8 +1265,31 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /** Side */
-            side: string;
+            /**
+             * Coalition
+             * @description game coalition (DCS coalition.side key); factions of one coalition share intelligence and bullseye
+             */
+            coalition: string;
+            /**
+             * Army
+             * @description catalogue army the faction fields (data/catalog/factions.toml)
+             */
+            army: string;
+            /**
+             * Color
+             * @description map colour, #rrggbb
+             */
+            color: string;
+            /**
+             * Quality
+             * @description combat quality: multiplier of the effectiveness of its forces (1 = reference)
+             */
+            quality: number;
+            /**
+             * Standing
+             * @description share of the war it is winning, 0-1, summing to 1 over the factions (dynacamp.standing)
+             */
+            standing: number;
             /** Enemies */
             enemies: string[];
             /** Provinces */
@@ -1279,7 +1302,7 @@ export interface components {
             aircraft: number;
             /** Objectives */
             objectives: components["schemas"]["ObjectiveView"][];
-            /** @description fixed reference point of the side's bearing/range calls (BULLS) */
+            /** @description fixed reference point of the coalition's bearing/range calls (BULLS) */
             bullseye: components["schemas"]["Located"];
         };
         /**
@@ -1677,8 +1700,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /** Side */
-            side: string;
+            /** Coalition */
+            coalition: string;
             kind: components["schemas"]["PlayerKind"];
             /** Altitude */
             altitude: number;

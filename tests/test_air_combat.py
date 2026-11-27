@@ -44,7 +44,8 @@ def test_missiles_come_from_the_loadout():
     f15 = loadouts.air_to_air("f15c", "CAP")
     assert f15.bvr == 4 and f15.bvr_range_m == 50_000
     hornet = loadouts.air_to_air("fa18c", "CAP")
-    assert hornet.bvr == 7 and hornet.wvr == 2  # 3 x (2 x AIM-120 on LAU-115) + 1
+    assert hornet.bvr == 7 and hornet.wvr == 3  # 3 x (2 x AIM-120 on LAU-115) + 1; AIM-9s on the tips and a rail
+    assert loadouts.air_to_air("f15c", "CAP").wvr == 2  # heat seekers fill the outer rails first
     assert loadouts.air_to_air("mig23mld", "CAP").wvr == 4  # 2 x R-60 carriers
     assert loadouts.air_to_air("f5e", "CAP") == loadouts.AirToAir()  # training rounds do not count
     assert loadouts.air_to_air("m2000c", "ESCORT").bvr > 0  # escorts carry the CAP load
@@ -53,7 +54,7 @@ def test_missiles_come_from_the_loadout():
 def test_ready_gives_fuel_and_missiles():
     state = world()
     f = flight(state, "b", "bq", Task.CAP, Vec2(0, 0))
-    assert f.fuel_m == air_sys.FUEL_FACTOR * 700_000 and f.aam_bvr == 8 and f.aam_loaded == 8
+    assert f.fuel_m == air_sys.FUEL_FACTOR * 700_000 and f.aam_bvr == 8 and f.aam_loaded == 12
     state.squadrons["aw"] = Squadron("aw", "AEW", "blue", "ab", AIRCRAFT["e3a"], 2, "Magic")
     assert math.isinf(flight(state, "w", "aw", Task.AWACS, Vec2(0, 0)).fuel_m)
 

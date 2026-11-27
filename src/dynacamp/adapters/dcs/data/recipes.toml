@@ -31,7 +31,7 @@ helo_atgm = 'AGM-114K|AGM-114L|9M114|9M120|Vikhr|TOW|BGM-71|HOT'
 
 # Recipes: [pattern, pylons to fill], in order.
 [recipes]
-A2A = [["a2a_long", 4], ["a2a_short", 2], ["tank", 1]]
+A2A = [["a2a_short", 2], ["a2a_long", 4], ["tank", 1]]  # heat seekers first: they need the outer rails
 SEAD = [["arm", 2], ["a2a_long", 2], ["a2a_short", 2], ["jammer_sead", 1], ["tank", 1]]
 MUD = [["pgm_antiarmor", 2], ["cluster", 2], ["bomb", 2], ["rocket", 2], ["a2a_short", 2], ["jammer", 1], ["pod", 1], ["tank", 1]]
 STRIKE = [["heavy", 4], ["a2a_short", 2], ["pod", 1], ["tank", 1]]

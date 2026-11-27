@@ -15,8 +15,8 @@ def crossroads():
     data = {
         "campaign": {"name": "x", "seed": 1},
         "factions": [
-            {"id": "blue", "side": "blue", "enemies": ["red"]},
-            {"id": "red", "side": "red", "enemies": ["blue"]},
+            {"id": "blue", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"]},
+            {"id": "red", "coalition": "RED", "army": "russia", "color": "#ff5a5a", "enemies": ["blue"]},
         ],
         "provinces": [
             {"id": "a", "pos": [-20_000, 0], "controller": "blue"},

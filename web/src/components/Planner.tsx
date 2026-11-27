@@ -31,7 +31,7 @@ const ORBITS = new Set(["CAP", "AWACS", "TANKER"]);
 
 /** What the planner widgets share (provided by the App). */
 export interface Planner {
-  /** Faction that orders new packages: the viewpoint side's (null: none). */
+  /** Faction that orders new packages: the viewpoint coalition's (null: none). */
   faction: string | null;
   draft: RouteDraft | null;
   setDraft: (d: RouteDraft | null) => void;

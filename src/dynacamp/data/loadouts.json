@@ -60,21 +60,19 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 3,
@@ -93,19 +91,21 @@
     },
     {
      "pylon": 7,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 8,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 9,
@@ -175,21 +175,19 @@
    "ESCORT": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9X Sidewinder IR AAM",
+     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+     "weight": 84.5,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 3,
@@ -208,19 +206,21 @@
     },
     {
      "pylon": 7,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 8,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 9,
@@ -255,13 +255,19 @@
      "pylon": 3,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 4,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 5,
@@ -414,12 +420,11 @@
     },
     {
      "pylon": 2,
-     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "LAU-115_2*LAU-127_AIM-120C",
-     "weight": 468.0,
-     "kind": "bvr",
-     "count": 2,
-     "range_m": 50000.0
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-9X Sidewinder IR AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-9X",
+     "weight": 313.9,
+     "kind": "wvr",
+     "count": 2
     },
     {
      "pylon": 3,
@@ -440,10 +445,19 @@
      "range_m": 50000.0
     },
     {
-     "pylon": 7,
+     "pylon": 5,
      "name": "FPU-8A Fuel Tank 330 gallons",
      "clsid": "{FPU_8A_FUEL_TANK}",
      "weight": 1150.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0,
+     "kind": "bvr",
+     "count": 2,
+     "range_m": 50000.0
     },
     {
      "pylon": 8,
@@ -453,14 +467,6 @@
      "kind": "bvr",
      "count": 2,
      "range_m": 50000.0
-    },
-    {
-     "pylon": 9,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
     }
    ],
    "CAS": [
@@ -528,12 +534,11 @@
     },
     {
      "pylon": 2,
-     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "LAU-115_2*LAU-127_AIM-120C",
-     "weight": 468.0,
-     "kind": "bvr",
-     "count": 2,
-     "range_m": 50000.0
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-9X Sidewinder IR AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-9X",
+     "weight": 313.9,
+     "kind": "wvr",
+     "count": 2
     },
     {
      "pylon": 3,
@@ -554,10 +559,19 @@
      "range_m": 50000.0
     },
     {
-     "pylon": 7,
+     "pylon": 5,
      "name": "FPU-8A Fuel Tank 330 gallons",
      "clsid": "{FPU_8A_FUEL_TANK}",
      "weight": 1150.0
+    },
+    {
+     "pylon": 7,
+     "name": "LAU-115: 2 x LAU-127 - 2 x AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "LAU-115_2*LAU-127_AIM-120C",
+     "weight": 468.0,
+     "kind": "bvr",
+     "count": 2,
+     "range_m": 50000.0
     },
     {
      "pylon": 8,
@@ -567,14 +581,6 @@
      "kind": "bvr",
      "count": 2,
      "range_m": 50000.0
-    },
-    {
-     "pylon": 9,
-     "name": "AIM-9X Sidewinder IR AAM",
-     "clsid": "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
-     "weight": 84.5,
-     "kind": "wvr",
-     "count": 1
     }
    ],
    "SEAD": [
@@ -590,13 +596,19 @@
      "pylon": 2,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 3,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 4,
@@ -690,12 +702,11 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -705,6 +716,24 @@
     },
     {
      "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 8,
      "name": "AIM-120C AMRAAM - Active Radar AAM",
      "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
      "weight": 161.5,
@@ -723,23 +752,21 @@
     },
     {
      "pylon": 11,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ],
    "ESCORT": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -749,6 +776,24 @@
     },
     {
      "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 4,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 8,
      "name": "AIM-120C AMRAAM - Active Radar AAM",
      "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
      "weight": 161.5,
@@ -767,12 +812,11 @@
     },
     {
      "pylon": 11,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ]
   },
@@ -1058,12 +1102,11 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "R-77 (AA-12 Adder) - Active Rdr",
-     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
-     "weight": 175.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -1076,11 +1119,12 @@
     },
     {
      "pylon": 3,
-     "name": "R-73 (AA-11 Archer) - Infra Red",
-     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
-     "weight": 110.0,
-     "kind": "wvr",
-     "count": 1
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 4,
@@ -1090,11 +1134,12 @@
     },
     {
      "pylon": 5,
-     "name": "R-73 (AA-11 Archer) - Infra Red",
-     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
-     "weight": 110.0,
-     "kind": "wvr",
-     "count": 1
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 6,
@@ -1107,23 +1152,21 @@
     },
     {
      "pylon": 7,
-     "name": "R-77 (AA-12 Adder) - Active Rdr",
-     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
-     "weight": 175.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0,
+     "kind": "wvr",
+     "count": 1
     }
    ],
    "ESCORT": [
     {
      "pylon": 1,
-     "name": "R-77 (AA-12 Adder) - Active Rdr",
-     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
-     "weight": 175.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -1136,11 +1179,12 @@
     },
     {
      "pylon": 3,
-     "name": "R-73 (AA-11 Archer) - Infra Red",
-     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
-     "weight": 110.0,
-     "kind": "wvr",
-     "count": 1
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 4,
@@ -1150,11 +1194,12 @@
     },
     {
      "pylon": 5,
-     "name": "R-73 (AA-11 Archer) - Infra Red",
-     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
-     "weight": 110.0,
-     "kind": "wvr",
-     "count": 1
+     "name": "R-77 (AA-12 Adder) - Active Rdr",
+     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+     "weight": 175.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 6,
@@ -1167,12 +1212,11 @@
     },
     {
      "pylon": 7,
-     "name": "R-77 (AA-12 Adder) - Active Rdr",
-     "clsid": "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
-     "weight": 175.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "R-73 (AA-11 Archer) - Infra Red",
+     "clsid": "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+     "weight": 110.0,
+     "kind": "wvr",
+     "count": 1
     }
    ]
   },
@@ -1328,13 +1372,19 @@
      "pylon": 5,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 7,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 10,
@@ -1886,12 +1936,11 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -1901,6 +1950,24 @@
     },
     {
      "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 5,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 11,
      "name": "AIM-120C AMRAAM - Active Radar AAM",
      "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
      "weight": 161.5,
@@ -1919,12 +1986,11 @@
     },
     {
      "pylon": 15,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ],
    "CAS": [
@@ -1978,12 +2044,11 @@
    "ESCORT": [
     {
      "pylon": 1,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -1993,6 +2058,24 @@
     },
     {
      "pylon": 3,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 5,
+     "name": "AIM-120C AMRAAM - Active Radar AAM",
+     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+     "weight": 161.5,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
+    },
+    {
+     "pylon": 11,
      "name": "AIM-120C AMRAAM - Active Radar AAM",
      "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
      "weight": 161.5,
@@ -2011,12 +2094,11 @@
     },
     {
      "pylon": 15,
-     "name": "AIM-120C AMRAAM - Active Radar AAM",
-     "clsid": "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-     "weight": 161.5,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ],
    "STRIKE": [
@@ -2121,12 +2203,11 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "AIM-120B AMRAAM - Active Radar AAM",
-     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
-     "weight": 157.8,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -2139,11 +2220,12 @@
     },
     {
      "pylon": 3,
-     "name": "AIM-9M Sidewinder IR AAM",
-     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
-     "weight": 85.7,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 4,
@@ -2153,11 +2235,12 @@
     },
     {
      "pylon": 8,
-     "name": "AIM-9M Sidewinder IR AAM",
-     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
-     "weight": 85.7,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 9,
@@ -2170,12 +2253,11 @@
     },
     {
      "pylon": 10,
-     "name": "AIM-120B AMRAAM - Active Radar AAM",
-     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
-     "weight": 157.8,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ],
    "CAS": [
@@ -2230,12 +2312,11 @@
    "ESCORT": [
     {
      "pylon": 1,
-     "name": "AIM-120B AMRAAM - Active Radar AAM",
-     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
-     "weight": 157.8,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -2248,11 +2329,12 @@
     },
     {
      "pylon": 3,
-     "name": "AIM-9M Sidewinder IR AAM",
-     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
-     "weight": 85.7,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 4,
@@ -2262,11 +2344,12 @@
     },
     {
      "pylon": 8,
-     "name": "AIM-9M Sidewinder IR AAM",
-     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
-     "weight": 85.7,
-     "kind": "wvr",
-     "count": 1
+     "name": "AIM-120B AMRAAM - Active Radar AAM",
+     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
+     "weight": 157.8,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 50000.0
     },
     {
      "pylon": 9,
@@ -2279,12 +2362,11 @@
     },
     {
      "pylon": 10,
-     "name": "AIM-120B AMRAAM - Active Radar AAM",
-     "clsid": "{C8E06185-7CD6-4C90-959F-044679E90751}",
-     "weight": 157.8,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 50000.0
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+     "weight": 85.7,
+     "kind": "wvr",
+     "count": 1
     }
    ]
   },
@@ -2517,6 +2599,73 @@
      "weight": 86.6,
      "kind": "wvr",
      "count": 1
+    }
+   ],
+   "SEAD": [
+    {
+     "pylon": 1,
+     "name": "AGM-45A Shrike ARM (LAU-34)",
+     "clsid": "{LAU_34_AGM_45A}",
+     "weight": 219.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 18000.0
+    },
+    {
+     "pylon": 2,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6,
+     "kind": "wvr",
+     "count": 1
+    },
+    {
+     "pylon": 3,
+     "name": "ALQ-131 - ECM Pod",
+     "clsid": "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+     "weight": 305.0,
+     "kind": "ecm"
+    },
+    {
+     "pylon": 5,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 30000.0
+    },
+    {
+     "pylon": 6,
+     "name": "AIM-7M Sparrow Semi-Active Radar",
+     "clsid": "{HB_F4E_AIM-7M}",
+     "weight": 231.0,
+     "kind": "bvr",
+     "count": 1,
+     "range_m": 30000.0
+    },
+    {
+     "pylon": 7,
+     "name": "Sargent Fletcher Fuel Tank 600 gallons",
+     "clsid": "{F4_SARGENT_TANK_600_GAL}",
+     "weight": 1885.9
+    },
+    {
+     "pylon": 12,
+     "name": "AIM-9M Sidewinder IR AAM",
+     "clsid": "{AIM-9M}",
+     "weight": 86.6,
+     "kind": "wvr",
+     "count": 1
+    },
+    {
+     "pylon": 13,
+     "name": "AGM-45A Shrike ARM (LAU-34)",
+     "clsid": "{LAU_34_AGM_45A}",
+     "weight": 219.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 18000.0
     }
    ],
    "STRIKE": [
@@ -2948,13 +3097,19 @@
      "pylon": 3,
      "name": "ALARM",
      "clsid": "{E6747967-B1F0-4C77-977B-AB2E6EB0C102}",
-     "weight": 268.0
+     "weight": 268.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 45000.0
     },
     {
      "pylon": 10,
      "name": "ALARM",
      "clsid": "{E6747967-B1F0-4C77-977B-AB2E6EB0C102}",
-     "weight": 268.0
+     "weight": 268.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 45000.0
     }
    ],
    "STRIKE": [
@@ -3042,7 +3197,10 @@
      "pylon": 2,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 3,
@@ -3064,7 +3222,10 @@
      "pylon": 11,
      "name": "AGM-88C HARM - High Speed Anti-Radiation Missile",
      "clsid": "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-     "weight": 406.4
+     "weight": 406.4,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     }
    ],
    "STRIKE": [
@@ -3176,12 +3337,11 @@
     },
     {
      "pylon": 2,
-     "name": "Matra Super 530D",
-     "clsid": "{Matra_S530D}",
-     "weight": 350.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 30000.0
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 5,
@@ -3197,14 +3357,6 @@
      "kind": "bvr",
      "count": 1,
      "range_m": 30000.0
-    },
-    {
-     "pylon": 9,
-     "name": "Matra Magic II",
-     "clsid": "{MMagicII}",
-     "weight": 85.0,
-     "kind": "wvr",
-     "count": 1
     }
    ],
    "ESCORT": [
@@ -3218,12 +3370,11 @@
     },
     {
      "pylon": 2,
-     "name": "Matra Super 530D",
-     "clsid": "{Matra_S530D}",
-     "weight": 350.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 30000.0
+     "name": "Matra Magic II",
+     "clsid": "{MMagicII}",
+     "weight": 85.0,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 5,
@@ -3239,14 +3390,6 @@
      "kind": "bvr",
      "count": 1,
      "range_m": 30000.0
-    },
-    {
-     "pylon": 9,
-     "name": "Matra Magic II",
-     "clsid": "{MMagicII}",
-     "weight": 85.0,
-     "kind": "wvr",
-     "count": 1
     }
    ]
   },
@@ -3568,13 +3711,19 @@
      "pylon": 2,
      "name": "LD-10",
      "clsid": "DIS_LD-10",
-     "weight": 289.0
+     "weight": 289.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 6,
      "name": "LD-10",
      "clsid": "DIS_LD-10",
-     "weight": 289.0
+     "weight": 289.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 7,
@@ -4234,12 +4383,11 @@
    "CAP": [
     {
      "pylon": 1,
-     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
-     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
-     "weight": 465.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 30000.0
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5,
+     "kind": "wvr",
+     "count": 1
     },
     {
      "pylon": 2,
@@ -4261,12 +4409,11 @@
     },
     {
      "pylon": 4,
-     "name": "R-40RD (AA-6 Acrid) - Semi-Act Rdr",
-     "clsid": "{4EDBA993-2E34-444C-95FB-549300BF7CAF}",
-     "weight": 465.0,
-     "kind": "bvr",
-     "count": 1,
-     "range_m": 30000.0
+     "name": "APU-60-1M with R-60M (AA-8 Aphid-B) - IR AAM",
+     "clsid": "{APU-60-1_R_60M}",
+     "weight": 75.5,
+     "kind": "wvr",
+     "count": 1
     }
    ]
   },
@@ -4514,7 +4661,10 @@
      "pylon": 2,
      "name": "Kh-25MPU (Updated AS-12 Kegler) - 320kg, ARM, IN & Pas Rdr",
      "clsid": "{752AF1D2-EBCC-4bd7-A1E7-2357F5601C70}",
-     "weight": 370.0
+     "weight": 370.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 25000.0
     },
     {
      "pylon": 3,
@@ -4542,7 +4692,10 @@
      "pylon": 8,
      "name": "Kh-25MPU (Updated AS-12 Kegler) - 320kg, ARM, IN & Pas Rdr",
      "clsid": "{752AF1D2-EBCC-4bd7-A1E7-2357F5601C70}",
-     "weight": 370.0
+     "weight": 370.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 25000.0
     }
    ],
    "STRIKE": [
@@ -4889,13 +5042,19 @@
      "pylon": 3,
      "name": "Kh-31P (AS-17 Krypton) - 600kg, ARM, IN & Pas Rdr",
      "clsid": "{D8F2C90B-887B-4B9E-9FE2-996BC9E9AF03}",
-     "weight": 786.0
+     "weight": 786.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 8,
      "name": "Kh-31P (AS-17 Krypton) - 600kg, ARM, IN & Pas Rdr",
      "clsid": "{D8F2C90B-887B-4B9E-9FE2-996BC9E9AF03}",
-     "weight": 786.0
+     "weight": 786.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 9,
@@ -5089,13 +5248,19 @@
      "pylon": 3,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 10,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 11,
@@ -5456,13 +5621,19 @@
      "pylon": 5,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 7,
      "name": "Kh-58U (AS-11 Kilter) - 640kg, ARM, IN & Pas Rdr",
      "clsid": "{B5CA9846-776E-4230-B4FD-8BCC9BFB1676}",
-     "weight": 836.0
+     "weight": 836.0,
+     "kind": "arm",
+     "count": 1,
+     "range_m": 60000.0
     },
     {
      "pylon": 10,

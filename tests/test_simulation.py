@@ -106,8 +106,8 @@ def test_ai_garrisons_an_open_flank():
     data = {
         "campaign": {"name": "flank", "seed": 1},
         "factions": [
-            {"id": "blue", "side": "blue", "enemies": ["red"]},
-            {"id": "red", "side": "red", "enemies": ["blue"]},
+            {"id": "blue", "coalition": "BLUE", "army": "us", "color": "#4c8dff", "enemies": ["red"]},
+            {"id": "red", "coalition": "RED", "army": "russia", "color": "#ff5a5a", "enemies": ["blue"]},
         ],
         "provinces": [
             {"id": "depot", "pos": [0, 0], "controller": "blue", "victory_points": 5,

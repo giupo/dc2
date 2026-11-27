@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .. import bullseye, geometry
+from .. import bullseye, geometry, standing
 from ..air import FlightStatus, Task
 from ..events import PUBLIC, EventKind, clock
 from ..forces import Authority, Convoy, Division, OrderKind
@@ -148,7 +148,7 @@ def players(engine) -> list[dict[str, Any]]:
         {
             "id": p.id,
             "name": p.name,
-            "side": p.side,
+            "coalition": p.coalition,
             "kind": p.kind.value,
             **_pt(state, p.position),
             "altitude": round(p.altitude),
@@ -173,6 +173,7 @@ def campaign(
         The campaign view.
     """
     t = state.theater
+    shares = standing.shares(state)
     factions = []
     for f in state.factions.values():
         held = [p for p in t.provinces.values() if p.controller == f.id]
@@ -180,7 +181,11 @@ def campaign(
             {
                 "id": f.id,
                 "name": f.name,
-                "side": f.side,
+                "coalition": f.coalition,
+                "army": f.army,
+                "color": f.color,
+                "quality": f.quality,
+                "standing": round(shares.get(f.id, 0.0), 4),
                 "enemies": sorted(f.enemies),
                 "provinces": len(held),
                 "victory_points": sum(p.victory_points for p in held),
@@ -307,8 +312,8 @@ def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
                     "faction": f.id,
                     "province": pid,
                     "name": t.provinces[pid].name,
-                    "own_power": round(sum(d.combat_power() for d in own)),
-                    "enemy_power": round(sum(d.combat_power() for d in enemy)),
+                    "own_power": round(sum(d.combat_power(state.quality(d.faction)) for d in own)),
+                    "enemy_power": round(sum(d.combat_power(state.quality(d.faction)) for d in enemy)),
                     "divisions": [d.id for d in own],
                 }
             )
@@ -792,13 +797,13 @@ def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
         1 for f in state.flights.values()
         if mine(f.faction) and f.status not in (FlightStatus.SCHEDULED, FlightStatus.DONE, FlightStatus.CANCELLED)
     )
-    sides = sorted({f.side for f in state.factions.values() if mine(f.id)})
+    coalitions = sorted({f.coalition for f in state.factions.values() if mine(f.id)})
     return {
         "packages": packages,
         "squadrons": squadrons,
         "sortie_budget_left": budget,
         "flights_airborne": airborne,
-        "boards": {side: ato_sys.ato_board(state, side) for side in sides},
+        "boards": {c: ato_sys.ato_board(state, c) for c in coalitions},
         "tracks": tracks,
     }
 

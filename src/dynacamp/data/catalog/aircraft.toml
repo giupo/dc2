@@ -86,7 +86,7 @@ callsigns = ["ArmyAir", "Apache", "Crow", "Chaos", "Sioux", "Gatling", "Gunsling
 name = "Su-27"
 cruise_kmh = 850
 radius_km = 700
-a2a = 1.2
+a2a = 1.05
 a2g = 0.0
 tasks = ["CAP", "ESCORT"]
 
@@ -97,7 +97,7 @@ type = "Su-27"
 name = "MiG-29S"
 cruise_kmh = 850
 radius_km = 450
-a2a = 1.0
+a2a = 0.9
 a2g = 0.2
 tasks = ["CAP", "ESCORT"]
 
@@ -109,7 +109,7 @@ name = "Su-25T"
 cruise_kmh = 650
 radius_km = 400
 a2a = 0.2
-a2g = 1.2
+a2g = 1.05
 tasks = ["SEAD", "BAI", "CAS"]
 
 [su25t.dcs]
@@ -120,7 +120,7 @@ name = "Su-24M"
 cruise_kmh = 800
 radius_km = 600
 a2a = 0.1
-a2g = 1.1
+a2g = 0.95
 tasks = ["STRIKE", "BAI"]
 
 [su24m.dcs]
@@ -190,7 +190,7 @@ cruise_kmh = 800
 radius_km = 500
 a2a = 0.7
 a2g = 0.8
-tasks = ["CAP", "ESCORT", "STRIKE", "BAI", "CAS"]
+tasks = ["CAP", "ESCORT", "SEAD", "STRIKE", "BAI", "CAS"]  # SEAD with the AGM-45 Shrike
 
 [f4e.dcs]
 type = "F-4E-45MC"
@@ -384,7 +384,7 @@ type = "SA342M"
 name = "MiG-29A"
 cruise_kmh = 850
 radius_km = 400
-a2a = 0.9
+a2a = 0.8
 a2g = 0.2
 tasks = ["CAP", "ESCORT"]
 
@@ -395,7 +395,7 @@ type = "MiG-29A"
 name = "MiG-29G"
 cruise_kmh = 850
 radius_km = 400
-a2a = 0.9
+a2a = 0.8
 a2g = 0.2
 tasks = ["CAP", "ESCORT"]
 
@@ -406,7 +406,7 @@ type = "MiG-29G"
 name = "MiG-31"
 cruise_kmh = 1000
 radius_km = 700
-a2a = 1.1
+a2a = 0.95
 a2g = 0.0
 tasks = ["CAP", "ESCORT"]
 
@@ -417,7 +417,7 @@ type = "MiG-31"
 name = "MiG-25PD"
 cruise_kmh = 1000
 radius_km = 600
-a2a = 0.8
+a2a = 0.7
 a2g = 0.0
 tasks = ["CAP"]
 
@@ -428,8 +428,8 @@ type = "MiG-25PD"
 name = "MiG-23MLD"
 cruise_kmh = 850
 radius_km = 450
-a2a = 0.7
-a2g = 0.5
+a2a = 0.6
+a2g = 0.45
 tasks = ["CAP", "ESCORT", "BAI", "CAS"]
 
 [mig23mld.dcs]
@@ -440,7 +440,7 @@ name = "MiG-27K"
 cruise_kmh = 800
 radius_km = 450
 a2a = 0.2
-a2g = 1.0
+a2g = 0.85
 tasks = ["SEAD", "STRIKE", "BAI", "CAS"]
 
 [mig27k.dcs]
@@ -450,7 +450,7 @@ type = "MiG-27K"
 name = "Su-33"
 cruise_kmh = 850
 radius_km = 700
-a2a = 1.2
+a2a = 1.05
 a2g = 0.4
 tasks = ["CAP", "ESCORT"]
 
@@ -461,8 +461,8 @@ type = "Su-33"
 name = "Su-30"
 cruise_kmh = 850
 radius_km = 800
-a2a = 1.3
-a2g = 1.0
+a2a = 1.15
+a2g = 0.9
 tasks = ["CAP", "ESCORT", "SEAD", "STRIKE", "BAI"]
 
 [su30.dcs]
@@ -472,8 +472,8 @@ type = "Su-30"
 name = "Su-34"
 cruise_kmh = 850
 radius_km = 900
-a2a = 0.6
-a2g = 1.4
+a2a = 0.5
+a2g = 1.05
 tasks = ["SEAD", "STRIKE", "BAI", "CAS"]
 
 [su34.dcs]
@@ -484,7 +484,7 @@ name = "Su-25"
 cruise_kmh = 650
 radius_km = 400
 a2a = 0.2
-a2g = 1.1
+a2g = 1.0
 tasks = ["BAI", "CAS"]
 
 [su25.dcs]
@@ -495,7 +495,7 @@ name = "Su-25TM"
 cruise_kmh = 650
 radius_km = 400
 a2a = 0.2
-a2g = 1.3
+a2g = 1.15
 tasks = ["SEAD", "BAI", "CAS"]
 
 [su25tm.dcs]
@@ -506,7 +506,7 @@ name = "Su-17M4"
 cruise_kmh = 800
 radius_km = 400
 a2a = 0.2
-a2g = 0.9
+a2g = 0.8
 tasks = ["STRIKE", "BAI", "CAS"]
 
 [su17m4.dcs]
@@ -743,7 +743,7 @@ type = "Mi-26"
 name = "J-11A"
 cruise_kmh = 850
 radius_km = 700
-a2a = 1.2
+a2a = 1.05
 a2g = 0.3
 tasks = ["CAP", "ESCORT"]
 
@@ -754,8 +754,8 @@ type = "J-11A"
 name = "MiG-21bis"
 cruise_kmh = 800
 radius_km = 300
-a2a = 0.6
-a2g = 0.4
+a2a = 0.5
+a2g = 0.35
 tasks = ["CAP", "ESCORT", "CAS"]
 
 [mig21bis.dcs]

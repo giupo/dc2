@@ -6,8 +6,8 @@ from dataclasses import dataclass
 import pytest
 
 from dynacamp import catalog
-from dynacamp.adapters.base import Side
-from dynacamp.adapters.dcs.catalog import AIRCRAFT_TYPES, RATIO, SAM_TYPES, UNIT_TYPES
+from dynacamp.adapters.dcs.catalog import AIRCRAFT_TYPES, COUNTRY, RATIO, SAM_TYPES, UNIT_TYPES
+from dynacamp.state import ARMIES
 from dynacamp.air import AIRCRAFT, Task
 from dynacamp.air_defense import LAUNCHER, RADAR_ELEMENTS, SYSTEMS
 from dynacamp.forces import AAA, ARTILLERY, DEFAULT_TEMPLATES, ELEMENTS, MLRS, SAM_SHORT, TRUCK
@@ -19,7 +19,7 @@ SUPPORT = {Task.AWACS, Task.TANKER, Task.TRANSPORT}
 
 
 def test_catalogue_is_loaded():
-    assert len(AIRCRAFT) == 64 and len(SYSTEMS) == 12
+    assert len(AIRCRAFT) == 64 and len(SYSTEMS) == 15
     assert {"infantry", "mbt", "truck"} <= set(ELEMENTS)
     assert set(DEFAULT_TEMPLATES) == {"mech_brigade", "tank_brigade", "infantry_brigade", "artillery_group"}
     f16 = AIRCRAFT["f16c"]
@@ -38,10 +38,12 @@ def test_every_site_element_has_a_dcs_unit():
         assert set(system.elements) == set(SAM_TYPES[sid]), sid
 
 
-def test_every_ground_element_has_a_ratio_and_a_unit_per_side():
+def test_every_ground_element_has_a_ratio_and_a_unit_per_army():
     assert set(RATIO) == set(ELEMENTS)
-    for side in Side:
-        assert set(UNIT_TYPES[side]) == set(ELEMENTS), side
+    assert set(UNIT_TYPES) == set(ARMIES)
+    for army, types in UNIT_TYPES.items():
+        assert set(types) == set(ELEMENTS), army
+        assert army in COUNTRY, army
 
 
 def test_templates_use_known_elements():

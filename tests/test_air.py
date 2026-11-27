@@ -76,14 +76,14 @@ def live_engine():
     state = air_line()
     game = FakeGame()
     engine = Engine(state, game)
-    game.player("Pilot", Vec2(0, -60_000), side="blue", kind=PlayerKind.AIR)
+    game.player("Pilot", Vec2(0, -60_000), coalition="BLUE", kind=PlayerKind.AIR)
     engine.step(60)
     return state, game, engine
 
 
 def test_ato_board_is_published_to_the_game():
     state, game, engine = live_engine()
-    boards = [c for c in game.received if isinstance(c, PublishAto) and c.side == "blue"]
+    boards = [c for c in game.received if isinstance(c, PublishAto) and c.coalition == "BLUE"]
     assert boards and boards[-1].packages
     assert all(fl["seats"] > 0 for p in boards[-1].packages for fl in p["flights"])
 
@@ -120,7 +120,7 @@ def test_player_only_flight_is_not_simulated_and_completes_on_landing():
     f = first_flight(state, "blue")
     pilots = [f"P{i}" for i in range(f.size)]
     for p in pilots:
-        game.player(p, Vec2(0, -60_000), side="blue")
+        game.player(p, Vec2(0, -60_000), coalition="BLUE")
     engine.step(1)
     for p in pilots:
         game.join(p, f.id)

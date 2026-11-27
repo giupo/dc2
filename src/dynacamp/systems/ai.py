@@ -77,7 +77,6 @@ def run(state: CampaignState, _: float) -> None:
 
     # there's no time for AI, bail out
     if state.time < state.timers.get(Timer.AI, 0.0):
-        log.warn("No time for AI, bailing out")
         return
 
     state.timers[Timer.AI] = state.time + AI_INTERVAL_S
@@ -85,16 +84,17 @@ def run(state: CampaignState, _: float) -> None:
         plan(state, faction)
 
 
-def _power(divs: list[Division]) -> float:
+def _power(state: CampaignState, divs: list[Division]) -> float:
     """Sum of the divisions' :meth:`~dynacamp.forces.Division.combat_power`.
 
     Args:
+        state: The campaign (the factions' quality).
         divs: The divisions.
 
     Returns:
         Their total combat power.
     """
-    return sum(d.combat_power() for d in divs)
+    return sum(d.combat_power(state.quality(d.faction)) for d in divs)
 
 
 def _expected_defence(state: CampaignState, fid: str, target: str, divs: list[Division]) -> float:
@@ -114,7 +114,7 @@ def _expected_defence(state: CampaignState, fid: str, target: str, divs: list[Di
     Returns:
         The expected defending combat power (0 = known to be empty).
     """
-    known = _defence_power(intel.known_divisions_in(state, fid, target))
+    known = _defence_power(state, intel.known_divisions_in(state, fid, target))
 
     if known > 0:
         return known
@@ -124,47 +124,50 @@ def _expected_defence(state: CampaignState, fid: str, target: str, divs: list[Di
     if any(pos.distance_to(centre) <= min(rng, WATCH_M) for pos, rng, _ in intel.ground_observers(state, fid)):
         return 0.0
 
-    powers = sorted(_defence_power([d]) for d in divs if d.strength >= GARRISON_MIN_STRENGTH)
+    powers = sorted(_defence_power(state, [d]) for d in divs if d.strength >= GARRISON_MIN_STRENGTH)
     return powers[len(powers) // 2] if powers else 0.0
 
 
-def _readiness(d: Division) -> float:
-    """Organisation scaling of a brigade's power, as in :meth:`Division.combat_power`.
+def _readiness(state: CampaignState, d: Division) -> float:
+    """Organisation and quality scaling of a brigade's power, as in :meth:`Division.combat_power`.
 
     Args:
+        state: The campaign (the factions' quality).
         d: The division.
 
     Returns:
-        The multiplier, 0.4 (no organisation) to 1.0.
+        The multiplier: 0.4 (no organisation) to 1.0, times the faction's quality.
     """
-    return 0.4 + 0.6 * d.org
+    return (0.4 + 0.6 * d.org) * state.quality(d.faction)
 
 
-def _attack_power(divs: list[Division]) -> float:
+def _attack_power(state: CampaignState, divs: list[Division]) -> float:
     """What the brigades are worth in an assault: firepower plus the attacks
     they can absorb while attacking (``breakthrough``), as the combat system
     counts them. Infantry is worth much less here than in defence.
 
     Args:
+        state: The campaign (the factions' quality).
         divs: The attackers.
 
     Returns:
         Their total assault power.
     """
-    return sum((d.firepower(0.3) + d.breakthrough()) * _readiness(d) for d in divs)
+    return sum((d.firepower(0.3) + d.breakthrough()) * _readiness(state, d) for d in divs)
 
 
-def _defence_power(divs: list[Division]) -> float:
+def _defence_power(state: CampaignState, divs: list[Division]) -> float:
     """What the brigades are worth holding a province: firepower plus the
     attacks they absorb dug in (``defense`` times the entrenchment bonus).
 
     Args:
+        state: The campaign (the factions' quality).
         divs: The defenders.
 
     Returns:
         Their total defensive power.
     """
-    return sum((d.firepower(0.3) + d.defense() * ENTRENCHMENT) * _readiness(d) for d in divs)
+    return sum((d.firepower(0.3) + d.defense() * ENTRENCHMENT) * _readiness(state, d) for d in divs)
 
 
 def _ready(d: Division) -> bool:
@@ -479,7 +482,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
                 Its assault power.
             """
             river = t.link(d.location, target).river
-            return _attack_power([d]) * (RIVER_PENALTY if river else 1.0)
+            return _attack_power(state, [d]) * (RIVER_PENALTY if river else 1.0)
 
         candidates.sort(key=lambda d: (-assault(d), d.id))
         if enemy == 0:
@@ -495,12 +498,12 @@ def plan(state: CampaignState, faction: Faction) -> None:
 
     # ---- 3. reserves to the front
     threat = {
-        f: _power([e for n in t.neighbors(f) for e in intel.known_divisions_in(state, fid, n)]) for f in fronts
+        f: _power(state, [e for n in t.neighbors(f) for e in intel.known_divisions_in(state, fid, n)]) for f in fronts
     }
-    assigned = {f: _power([d for d in divs if d.location == f and not d.movement]) for f in fronts}
+    assigned = {f: _power(state, [d for d in divs if d.location == f and not d.movement]) for f in fronts}
     for d in divs:
         if d.order.kind is OrderKind.MOVE and d.order.target in assigned:
-            assigned[d.order.target] += d.combat_power()
+            assigned[d.order.target] += d.combat_power(state.quality(d.faction))
 
     reserves = [
         d
@@ -527,7 +530,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
         if best is None:
             continue
         if state.set_order(d, Order(OrderKind.MOVE, best[1])):
-            assigned[best[1]] += d.combat_power()
+            assigned[best[1]] += d.combat_power(state.quality(d.faction))
             state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order=AiOrder.MOVE, target=best[1])
 
 
@@ -551,7 +554,7 @@ def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts:
         hostile = [n for n in t.neighbors(d.location) if state.hostile_province(fid, n)]
         if not hostile:
             continue
-        threat = max(hostile, key=lambda n: (_power(intel.known_divisions_in(state, fid, n)), -t.link(d.location, n).length, n))
+        threat = max(hostile, key=lambda n: (_power(state, intel.known_divisions_in(state, fid, n)), -t.link(d.location, n).length, n))
         if d.deployed_toward != threat:
             d.deployed_toward = threat
             d.deploy_m = contact.deploy_progress(state, d.location, threat)

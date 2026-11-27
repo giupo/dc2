@@ -23,22 +23,25 @@ import re
 import warnings
 from pathlib import Path
 
-from ...adapters.base import Side
 from ...air import Task
 from ...projection import TheaterMap
 from ...state import CampaignState
 from . import LUA_BRIDGE, catalog
+from .protocol import template_name
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", SyntaxWarning)  # pydcs' generated weapon tables
     import dcs
-    from dcs import action, triggers
+    from dcs import action, countries, triggers
+    from dcs.country import Country
     from dcs.mapping import Point
     from dcs.mission import Mission, StartType
     from dcs.terrain import Caucasus, Syria
 
 logging.getLogger("dcs").setLevel(logging.ERROR)  # "no DCS installation found" noise
 
+#: Prefix of the province reference zones of the missions (``DC <province id>``).
+ZONE_PREFIX = "DC"
 #: pydcs terrain class of each supported theatre.
 THEATERS = {TheaterMap.CAUCASUS: Caucasus, TheaterMap.SYRIA: Syria}
 
@@ -91,8 +94,6 @@ MAIN_TASK = {
     Task.TANKER: dcs.task.Refueling,
     Task.TRANSPORT: dcs.task.Transport,
 }
-#: DCS country of each side in the generated missions.
-COUNTRY_NAME = {Side.BLUE: "USA", Side.RED: "Russia"}
 #: Stores never picked for a loadout (training rounds, smoke...), from ``recipes.toml``.
 _EXCLUDE = re.compile(_RECIPES["exclude"], re.IGNORECASE)
 
@@ -278,6 +279,39 @@ def generate_loadouts(path: Path | None = None) -> Path:
     return path
 
 
+def _country(m: Mission, army: str, coalition: str) -> Country:
+    """The pydcs country of an army, moved into its faction's coalition.
+
+    pydcs puts its default countries in fixed coalitions; the scenario decides
+    instead, so the country leaves any other coalition it is in.
+
+    Args:
+        m: The mission.
+        army: Catalogue army (its ``country`` is the DCS ``country.id`` key).
+        coalition: The faction's DCS coalition (``coalition.side`` key).
+
+    Returns:
+        The country, in the mission's coalition.
+
+    Raises:
+        ValueError: If pydcs has no such country or coalition.
+    """
+    key = catalog.COUNTRY[army]
+    cls = next((c for c in countries.country_dict.values() if c.name.upper().replace(" ", "_") == key), None)
+    if cls is None:
+        raise ValueError(f"army {army}: DCS country {key!r} unknown to pydcs")
+
+    home = m.coalition.get(coalition.lower())  # pydcs keys its coalitions in lower case
+    if home is None:
+        raise ValueError(f"coalition {coalition!r} unknown to pydcs (known: {', '.join(k.upper() for k in m.coalition)})")
+
+    for other in m.coalition.values():
+        if other is not home:
+            other.countries.pop(cls.name, None)
+
+    return home.countries.get(cls.name) or home.add_country(cls())
+
+
 def _unit_type(dcs_id: str):
     """pydcs aircraft or helicopter type by DCS type name.
 
@@ -317,10 +351,7 @@ def build_mission(
     start = dt.datetime.combine(date, dt.time()) + dt.timedelta(seconds=state.time)
     m.start_time = start
 
-    countries = {side: m.country(name) for side, name in COUNTRY_NAME.items()}
-    for side, name in COUNTRY_NAME.items():
-        if countries[side].name.upper() != catalog.COUNTRY[side]:
-            notes.append(f"country mismatch for {side}: {countries[side].name} vs catalog {catalog.COUNTRY[side]}")
+    nations = {f.id: _country(m, f.army, f.coalition) for f in state.factions.values()}
 
     def point(v) -> Point:
         """Campaign point -> pydcs point.
@@ -333,19 +364,17 @@ def build_mission(
         """
         return Point(v.y, v.x, terrain)  # campaign (east, north) -> DCS (x north, y east)
 
-    # -------------------------------------------------- bullseyes (one per coalition: the side's)
+    # -------------------------------------------------- bullseyes (one per coalition)
     for f in state.factions.values():
-        if f.side in m.coalition:
-            m.coalition[f.side].bullseye = {"x": f.bullseye.y, "y": f.bullseye.x}  # DCS x north, y east
+        m.coalition[f.coalition.lower()].bullseye = {"x": f.bullseye.y, "y": f.bullseye.x}  # DCS x north, y east
 
     # -------------------------------------------------- province reference zones
     for p in state.theater.provinces.values():
-        m.triggers.add_triggerzone(point(p.center), radius=3000, hidden=False, name=f"DC {p.id}")
+        m.triggers.add_triggerzone(point(p.center), radius=3000, hidden=False, name=f"{ZONE_PREFIX} {p.id}")
 
     # -------------------------------------------------- templates
     done: set[str] = set()
     for sq in state.squadrons.values():
-        side = state.factions[sq.faction].side
         ac = sq.aircraft_type
         unit_type = _unit_type(catalog.AIRCRAFT_TYPES[ac.id])
         if unit_type is None:
@@ -354,13 +383,13 @@ def build_mission(
         base = state.airbases[sq.airbase]
         tasks = sorted(sq.tasks, key=lambda t: t.value)
         for task in [None, *tasks]:
-            name = f"DC_TPL_{ac.id}" + (f"_{task.value}" if task else "")
+            name = template_name(ac.id, task)
             if name in done:
                 continue
             done.add(name)
             main = MAIN_TASK[task or tasks[0]]
             fg = m.flight_group_inflight(
-                countries[side], name, unit_type, point(base.position), altitude=int(ac.cruise_alt_m),
+                nations[sq.faction], name, unit_type, point(base.position), altitude=int(ac.cruise_alt_m),
                 maintask=main, group_size=4,
             )
             fg.late_activation = True
@@ -371,7 +400,6 @@ def build_mission(
 
     # -------------------------------------------------- client slots
     for sq in state.squadrons.values():
-        side = state.factions[sq.faction].side
         unit_type = _unit_type(catalog.AIRCRAFT_TYPES[sq.aircraft_type.id])
         if unit_type is None or not unit_type.flyable or clients_per_squadron <= 0:
             continue
@@ -385,7 +413,7 @@ def build_mission(
         while size > 0:
             try:
                 fg = m.flight_group_from_airport(
-                    countries[side], f"{sq.callsign} Clients", unit_type, airport,
+                    nations[sq.faction], f"{sq.callsign} Clients", unit_type, airport,
                     maintask=main, start_type=StartType.Cold, group_size=size,
                 )
                 break
@@ -415,11 +443,11 @@ def build_mission(
         "Requires a desanitised MissionScripting.lua (LuaSocket).\n\n"
         "Pick a slot, then F10 > Other > DynaCamp ATO to join a flight."
     )
-    for side, setter in ((Side.BLUE, m.set_description_bluetask_text), (Side.RED, m.set_description_redtask_text)):
-        f = state.faction_for_side(side)
+    for key in m.coalition:
+        f = state.faction_for_coalition(key.upper())
         if f is not None:
             objectives = ", ".join(state.theater.provinces[o.province].name for o in f.objectives)
-            setter(f"{f.name}. Objectives: {objectives or 'hold the line'}.")
+            getattr(m, f"set_description_{key}task_text")(f"{f.name}. Objectives: {objectives or 'hold the line'}.")
     return m, notes
 
 

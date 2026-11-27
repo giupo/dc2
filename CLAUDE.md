@@ -85,7 +85,11 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Bridge Lua:** se cambia, **rigenerare i `.miz`**. Lo controlla
   `test_shipped_missions_embed_the_current_bridge`. Il Lua deve girare con
   lua5.1, come DCS. I commenti lunghi si scrivono con `--[==[ ... ]==]`.
-  Resta un esecutore passivo: il Python costruisce i gruppi completi.
+  Resta un esecutore passivo: il Python costruisce i gruppi completi. Comandi,
+  messaggi ed eventi del giocatore stanno sia nel Lua sia in
+  `protocol.Cmd`/`Msg`/`base.PlayerEventKind`: se se ne aggiunge uno, va
+  aggiunto in entrambi (`test_bridge_and_engine_speak_the_same_protocol`). I
+  nomi dei template solo da `protocol.template_name`.
 - **Nomi e numeri di DCS:** mai nel codice, perché Eagle Dynamics li cambia.
   - *Nomi* (tipi di aerei e unità, armi, moduli giocabili, call sign) solo
     nei dati: le tabelle `[<id>.dcs]` del catalogo, `data/catalog/callsigns.toml`,
@@ -122,7 +126,7 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   - `forces.EntityKind`, `air.TargetKind`, `air.FlightReason`,
     `state.BattleKind`, `state.IdPrefix` (per `new_id`), `state.Timer`
     (`state.timers`: `Timer.X` o `Timer.X.key(*id)`; i cooldown in
-    `COOLDOWNS` si cancellano scaduti), `adapters.base.Side`,
+    `COOLDOWNS` si cancellano scaduti),
     `projection.TheaterMap`, `units.UnitDomain`;
   - vocabolari dei payload in `events.py` (`LossReason`, `StrikeResult`,
     `OrderEnd`, `PlayerExit`, `Simulator`); `systems/ai.AiOrder`,
@@ -181,6 +185,11 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Test in parallelo** (`pytest-xdist`, `-n auto` di default): ogni test
   deve essere indipendente. Niente porte fisse (porta 0), file solo in
   `tmp_path`, niente stato globale lasciato sporco.
+- **Niente stato mutabile a livello di modulo**, cache comprese: una cache
+  vive in chi la crea e si passa esplicitamente (per esempio
+  `intel.Positions`, una per giro di scansione). Una cache di modulo dava
+  posizioni vecchie all'IA e all'API, e mescolava due campagne nello stesso
+  processo.
 - **Insegne degli squadroni:** in `web/public/insignia/`, solo con licenza
   libera (pubblico dominio, CC0), e ogni file ha la sua riga in `CREDITS.md`,
   controllato da un test. Lo scenario le collega con `insignia = "<file>"` in
@@ -188,6 +197,32 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   sono: 31 e 47 Sqn RAF, EC 1/2, EC 1/12, 111 Filo, 338 Mira, NATO E-3A, VMA-223
   e 31° reggimento russo (questi ultimi due bloccati dal limite di Commons:
   da riprovare).
+- **Fazioni:** nel codice non esistono "red"/"blue" (niente enum `Side`).
+  Ogni `[[factions]]` dello scenario ha `coalition` (chiave DCS di
+  `coalition.side`, per esempio `"BLUE"`: stringa opaca per il core, le
+  fazioni della stessa coalizione condividono intelligence, bullseye e menu
+  ATO), `army` (voce di `data/catalog/factions.toml`, `state.ARMIES`) e
+  `color` (`#rrggbb`, l'unica fonte dei colori della UI). Tutti obbligatori.
+  Paese DCS, tipi DCS delle unità di terra e `western_callsigns` stanno in
+  `[<army>.dcs]`. Il `.miz` sposta il paese nella coalizione dello scenario;
+  il bridge riporta i giocatori di ogni coalizione per nome. Il salvataggio è
+  passato a `FORMAT_VERSION = 2` (quelli vecchi non si caricano).
+- **Qualità:** `quality` dell'esercito (`factions.toml`, default 1,0;
+  `us` 1,2, `russia` 1,0, `israel` 1,5, `syria` 0,75), che lo scenario può
+  sovrascrivere per fazione. Requisito dell'utente: la qualità bilancia la
+  quantità. `tests/test_air_quality.py` lo misura in un'arena CAP contro CAP
+  (1 F-4E israeliano ≈ 2 MiG-21 siriani; 1 F-15C US ≈ 1,5 Su-27) e si lancia
+  anche a mano: `uv run python -m tests.test_air_quality f16c mig29s 2 3 1.2 1.0`.
+  I tipi orientali hanno `a2a`/`a2g` un gradino sotto i coetanei occidentali.
+  Si legge solo con `state.quality(fid)` e moltiplica la `readiness` delle
+  battaglie, l'artiglieria, gli attacchi al suolo, il duello aereo
+  (`air._quality`), il Pk dei SAM e il SEAD; l'IA ne tiene conto nelle stime
+  (`ai._readiness`, `Division.combat_power(quality)`). La qualità del *tipo*
+  d'aereo resta in `a2a`/`a2g`.
+- **SEAD:** solo con missili antiradar nel carico (`StoreKind.ARM`, gittata da
+  `[arm_range_m]` di `weapons.toml`: AGM-88 60 km, Shrike 18 km). `Flight.arm`
+  e `arm_range_m` (da `air.ready`); un missile per aereo a salva. Un colpo su
+  un sito senza radar separato (SA-8, SA-15) toglie un lanciatore.
 - **Bullseye:** `Faction.bullseye` (Vec2, obbligatorio) è fisso per tutta la
   campagna. Per le chiamate si usa solo `dynacamp.bullseye.label` /
   `bearing_range` (magnetiche, grande cerchio); la UI ha `bullsLabel`, che
@@ -223,13 +258,13 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
 - **Python 3.14:** il motore gira in un solo thread con `Engine.lock` (RLock);
   l'API legge sotto lock.
 
-## Stato attuale (2026-11-25)
+## Stato attuale (2026-11-27)
 
 Tutto funziona in simulazione, ma **non è ancora stato provato in un DCS
 vero**. Funzionalità implementate:
 
-- **Scenari:** Georgia occidentale e Siria (corridoio M5), con strade reali
-  (OSRM) e missioni `.miz` pronte.
+- **Scenari:** Georgia occidentale, Siria (corridoio M5) e Golan 1973, con
+  strade reali (OSRM) e missioni `.miz` pronte.
 - **Forze di terra:**
   - movimento su strada, battaglie a contatto, artiglieria;
   - logistica con convogli, ricomplementi e ricostituzione;
@@ -254,6 +289,10 @@ vero**. Funzionalità implementate:
   - supporto: AWACS, tanker, trasporti con ponte aereo e rifornimento in
     elicottero;
   - giocatori nei voli dal menu F10;
+  - SITREP all'ingresso in uno slot (`systems/sitrep.py`, in inglese, solo
+    testo, senza voci F10 né segni sulla mappa; i package elencati sono dell'IA,
+    senza posti offerti: il "booking" dell'ATO è da decidere). Il punteggio
+    "chi vince" è uno solo, `dynacamp/standing.py`, usato anche dalla UI;
   - numeri di package a 4 cifre stile BMS;
   - squadroni blu con nomi e call sign reali (USAF/USN/USMC/Army, RAF, NATO),
     dove possibile presi dagli enum di DCS (Lobo, Tusk, Devil...). Il call
@@ -261,7 +300,7 @@ vero**. Funzionalità implementate:
     un sostituto generico, mostrato nel briefing come "radio callsign".
 - **Mission package:** briefing, waypoint, minacce note, armamento,
   frequenze e supporti. È stampabile in A4 dalla UI.
-- **Difesa aerea:** 12 sistemi, rete IADS, SAM mobili su strada, SEAD.
+- **Difesa aerea:** 15 sistemi (con SA-2, SA-3 e P-19 per gli anni 70), rete IADS, SAM mobili su strada, SEAD.
 - **Nebbia di guerra:** quadro informativo per fazione, con sensori aerei,
   terrestri, ELINT e lanci SAM.
 - **Tempo reale:**
@@ -305,7 +344,15 @@ vero**. Funzionalità implementate:
    - slot e storico (oggi c'è un solo file), più il caricamento dalla UI;
    - formato robusto ai refactoring: il pickle si rompe se cambiano molto le
      classi di stato. Se serve, bumpare `persistence.FORMAT_VERSION`.
-3. **Equilibrio:** in alcuni seed una parte conquista tutto in 4–7 giorni, per
+3. **Equilibrio** (2026-11-27, dopo qualità, SEAD a carico e tipi orientali
+   ritoccati):
+   - Golan 1973 (12 seed × 6 giorni): Israele crolla per accerchiamento in 4
+     seed, negli altri tiene o contrattacca;
+   - M5 (8 × 5): equilibrato, il blu leggermente avanti;
+   - Georgia (8 × 5): con `us` a 1,2 il blu contrattacca e vince tutto in 6
+     seed su 8 (prima era uno stallo). Da decidere: qualità separata aria/terra
+     o un override nello scenario.
+   Poi, in generale: in alcuni seed una parte conquista tutto in 4–7 giorni, per
    una spirale (perde i depositi, quindi non ha più ricomplementi). Non dipende
    dalla nebbia. Idee: rinforzi da fuori mappa, difesa più forte nelle ultime
    province, fasi e condizioni di vittoria.
@@ -337,7 +384,10 @@ vero**. Funzionalità implementate:
    - i contatti scoperti in gioco non tornano al quadro informativo;
    - IADS coordinato (Skynet);
    - strutture statiche bersagliabili.
-7. **Web:** fatti gli ordini all'ATO dal browser. Mancano
+7. **Web:** fatti gli ordini all'ATO dal browser. La top bar è una riga sola
+   (orologio, tempo, *View as*, barra di chi vince con tooltip); *View as* è
+   l'unico punto che sceglie la fazione (ATO e Squadrons la seguono); livelli,
+   nebbia e unità stanno nel menu "☰ Layers". Da verificare su telefono. Mancano
    - posti nei voli dal browser (oggi solo dal menu F10);
    - ordini alle forze di terra;
    - token per fazione: oggi chi ha il token ordina per qualunque fazione

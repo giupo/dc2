@@ -245,7 +245,7 @@ def _fight(state: CampaignState, battle: Battle, hours: float) -> None:
     terrain = TERRAIN[t.provinces[battle.province].terrain]
 
     def readiness(d: Division) -> float:
-        """Firepower multiplier from organisation and supply.
+        """Firepower multiplier from organisation, supply and the army's quality.
 
         Args:
             d: The division.
@@ -253,7 +253,7 @@ def _fight(state: CampaignState, battle: Battle, hours: float) -> None:
         Returns:
             The multiplier.
         """
-        return (0.5 + 0.5 * d.org) * (0.6 if d.supply <= 0 else 1.0)
+        return (0.5 + 0.5 * d.org) * (0.6 if d.supply <= 0 else 1.0) * state.quality(d.faction)
 
     def side_hardness(ds: list[Division]) -> float:
         """Average hardness of a side, weighted by size.
