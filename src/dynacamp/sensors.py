@@ -109,8 +109,10 @@ def in_cone(origin: Vec2, heading: float, half_angle: float, reach: float, point
     d = origin.distance_to(point)
     if d > reach:
         return False
+
     if d < 1.0:
         return True
+
     off = (origin.heading_to(point) - heading + math.pi) % (2 * math.pi) - math.pi
     return abs(off) <= half_angle
 
@@ -149,8 +151,10 @@ def jam(state: CampaignState, f: Flight) -> float:
 
     if escort_jammer(state, f) is not None:
         return ESCORT_JAM
+
     if loadouts.has_ecm_pod(f.aircraft_type.id, f.task.value):
         return SELF_JAM
+
     return 1.0
 
 
@@ -167,6 +171,7 @@ def reach(range_m: float, jamming: float = 1.0) -> float:
     """
     if jamming >= 1.0:
         return range_m
+
     return max(range_m * jamming, min(range_m, BURN_THROUGH_M))
 
 
@@ -183,8 +188,10 @@ def jam_pk(jamming: float, target: Flight) -> float:
     """
     if jamming <= ESCORT_JAM:
         return ESCORT_JAM_PK
+
     if jamming < 1.0 and target.task is not Task.SEAD:
         return SELF_JAM_PK
+
     return 1.0
 
 

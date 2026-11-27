@@ -24,6 +24,7 @@ from ..forces import Authority, Division, Order, OrderKind
 from ..state import CampaignState, Faction
 from ..world import TERRAIN
 from . import intel
+from .combat import ENTRENCHMENT, RIVER_PENALTY
 from ..events import EventKind
 
 #: Seconds between two planning rounds of the theatre AI.
@@ -45,6 +46,9 @@ EXPOSURE_DECAY = {0: 1.5, 1: 1.0, 2: 0.6, 3: 0.3}
 MIN_SECURITY_GAIN = 1.0
 #: Brigades weaker than this neither hold a province nor threaten one.
 GARRISON_MIN_STRENGTH = 0.3
+#: An enemy province is known to be empty only if a friendly observer is this
+#: close to its centre (defenders deploy near it) and reports nothing.
+WATCH_M = 12_000.0
 
 
 def run(state: CampaignState, dt: float) -> None:
@@ -71,6 +75,72 @@ def _power(divs: list[Division]) -> float:
         Their total combat power.
     """
     return sum(d.combat_power() for d in divs)
+
+
+def _expected_defence(state: CampaignState, fid: str, target: str, divs: list[Division]) -> float:
+    """Defensive power the faction should expect to meet in ``target``.
+
+    The brigades the intelligence picture shows there; if it shows none, the
+    province is empty only when a friendly observer watches its centre.
+    Otherwise nobody has looked: the planners assume a typical garrison (the
+    median power of their own brigades), not an open door.
+
+    Args:
+        state: The campaign.
+        fid: Faction id.
+        target: Enemy province.
+        divs: The faction's own divisions (for the typical garrison).
+
+    Returns:
+        The expected defending combat power (0 = known to be empty).
+    """
+    known = _defence_power(intel.known_divisions_in(state, fid, target))
+    if known > 0:
+        return known
+    centre = state.theater.provinces[target].center
+    if any(pos.distance_to(centre) <= min(rng, WATCH_M) for pos, rng, _ in intel.ground_observers(state, fid)):
+        return 0.0
+    powers = sorted(_defence_power([d]) for d in divs if d.strength >= GARRISON_MIN_STRENGTH)
+    return powers[len(powers) // 2] if powers else 0.0
+
+
+def _readiness(d: Division) -> float:
+    """Organisation scaling of a brigade's power, as in :meth:`Division.combat_power`.
+
+    Args:
+        d: The division.
+
+    Returns:
+        The multiplier, 0.4 (no organisation) to 1.0.
+    """
+    return 0.4 + 0.6 * d.org
+
+
+def _attack_power(divs: list[Division]) -> float:
+    """What the brigades are worth in an assault: firepower plus the attacks
+    they can absorb while attacking (``breakthrough``), as the combat system
+    counts them. Infantry is worth much less here than in defence.
+
+    Args:
+        divs: The attackers.
+
+    Returns:
+        Their total assault power.
+    """
+    return sum((d.firepower(0.3) + d.breakthrough()) * _readiness(d) for d in divs)
+
+
+def _defence_power(divs: list[Division]) -> float:
+    """What the brigades are worth holding a province: firepower plus the
+    attacks they absorb dug in (``defense`` times the entrenchment bonus).
+
+    Args:
+        divs: The defenders.
+
+    Returns:
+        Their total defensive power.
+    """
+    return sum((d.firepower(0.3) + d.defense() * ENTRENCHMENT) * _readiness(d) for d in divs)
 
 
 def _ready(d: Division) -> bool:
@@ -361,7 +431,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
     committed: set[str] = set()
     contested = state.road_penalty(fid)  # roads where we just ran into the enemy
     for target in scored:
-        enemy = _power(intel.known_divisions_in(state, fid, target))
+        enemy = _expected_defence(state, fid, target, divs)
         candidates = [
             d
             for d in divs
@@ -375,10 +445,22 @@ def plan(state: CampaignState, faction: Faction) -> None:
         candidates = [d for d in candidates if _may_leave(state, d, target, committed)]
         if not candidates:
             continue
-        candidates.sort(key=lambda d: -d.combat_power())
+        def assault(d: Division) -> float:
+            """One candidate's assault power on ``target``, across a river if its road crosses one.
+
+            Args:
+                d: The candidate attacker.
+
+            Returns:
+                Its assault power.
+            """
+            river = t.link(d.location, target).river
+            return _attack_power([d]) * (RIVER_PENALTY if river else 1.0)
+
+        candidates.sort(key=lambda d: (-assault(d), d.id))
         if enemy == 0:
             group = candidates[:1]
-        elif _power(candidates) >= ATTACK_RATIO * enemy / TERRAIN[t.provinces[target].terrain].attack_factor:
+        elif sum(assault(d) for d in candidates) >= ATTACK_RATIO * enemy / TERRAIN[t.provinces[target].terrain].attack_factor:
             group = candidates
         else:
             continue

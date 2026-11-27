@@ -177,7 +177,11 @@ class Engine:
                 self._handle(report)
 
             for pid in self.bubbles.prune(self.wall_clock()):
-                self.state.emit(EventKind.PLAYER_LEFT, player=pid, reason="timeout")
+                self.state.emit(
+                    EventKind.PLAYER_LEFT,
+                    player=pid,
+                    reason="timeout"
+                )
 
             self._handoffs()
 
