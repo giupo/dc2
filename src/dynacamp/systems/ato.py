@@ -33,7 +33,10 @@ from ..events import EventKind, LossReason
 # -- Planning cycle --------------------------------------------------------
 
 #: Label of the station of each support task, for the planner and the briefing.
-SUPPORT_STATION = {Task.AWACS: "AWACS orbit", Task.TANKER: "Tanker track"}
+SUPPORT_STATION = {
+    Task.AWACS: "AWACS orbit",
+    Task.TANKER: "Tanker track"
+}
 
 #: Seconds between two ATO planning cycles of a faction.
 ATO_INTERVAL_S = 3600.0
@@ -142,6 +145,7 @@ def run(state: CampaignState, dt: float) -> None:
     """
     if state.time < state.timers.get(Timer.ATO, 0.0):
         return
+
     state.timers[Timer.ATO] = state.time + ATO_INTERVAL_S
     for faction in state.factions.values():
         if any(s.faction == faction.id for s in state.squadrons.values()):

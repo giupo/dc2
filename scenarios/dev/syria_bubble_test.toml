@@ -1,0 +1,371 @@
+# Test scenario on the DCS Syria map: one enemy brigade, nothing else.
+#
+# Purpose: try the player bubble in DCS with any module. Blue has a slot
+# squadron for every flyable type of the catalogue, with no aircraft
+# (count = 0): the ATO plans nothing, the sky stays empty. Red has one armoured
+# brigade (no air defence) south of Khan Shaykhun, ~68 km from Abu al-Duhur,
+# 73 km from Bassel Al-Assad and farther from the other bases: outside the
+# 60 km air bubble on the ramp, so it materialises in DCS a few minutes after
+# take-off (30 km for helicopters). No province has links: the brigade cannot
+# move away. Kept out of scenarios/*.toml: the tests of the shipped campaigns
+# (roads, AI air order of battle) do not apply to it.
+#
+#   uv run --extra miz dynacamp build-miz --out-dir missions/dev scenarios/dev/syria_bubble_test.toml
+#   uv run dynacamp serve scenarios/dev/syria_bubble_test.toml --compression 1
+
+[campaign]
+name = "Syria - Bubble test"
+theater = "syria"
+date = 2024-06-01
+units = "imperial"
+
+[[factions]]
+id = "blue"
+name = "Test Flight"
+coalition = "BLUE"
+army = "us"
+color = "#4c8dff"
+enemies = ["red"]
+objectives = []
+bullseye = { ll = [35.706252, 36.602944] }
+
+[[factions]]
+id = "red"
+name = "Target Brigade"
+coalition = "RED"
+army = "russia"
+color = "#ff5a5a"
+enemies = ["blue"]
+objectives = []
+bullseye = { ll = [35.200000, 36.720000] }
+
+# ------------------------------------------------------------------ provinces
+
+[[provinces]]
+id = "idlib"
+name = "Idlib"
+ll = [35.929998, 36.630003]
+terrain = "plains"
+controller = "blue"
+
+[[provinces]]
+id = "aleppo"
+name = "Aleppo"
+ll = [36.200001, 37.159997]
+terrain = "urban"
+controller = "blue"
+
+[[provinces]]
+id = "suran"
+name = "Suran"
+ll = [35.200000, 36.720000]
+terrain = "plains"
+controller = "red"
+depot = { stock = 8000, capacity = 8000, production_per_hour = 100, trucks = 50 }
+
+[[provinces]]
+id = "latakia"
+name = "Latakia"
+ll = [35.519999, 35.789995]
+terrain = "urban"
+controller = "blue"
+
+# ------------------------------------------------------------------ airbases
+
+[[airbases]]
+id = "bassel"
+name = "Bassel Al-Assad"
+ll = [35.403852, 35.950237]
+province = "latakia"
+
+[[airbases]]
+id = "taftanaz"
+name = "Taftanaz"
+ll = [35.974105, 36.781442]
+province = "idlib"
+
+[[airbases]]
+id = "abu_al_duhur"
+name = "Abu al-Duhur"
+ll = [35.732306, 37.104128]
+province = "idlib"
+
+[[airbases]]
+id = "aleppo"
+name = "Aleppo"
+ll = [36.180618, 37.224367]
+province = "aleppo"
+
+[[airbases]]
+id = "kuweires"
+name = "Kuweires"
+ll = [36.187494, 37.581495]
+province = "aleppo"
+
+# ------------------------------------------------------------------ the target
+
+# An armoured brigade without its AAA, so it can be looked at up close.
+[[templates]]
+id = "test_armoured"
+name = "Armoured brigade (no air defence)"
+elements = { infantry = 40, ifv = 40, mbt = 90, artillery = 18, truck = 60 }
+speed_kmh = 35
+supply_capacity = 72
+supply_use_per_hour = 1.3
+
+[[divisions]]
+id = "r1"
+name = "1st Guards Tank Bde"
+faction = "red"
+template = "test_armoured"
+province = "suran"
+
+# ------------------------------------------------------------------ player slots (no AI aircraft)
+
+# taftanaz
+
+[[squadrons]]
+id = "slot_ah64d"
+name = "ah64d slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "ah64d"
+count = 0
+
+[[squadrons]]
+id = "slot_mi24p"
+name = "mi24p slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "mi24p"
+count = 0
+
+[[squadrons]]
+id = "slot_oh58d"
+name = "oh58d slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "oh58d"
+count = 0
+
+[[squadrons]]
+id = "slot_sa342"
+name = "sa342 slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "sa342"
+count = 0
+
+[[squadrons]]
+id = "slot_ka50"
+name = "ka50 slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "ka50"
+count = 0
+
+[[squadrons]]
+id = "slot_mi8mt"
+name = "mi8mt slots"
+faction = "blue"
+airbase = "taftanaz"
+aircraft = "mi8mt"
+count = 0
+
+[[squadrons]]
+id = "slot_a10c"
+name = "a10c slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "a10c"
+count = 0
+
+[[squadrons]]
+id = "slot_a10a"
+name = "a10a slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "a10a"
+count = 0
+
+[[squadrons]]
+id = "slot_su25"
+name = "su25 slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "su25"
+count = 0
+
+[[squadrons]]
+id = "slot_su25t"
+name = "su25t slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "su25t"
+count = 0
+
+# abu_al_duhur
+
+[[squadrons]]
+id = "slot_f16c"
+name = "f16c slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "f16c"
+count = 0
+
+[[squadrons]]
+id = "slot_fa18c"
+name = "fa18c slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "fa18c"
+count = 0
+
+[[squadrons]]
+id = "slot_f15e"
+name = "f15e slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "f15e"
+count = 0
+
+[[squadrons]]
+id = "slot_av8b"
+name = "av8b slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "av8b"
+count = 0
+
+[[squadrons]]
+id = "slot_ajs37"
+name = "ajs37 slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "ajs37"
+count = 0
+
+[[squadrons]]
+id = "slot_jf17"
+name = "jf17 slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "jf17"
+count = 0
+
+[[squadrons]]
+id = "slot_m2000c"
+name = "m2000c slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "m2000c"
+count = 0
+
+[[squadrons]]
+id = "slot_mirage_f1"
+name = "mirage_f1 slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "mirage_f1"
+count = 0
+
+[[squadrons]]
+id = "slot_f4e"
+name = "f4e slots"
+faction = "blue"
+airbase = "abu_al_duhur"
+aircraft = "f4e"
+count = 0
+
+# aleppo
+
+[[squadrons]]
+id = "slot_f14a"
+name = "f14a slots"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "f14a"
+count = 0
+
+[[squadrons]]
+id = "slot_f14b"
+name = "f14b slots"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "f14b"
+count = 0
+
+[[squadrons]]
+id = "slot_f15c"
+name = "f15c slots"
+faction = "blue"
+airbase = "aleppo"
+aircraft = "f15c"
+count = 0
+
+[[squadrons]]
+id = "slot_f5e"
+name = "f5e slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "f5e"
+count = 0
+
+[[squadrons]]
+id = "slot_mig21bis"
+name = "mig21bis slots"
+faction = "blue"
+airbase = "bassel"
+aircraft = "mig21bis"
+count = 0
+
+# kuweires
+
+[[squadrons]]
+id = "slot_su27"
+name = "su27 slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "su27"
+count = 0
+
+[[squadrons]]
+id = "slot_su33"
+name = "su33 slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "su33"
+count = 0
+
+[[squadrons]]
+id = "slot_j11a"
+name = "j11a slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "j11a"
+count = 0
+
+[[squadrons]]
+id = "slot_mig29a"
+name = "mig29a slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "mig29a"
+count = 0
+
+[[squadrons]]
+id = "slot_mig29s"
+name = "mig29s slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "mig29s"
+count = 0
+
+[[squadrons]]
+id = "slot_mig29g"
+name = "mig29g slots"
+faction = "blue"
+airbase = "kuweires"
+aircraft = "mig29g"
+count = 0
