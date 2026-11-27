@@ -545,3 +545,4 @@ def infra_factor(level: int) -> float:
         0.6 (none) .. 1.1 (excellent).
     """
     return 0.6 + 0.1 * max(0, min(level, 5))  # 0.6 .. 1.1
+      

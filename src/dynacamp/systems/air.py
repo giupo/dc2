@@ -190,8 +190,14 @@ def air_defense(state: CampaignState, fid: str, point: Vec2, radius: float = AD_
     t = state.theater
     total = 0.0
     for d in state.divisions.values():
-        if state.at_war(fid, d.faction) and d.position(t).distance_to(point) <= radius:
-            total += d.elements.get(SAM_SHORT, 0.0) + 0.5 * d.elements.get(AAA, 0.0)
+        if not state.at_war(fid, d.faction):
+            continue
+
+        if not d.in_range(point, radius, t):
+            continue
+        
+        total += d.elements.get(SAM_SHORT, 0.0) + 0.5 * d.elements.get(AAA, 0.0)
+            
     return total
 
 
@@ -351,11 +357,13 @@ def go_home(state: CampaignState, f: Flight, reason: FlightReason) -> None:
     """
     if f.status is FlightStatus.RTB:
         return
+    
     f.status = FlightStatus.RTB
     f.wp_index = len(f.waypoints) - 1
     f.engaging = ""
     if f.task.orbits:
         f.station_until = min(f.station_until, state.time)
+
     state.emit(EventKind.FLIGHT_RTB, flight=f.id, callsign=f.callsign, faction=f.faction, reason=reason)
 
 
@@ -379,6 +387,7 @@ def _bingo(state: CampaignState, f: Flight) -> None:
     """
     if f.status is FlightStatus.RTB or math.isinf(f.fuel_m) or not f.waypoints:
         return
+
     if f.fuel_m <= f.pos.distance_to(f.waypoints[-1]) * BINGO_MARGIN + BINGO_RESERVE_M:
         go_home(state, f, FlightReason.BINGO_FUEL)
 
@@ -394,10 +403,12 @@ def disengage(state: CampaignState, f: Flight) -> None:
     f.engaging = ""
     if f.status is FlightStatus.RTB:
         return
+
     if f.task.orbits:
         if state.time < f.station_until:
             f.status = FlightStatus.AIRBORNE
             f.wp_index = f.target_index
+
         else:
             go_home(state, f, FlightReason.END_OF_STATION)
 
@@ -417,14 +428,17 @@ def _chase(state: CampaignState, f: Flight, dt: float) -> bool:
     if tgt is None or tgt.status not in ACTIVE_STATUSES or tgt.ai_count + len(tgt.active_seats) <= 0:
         disengage(state, f)
         return False
+
     if f.status is FlightStatus.ON_STATION:
         f.status = FlightStatus.AIRBORNE  # leaves the orbit
+
     where = tgt.position(state.theater)
     d = f.pos.distance_to(where)
     step = f.speed_ms * dt
     if d > 1.0:
         f.track = f.pos.heading_to(where)
         f.pos = f.pos.lerp(where, min(1.0, step / d))
+
     _burn(f, min(step, d))
     return True
 
@@ -439,40 +453,56 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
     """
     if f.fuel_m < 0 or f.aam_bvr < 0:
         ready(state, f)
+
     if f.target_kind == TargetKind.FLIGHT:  # scrambled interceptors chase their intruder
         from . import scramble
 
         scramble.pursue(state, f)
+
     if f.engaging and f.status is not FlightStatus.RTB and _chase(state, f, dt):
         _bingo(state, f)
         return
+
     if f.status is FlightStatus.ON_STATION:
         if state.time < f.station_until:
             # Fly the orbit around the station point (wider for AWACS and tankers).
             radius = CAP_ORBIT_RADIUS_M if f.task is Task.CAP else SUPPORT_ORBIT_RADIUS_M
             f.orbit_angle = (f.orbit_angle + f.speed_ms * 0.6 * dt / radius) % (2 * math.pi)
             c = f.target_point
-            f.pos = Vec2(c.x + radius * math.sin(f.orbit_angle), c.y + radius * math.cos(f.orbit_angle))
+
+            f.pos = Vec2(
+                c.x + radius * math.sin(f.orbit_angle),
+                c.y + radius * math.cos(f.orbit_angle)
+            )
+
             _burn(f, f.speed_ms * dt * ORBIT_FUEL)
             _bingo(state, f)
             return
+
         f.status = FlightStatus.RTB
         f.wp_index = f.target_index + 1
+
     remaining = f.speed_ms * dt
+
     while remaining > 0 and f.wp_index < len(f.waypoints):
         if f.wp_index == f.target_index:
             tgt = _target_entity(state, f)
+
             if tgt is not None:  # armed reconnaissance: follow the column
                 f.waypoints[f.target_index] = tgt.position(state.theater)
+
         wp = f.waypoints[f.wp_index]
         d = f.pos.distance_to(wp)
+
         if d > 0.5:
             f.track = f.pos.heading_to(wp)
+
         if d > remaining:
             f.pos = f.pos.lerp(wp, remaining / d)
             _burn(f, f.speed_ms * dt)
             _bingo(state, f)
             return
+
         f.pos = wp
         remaining -= d
         reached = f.wp_index
@@ -482,14 +512,19 @@ def _fly(state: CampaignState, f: Flight, dt: float) -> None:
                 f.status = FlightStatus.ON_STATION
                 f.wp_index = reached  # stays on the station point
                 return
+
             if f.task is not Task.ESCORT:
                 attack(state, f)
+
             f.attacked = True
             f.status = FlightStatus.RTB
+
     _burn(f, f.speed_ms * dt - remaining)
+
     if f.wp_index >= len(f.waypoints):
         f.ai_done = True
         state.emit(EventKind.FLIGHT_LANDED, flight=f.id, callsign=f.callsign, aircraft=f.ai_count)
+
     else:
         _bingo(state, f)
 
@@ -506,20 +541,34 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
             if seat.state is SeatState.ASSIGNED:
                 seat.state = SeatState.LEFT
                 state.player_flights.pop(pid, None)
+
             elif seat.state is SeatState.AIRBORNE:
                 seat.state = SeatState.LANDED
                 state.player_flights.pop(pid, None)
+
         if f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED):
             f.ai_done = True
+
     if not f.ai_done or f.active_seats or not f.simulated_by_campaign:
         return
+
     f.status = FlightStatus.DONE
     sq = state.squadrons[f.squadron]
     from .structures import airbase_factor
 
     # damaged hangars, fuel and shelters turn the aircraft around slower
-    sq.release(f.size, state.time + TURNAROUND_S / max(airbase_factor(state, sq.airbase), MIN_TURNAROUND_FACTOR))
-    state.emit(EventKind.FLIGHT_COMPLETE, flight=f.id, callsign=f.callsign, faction=f.faction, survivors=f.size)
+    sq.release(
+        f.size,
+        state.time + TURNAROUND_S / max(airbase_factor(state, sq.airbase), MIN_TURNAROUND_FACTOR)
+    )
+    
+    state.emit(
+        EventKind.FLIGHT_COMPLETE,
+        flight=f.id,
+        callsign=f.callsign,
+        faction=f.faction,
+        survivors=f.size
+    )
 
 
 # ---------------------------------------------------------------- attacks
@@ -540,22 +589,46 @@ def deliver(state: CampaignState, f: Flight) -> None:
     if f.target_kind == TargetKind.AIRLIFT and f.target_id in state.airbases:
         base = state.airbases[f.target_id]
         p = t.provinces.get(base.province) if base.province else None
+
         if p is not None and p.depot is not None and p.controller == f.faction:
             delivered = min(cargo, p.depot.capacity - p.depot.stock)
             p.depot.stock += delivered
+
     elif f.target_kind == TargetKind.RESUPPLY:
-        divs = [d for d in state.divisions.values() if d.faction == f.faction and d.position(t).distance_to(f.target_point) <= 15_000]
-        needs = {d.id: d.template.supply_capacity - d.supply for d in divs}
+        divs = [
+            d for d in state.divisions.values()
+            if d.faction == f.faction and d.position(t).distance_to(f.target_point) <= 15_000
+        ]
+        
+        needs = {
+            d.id: d.template.supply_capacity - d.supply
+            for d in divs
+        }
+
         total = sum(needs.values())
+
         if total > 0:
             share = min(1.0, cargo / total)
             for d in divs:
                 d.supply += needs[d.id] * share
             delivered = min(cargo, total)
-    state.emit(EventKind.AIRLIFT_DELIVERED, flight=f.id, callsign=f.callsign, faction=f.faction, delivery=f.target_kind.value, target=f.target_id, amount=round(delivered, 1))
+            
+    state.emit(
+        EventKind.AIRLIFT_DELIVERED,
+        flight=f.id, callsign=f.callsign,
+        faction=f.faction,
+        delivery=f.target_kind.value,
+        target=f.target_id,
+        amount=round(delivered, 1)
+    )
 
 
-def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = None, reach: float = AWACS_SUPPORT_RANGE_M) -> Flight | None:
+def awacs_on_station(
+    state: CampaignState,
+    faction: str,
+    near: Vec2 | None = None,
+    reach: float = AWACS_SUPPORT_RANGE_M
+) -> Flight | None:
     """An AWACS of ``faction`` holding its orbit (within ``reach`` of ``near`` if given).
 
     Args:
@@ -568,9 +641,10 @@ def awacs_on_station(state: CampaignState, faction: str, near: Vec2 | None = Non
         The AWACS flight, or None.
     """
     for f in state.flights.values():
-        if f.faction == faction and f.task is Task.AWACS and f.status is FlightStatus.ON_STATION and f.ai_count + len(f.active_seats) > 0:
+        if f.same_faction(faction) and f.is_awacs and f.on_station and f.ai_count + len(f.active_seats) > 0:
             if near is None or f.pos.distance_to(near) <= reach:
                 return f
+
     return None
 
 
@@ -585,8 +659,9 @@ def tanker_on_station(state: CampaignState, faction: str) -> Flight | None:
         The tanker flight, or None.
     """
     for f in state.flights.values():
-        if f.faction == faction and f.task is Task.TANKER and f.status is FlightStatus.ON_STATION:
+        if f.same_faction(faction) and f.is_tanker and f.on_station:
             return f
+        
     return None
 
 
@@ -597,11 +672,14 @@ def attack(state: CampaignState, f: Flight) -> None:
         state: The campaign.
         f: The flight at its target.
     """
+    # TODO: review policy of loss
     if f.task is Task.TRANSPORT:
         deliver(state, f)
         return
+
     if f.task.support:
         return
+
     t = state.theater
     point = f.target_point
     pkg = state.packages.get(f.package)
@@ -609,15 +687,20 @@ def attack(state: CampaignState, f: Flight) -> None:
         o.task is Task.SEAD and o.attacked and o.ai_count > 0
         for o in (state.flights[i] for i in pkg.flights if i in state.flights and i != f.id)
     )
+    
     ad = air_defense(state, f.faction, point)
     p_loss = (0.01 + ad * 0.004) * (0.4 if sead_cover else 1.0) * (1.5 if f.aircraft_type.helo else 1.0)
+
     if f.task is Task.SEAD:
         p_loss *= 0.5
+
     p_loss = min(0.5, p_loss)
+
     lost = sum(1 for _ in range(f.ai_count) if state.rng.random() < p_loss)
     lose_aircraft(state, f, lost, LossReason.AIR_DEFENCE)
     eff = f.ai_count * f.aircraft_type.a2g * state.quality(f.faction)
     result: dict[str, object] = {"lost": lost}
+
     if eff <= 0:
         state.emit(EventKind.AIR_STRIKE, flight=f.id, faction=f.faction, task=f.task.value, **result)
         return
@@ -638,16 +721,25 @@ def attack(state: CampaignState, f: Flight) -> None:
 
         site = state.air_defense.get(f.target_id)
         if site is None or site.position(t).distance_to(point) > TARGET_SEARCH_M:
-            near = [u for u in state.air_defense.values() if state.at_war(f.faction, u.faction) and u.position(t).distance_to(point) <= TARGET_SEARCH_M]
+            near = [
+                u for u in state.air_defense.values()
+                if state.at_war(f.faction, u.faction) and u.position(t).distance_to(point) <= TARGET_SEARCH_M
+            ]
+            
             site = min(near, key=lambda u: u.position(t).distance_to(point)) if near else None
+
         if site is not None and site.authority is Authority.CAMPAIGN:
             # SEAD shoots anti-radiation missiles at a live radar; strikers (DEAD)
             # bomb the site, best once the SEAD ahead of them has put it down.
+
             if site.emitting and f.task is Task.SEAD:
                 ada.hit_on_radar(state, site, eff, by=f.callsign)
+
             else:
                 ada.strike_site(state, site, eff, by=f.callsign)
+
             result["sam"] = site.id
+
     elif f.task is Task.SEAD:
         # SEAD escort: anti-radiation missiles at SAM radars covering the package...
         from . import air_defense as ada
@@ -663,7 +755,9 @@ def attack(state: CampaignState, f: Flight) -> None:
                     if k in d.elements:
                         d.elements[k] *= 1.0 - min(0.8, 0.15 * eff)
                 hit += 1
+
         result["suppressed"] = hit
+
     elif f.target_kind == TargetKind.STRUCTURE:
         from . import structures
 
@@ -671,12 +765,14 @@ def attack(state: CampaignState, f: Flight) -> None:
         if s is not None and state.at_war(f.faction, s.owner(state)) and s.position.distance_to(point) <= TARGET_SEARCH_M:
             result["structure"] = s.id
             result["buildings_destroyed"] = structures.strike(state, s, eff, by=f.callsign)
+
     elif f.target_kind == TargetKind.DEPOT:
         p = t.provinces.get(f.target_id)
         if p is not None and p.depot is not None and state.at_war(f.faction, p.controller):
             p.depot.stock = max(0.0, p.depot.stock - 150.0 * eff)
             p.depot.trucks = max(0, p.depot.trucks - int(2 * eff))
             result["depot"] = p.id
+
     elif f.target_kind == TargetKind.CONVOY or (f.target_kind == TargetKind.DIVISION and f.target_id in state.convoys):
         convoy = _nearest_enemy(state, f, state.convoys.values(), f.target_id)
         if convoy is not None and campaign_owned(convoy):
@@ -693,15 +789,20 @@ def attack(state: CampaignState, f: Flight) -> None:
             b = state.battles[f.target_id]
             ids = b.defenders if b.attacker_faction == f.faction else b.attackers
             targets = [state.divisions[i] for i in ids if i in state.divisions]
+
         else:
             tgt = _nearest_enemy(state, f, state.divisions.values(), f.target_id)
             targets = [tgt] if tgt else []
+
         targets = [d for d in targets if campaign_owned(d)]
+
         for d in targets:
             share = eff / len(targets)
             d.take_losses(GROUND_STRENGTH_PER_EFF * share)
             d.org = max(0.0, d.org - GROUND_ORG_PER_EFF * share)
+
         result["divisions"] = [d.id for d in targets]
+
     state.emit(EventKind.AIR_STRIKE, flight=f.id, faction=f.faction, task=f.task.value, **result)
 
 
@@ -722,7 +823,11 @@ def _nearest_enemy(state: CampaignState, f: Flight, pool, preferred: str):
     for e in candidates:
         if e.id == preferred and e.position(t).distance_to(f.target_point) <= TARGET_SEARCH_M:
             return e
-    near = [e for e in candidates if e.position(t).distance_to(f.target_point) <= TARGET_SEARCH_M]
+    near = [
+        e for e in candidates
+        if e.position(t).distance_to(f.target_point) <= TARGET_SEARCH_M
+    ]
+
     return min(near, key=lambda e: e.position(t).distance_to(f.target_point)) if near else None
 
 

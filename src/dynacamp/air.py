@@ -480,7 +480,29 @@ class Flight(MobileEntity):
             return self.pos.heading_to(self.waypoints[self.wp_index])
         return 0.0
 
+    def same_faction(self, faction: str) -> bool:
+        """
+        Return true if this Division has the same faction passed by arg
 
+        Args:
+            faction: str with faction id
+
+        Returns:
+            `True` if this Division is the same faction passed as arg
+        """
+        return self.faction == faction
+
+    @property
+    def is_awacs(self) -> bool:
+        return self.task is Task.AWACS
+
+    @property
+    def is_tanker(self) -> bool:
+        return self.task is Task.TANKER
+
+    @property
+    def on_station(self) -> bool:
+        return self.status is FlightStatus.ON_STATION
 # ---------------------------------------------------------------- altitude profile
 #
 # One profile per flight, used by everyone: the players' briefing, the AI's

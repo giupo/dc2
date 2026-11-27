@@ -373,6 +373,22 @@ class Division(MobileEntity):
         for k in self.elements:
             self.elements[k] *= 1.0 - fraction
 
+            
+    def in_range(self, point: Vec2, radius: float, t: Theater) -> bool:
+        """
+        Returns true if point is in range.
+
+        Args:
+             point: Vec2 rappresenting a point in space to check against
+             radius: distance to check
+             t: Theather to use for distance
+
+        Returns:
+             `true` if this Division and point area in range
+        """
+        return self.position(t).distance_to(point) <= radius
+         
+
 
 @dataclass(eq=False, kw_only=True)
 class Convoy(MobileEntity):
