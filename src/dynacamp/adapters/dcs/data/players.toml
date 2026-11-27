@@ -1,0 +1,49 @@
+# The modules players fly: tasks a player may take a seat for, by the DCS type
+# of their aircraft (as DCS reports it for the player's unit). Entries are task
+# names or the groups below. When DCS renames a type, fix it here.
+
+# Aircraft types not listed may join anything; helicopters not listed only these.
+helicopter = ["mud"]
+
+# Groups of tasks, usable in the entries below.
+[groups]
+all = ["CAP", "ESCORT", "SEAD", "CAS", "BAI", "STRIKE"]
+fighter = ["CAP", "ESCORT"]
+mud = ["CAS", "BAI"]
+
+# Tasks by DCS aircraft type.
+[types]
+"F-16C_50" = ["all"]
+"FA-18C_hornet" = ["all"]
+"F-15ESE" = ["all"]
+"JF-17" = ["all"]
+"F-15C" = ["fighter"]
+"Su-27" = ["fighter"]
+"Su-33" = ["fighter"]
+"J-11A" = ["fighter"]
+"MiG-29A" = ["fighter"]
+"MiG-29S" = ["fighter"]
+"MiG-29G" = ["fighter"]
+"F-14A-135-GR" = ["fighter"]
+"F-4E-45MC" = ["fighter", "mud", "STRIKE"]
+"AJS37" = ["mud", "STRIKE"]
+"C-101CC" = ["fighter", "mud"]
+"L-39ZA" = ["mud"]
+"F-14B" = ["fighter", "STRIKE", "BAI"]
+"M-2000C" = ["fighter", "BAI"]
+"Mirage-F1EE" = ["fighter", "BAI", "CAS"]
+"MiG-21Bis" = ["fighter", "BAI"]
+"F-5E-3" = ["fighter", "mud"]
+"AV8BNA" = ["mud", "STRIKE"]
+"A-10C" = ["mud"]
+"A-10C_2" = ["mud"]
+"Su-25" = ["mud"]
+"Su-25T" = ["mud", "SEAD"]
+"AH-64D_BLK_II" = ["mud"]
+"Ka-50" = ["mud"]
+"Ka-50_3" = ["mud"]
+"Mi-24P" = ["mud"]
+"SA342M" = ["mud"]
+"OH58D" = ["mud"]
+"Mi-8MT" = ["mud", "TRANSPORT"]
+"UH-1H" = ["mud", "TRANSPORT"]

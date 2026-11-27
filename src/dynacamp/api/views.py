@@ -17,16 +17,19 @@ from typing import Any
 from .. import bullseye, geometry
 from ..air import FlightStatus, Task
 from ..events import PUBLIC, EventKind, clock
-from ..forces import Convoy, Division, OrderKind
+from ..forces import Authority, Convoy, Division, OrderKind
 from ..geo import Vec2
 from ..projection import to_latlon
 from ..state import CampaignState
 from ..world import point_along, polyline_length
 from ..systems import ato as ato_sys
+from ..systems import intel
 from ..systems import supply as supply_sys
 
 #: Version of the API views, reported by ``/api`` and in the OpenAPI schema.
 API_VERSION = 1
+#: What a view shows where the fog of war hides a value (see :data:`schemas.Unknown`).
+UNKNOWN = "unknown"
 
 # Every view takes an optional ``viewer`` faction id. Without it the view is the
 # umpire's (ground truth). With it, enemy entities appear only if the faction's
@@ -59,7 +62,6 @@ def _contact(state: CampaignState, viewer: str, entity_id: str):
     Returns:
         The contact, or None.
     """
-    from ..systems import intel
 
     return intel.picture(state, viewer).get(entity_id)
 
@@ -277,7 +279,6 @@ def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     Returns:
         The fronts view.
     """
-    from ..systems import intel
     t = state.theater
     lines = []
     for fl in geometry.front_lines(state):
@@ -325,7 +326,7 @@ def fronts(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
             "started": _time(b.started),
             "hours": round((state.time - b.started) / 3600, 1),
             "delegated": any(
-                state.divisions[i].authority.value != "campaign" for i in b.attackers + b.defenders if i in state.divisions
+                state.divisions[i].authority is not Authority.CAMPAIGN for i in b.attackers + b.defenders if i in state.divisions
             ),
         }
         for b in state.battles.values()
@@ -428,7 +429,7 @@ def division_view(state: CampaignState, d: Division, contact=None) -> dict[str, 
             "org": None,
             "supply": None,
             "elements": {},
-            "order": {"kind": "unknown", "target": None},
+            "order": {"kind": UNKNOWN, "target": None},
             "route": None,
             "battle": d.battle if d.battle and not contact.stale(state.time) else None,
             "authority": d.authority.value,
@@ -614,12 +615,12 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
         "squadron": "",
         "squadron_name": "",
         "airbase": "",
-        "aircraft": det.get("aircraft", "unknown"),
+        "aircraft": det.get("aircraft", UNKNOWN),
         "aircraft_name": det.get("aircraft_name", "Unknown " + ("helicopter" if det.get("helo") else "aircraft")),
         "helo": bool(det.get("helo")),
-        "task": f.task.value if ident else "CAP",
-        "status": "airborne",
-        "size": det.get("size", {"single": 1, "pair": 2}.get(det.get("size_class"), 4)),
+        "task": f.task.value if ident else Task.CAP.value,
+        "status": FlightStatus.AIRBORNE.value,
+        "size": det.get("size", intel.CLASS_SIZE.get(det.get("size_class"), intel.CLASS_SIZE[intel.SizeClass.GROUP])),
         "ai": 0,
         "seats_free": 0,
         "players": [],
@@ -629,7 +630,7 @@ def track_view(state: CampaignState, f, c) -> dict[str, Any]:
         "waypoints": _line(state, [c.position]),
         "target_index": 0,
         "next_waypoint": 0,
-        "target": {"kind": "unknown", "id": ""},
+        "target": {"kind": UNKNOWN, "id": ""},
         "locked_waypoints": 0,
         "fuel_km": 0,
         "authority": f.authority.value,
@@ -1073,7 +1074,6 @@ def _picture(state: CampaignState, viewer: str) -> dict:
     Returns:
         The picture.
     """
-    from ..systems import intel
 
     return intel.picture(state, viewer)
 
@@ -1090,7 +1090,6 @@ def intel_view(state: CampaignState, viewer: str) -> dict[str, Any]:
     """
     from collections import Counter
 
-    from ..systems import intel
 
     contacts = [
         {

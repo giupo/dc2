@@ -20,15 +20,20 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, replace
 
-from ..air import CAP_ALT_M, FlightStatus, Flight, Package, Seat, SeatState, Squadron, Task
+from ..air import CAP_ALT_M, FlightStatus, Flight, Package, Seat, SeatState, Squadron, TargetKind, Task
+from ..adapters.base import Side
+from ..forces import EntityKind
 from ..events import clock
 from ..geo import Vec2
-from ..state import CampaignState, Faction
+from ..state import BattleKind, CampaignState, Faction, IdPrefix, Timer
 from .. import radio
 from . import air, intel, routing
-from ..events import EventKind
+from ..events import EventKind, LossReason
 
 # -- Planning cycle --------------------------------------------------------
+
+#: Label of the station of each support task, for the planner and the briefing.
+SUPPORT_STATION = {Task.AWACS: "AWACS orbit", Task.TANKER: "Tanker track"}
 
 #: Seconds between two ATO planning cycles of a faction.
 ATO_INTERVAL_S = 3600.0
@@ -117,14 +122,14 @@ class Request:
         priority: Higher first.
         label: Human-readable target.
         point: Target position.
-        target_kind: ``battle``, ``division``, ``convoy``, ``depot``, ``sam`` or ``point``.
+        target_kind: What it is against.
         target_id: Target id.
     """
     task: Task
     priority: float
     label: str
     point: Vec2
-    target_kind: str
+    target_kind: TargetKind
     target_id: str
 
 
@@ -135,9 +140,9 @@ def run(state: CampaignState, dt: float) -> None:
         state: The campaign.
         dt: Campaign seconds elapsed (unused: planning runs on its own timer).
     """
-    if state.time < state.timers.get("ato", 0.0):
+    if state.time < state.timers.get(Timer.ATO, 0.0):
         return
-    state.timers["ato"] = state.time + ATO_INTERVAL_S
+    state.timers[Timer.ATO] = state.time + ATO_INTERVAL_S
     for faction in state.factions.values():
         if any(s.faction == faction.id for s in state.squadrons.values()):
             plan(state, faction)
@@ -176,16 +181,16 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
     for b in state.battles.values():
         if fid in (b.attacker_faction, b.defender_faction):
             p = t.provinces[b.province]
-            if b.kind == "meeting":  # on the road, where the forces met
+            if b.kind is BattleKind.MEETING:  # on the road, where the forces met
                 from .combat import battle_point
 
-                out.append(Request(Task.CAS, 9 + p.victory_points, f"enemy column near {p.name}", battle_point(state, b), "battle", b.id))
+                out.append(Request(Task.CAS, 9 + p.victory_points, f"enemy column near {p.name}", battle_point(state, b), TargetKind.BATTLE, b.id))
             else:
-                out.append(Request(Task.CAS, 10 + p.victory_points, f"enemy forces at {p.name}", p.center, "battle", b.id))
+                out.append(Request(Task.CAS, 10 + p.victory_points, f"enemy forces at {p.name}", p.center, TargetKind.BATTLE, b.id))
 
     active_caps = [
         f for f in state.flights.values()
-        if f.faction == fid and f.task is Task.CAP and f.target_kind != "flight"  # scrambles are extra
+        if f.faction == fid and f.task is Task.CAP and f.target_kind != TargetKind.FLIGHT  # scrambles are extra
         and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
     ]
     covered = {f.target_id for f in active_caps}
@@ -199,7 +204,7 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
         p = t.provinces[pid]
         station = cap_station(state, fid, p.center)
         if station is not None:
-            out.append(Request(Task.CAP, 9, f"CAP over {p.name}", station, "point", pid))
+            out.append(Request(Task.CAP, 9, f"CAP over {p.name}", station, TargetKind.POINT, pid))
 
     for c in state.convoys.values():
         pos = intel.located(state, fid, c.id, KNOWN_CONVOY_S)
@@ -207,7 +212,7 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
             continue  # nobody has seen it
         if state.at_war(fid, c.faction) and near_front(pos):
             near = t.nearest(pos).name
-            out.append(Request(Task.BAI, 7, f"supply convoy near {near}", pos, "convoy", c.id))
+            out.append(Request(Task.BAI, 7, f"supply convoy near {near}", pos, TargetKind.CONVOY, c.id))
 
     for d in state.divisions.values():
         if not state.at_war(fid, d.faction) or d.battle or d.strength < 0.3:
@@ -220,17 +225,17 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
         at_front = any(n in state.front_provinces(fid) for n in t.neighbors(d.location))
         if (on_the_move or at_front) and near_front(pos, 60_000):
             prio = 6 if on_the_move else 4
-            out.append(Request(Task.BAI, prio, f"{d.name} near {t.provinces[d.location].name}", pos, "division", d.id))
+            out.append(Request(Task.BAI, prio, f"{d.name} near {t.provinces[d.location].name}", pos, TargetKind.DIVISION, d.id))
 
     for pid, p in t.provinces.items():
         if p.depot is not None and state.at_war(fid, p.controller):
-            out.append(Request(Task.STRIKE, 3 + p.depot.stock / 5000, f"supply depot {p.name}", p.center, "depot", pid))
+            out.append(Request(Task.STRIKE, 3 + p.depot.stock / 5000, f"supply depot {p.name}", p.center, TargetKind.DEPOT, pid))
 
     # DEAD on enemy SAM sites that cover the front: strikers on the site under
     # SEAD cover (see build_package; SEAD alone if nobody can strike it).
     from ..air_defense import SamRole
 
-    for c in intel.known(state, fid, "sam"):
+    for c in intel.known(state, fid, EntityKind.SAM):
         u = state.air_defense.get(c.entity_id)
         if u is None or not state.at_war(fid, u.faction) or u.system.role not in (SamRole.LONG, SamRole.MEDIUM):
             continue
@@ -238,12 +243,12 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
         if near_front(pos, FRONT_REACH_M + u.system.range_m):
             prio = 8.5 if u.system.role is SamRole.LONG else 7.5
             near = t.nearest(pos).name
-            out.append(Request(Task.DEAD, prio, f"{u.system.name} site near {near}", pos, "sam", u.id))
+            out.append(Request(Task.DEAD, prio, f"{u.system.name} site near {near}", pos, TargetKind.SAM, u.id))
     out += _support_requests(state, faction)
     return sorted(out, key=lambda r: (-r.priority, r.target_id))
 
 
-def _active(state: CampaignState, fid: str, task: Task, target_kind: str | None = None, target_id: str | None = None) -> list[Flight]:
+def _active(state: CampaignState, fid: str, task: Task, target_kind: TargetKind | None = None, target_id: str | None = None) -> list[Flight]:
     """Live (not done/cancelled) flights of a faction for a task (and target).
 
     Args:
@@ -349,20 +354,20 @@ def _support_requests(state: CampaignState, faction: Faction) -> list[Request]:
     if _has_squadron(state, fid, Task.AWACS) and not _active(state, fid, Task.AWACS):
         station = support_station(state, fid, AWACS_SETBACK_M)
         if station is not None:
-            out.append(Request(Task.AWACS, 9.6, "AWACS orbit", station, "point", "awacs"))
+            out.append(Request(Task.AWACS, 9.6, SUPPORT_STATION[Task.AWACS], station, TargetKind.POINT, Task.AWACS.lower()))
     if _has_squadron(state, fid, Task.TANKER) and not _active(state, fid, Task.TANKER):
         station = support_station(state, fid, TANKER_SETBACK_M)
         if station is not None:
-            out.append(Request(Task.TANKER, 8.8, "Tanker track", station, "point", "tanker"))
+            out.append(Request(Task.TANKER, 8.8, SUPPORT_STATION[Task.TANKER], station, TargetKind.POINT, Task.TANKER.lower()))
     if _has_squadron(state, fid, Task.TRANSPORT):
         for b in state.airbases.values():
             p = t.provinces.get(b.province) if b.province else None
             if p is None or p.controller != fid or p.depot is None:
                 continue
             fill = p.depot.stock / max(1.0, p.depot.capacity)
-            if fill < AIRLIFT_THRESHOLD and not _active(state, fid, Task.TRANSPORT, "airlift", b.id):
+            if fill < AIRLIFT_THRESHOLD and not _active(state, fid, Task.TRANSPORT, TargetKind.AIRLIFT, b.id):
                 # routine sustainment at low priority, urgent when the depot runs dry
-                out.append(Request(Task.TRANSPORT, 4.0 + 6.0 * (1.0 - fill), f"airlift to {b.name}", b.position, "airlift", b.id))
+                out.append(Request(Task.TRANSPORT, 4.0 + 6.0 * (1.0 - fill), f"airlift to {b.name}", b.position, TargetKind.AIRLIFT, b.id))
         reach = supply.depot_distances(state, fid)
         convoys_to = {c.destination for c in state.convoys.values() if c.faction == fid and not c.returning}
         for d in state.divisions.values():
@@ -371,8 +376,8 @@ def _support_requests(state: CampaignState, faction: Faction) -> list[Request]:
             r = reach.get(d.location)
             if r is not None and r[0] <= supply.DIRECT_RANGE_M:
                 continue
-            if not _active(state, fid, Task.TRANSPORT, "resupply", d.id):
-                out.append(Request(Task.TRANSPORT, 7.5, f"resupply {d.name}", d.position(t), "resupply", d.id))
+            if not _active(state, fid, Task.TRANSPORT, TargetKind.RESUPPLY, d.id):
+                out.append(Request(Task.TRANSPORT, 7.5, f"resupply {d.name}", d.position(t), TargetKind.RESUPPLY, d.id))
     return out
 
 
@@ -479,7 +484,7 @@ def sortie_tokens(state: CampaignState, fid: str) -> float:
     """
     rate = _daily_sorties(state, fid) / 24.0
     cap = max(8.0, rate * BURST_HOURS)
-    key = f"sortie_t:{fid}"
+    key = Timer.SORTIE_TOKENS.key(fid)
     tokens = state.sortie_tokens.get(fid, cap)  # start with a full bucket
     if key in state.timers:
         tokens += rate * (state.time - state.timers[key]) / 3600.0
@@ -778,7 +783,7 @@ def _new_package(state: CampaignState, fid: str, r: Request, tot: float, task: T
         The new package.
     """
     pkg = Package(
-        id=state.new_id("pk"),
+        id=state.new_id(IdPrefix.PACKAGE),
         faction=fid,
         task=task or r.task,
         target_label=r.label,
@@ -868,9 +873,9 @@ def _target_requirement(state: CampaignState, r: Request):
     Returns:
         A predicate on squadrons, or None.
     """
-    if r.target_kind == "resupply":
+    if r.target_kind == TargetKind.RESUPPLY:
         return lambda sq: sq.aircraft_type.helo  # land next to the brigades
-    if r.target_kind == "airlift":
+    if r.target_kind == TargetKind.AIRLIFT:
         dest = state.airbases[r.target_id]
         return lambda sq: sq.airbase != dest.id and not sq.aircraft_type.helo
     return None
@@ -1042,7 +1047,7 @@ def _add_flight(
     to_target = sum(waypoints[i].distance_to(waypoints[i + 1]) for i in range(target_index))
     speed = sq.aircraft_type.cruise_kmh / 3.6
     flight = Flight(
-        id=state.new_id("fl"),
+        id=state.new_id(IdPrefix.FLIGHT),
         faction=sq.faction,
         location=base.province or "",
         package=pkg.id,
@@ -1079,7 +1084,7 @@ def _add_flight(
 
 
 def join(
-    state: CampaignState, player_id: str, name: str, side: str, flight_id: str, capable: frozenset[Task] | None
+    state: CampaignState, player_id: str, name: str, side: Side, flight_id: str, capable: frozenset[Task] | None
 ) -> tuple[bool, str]:
     """A player asks for a seat.
 
@@ -1194,7 +1199,7 @@ def player_lost(state: CampaignState, player_id: str) -> None:
     sq = state.squadrons[f.squadron]
     sq.aircraft -= 1
     sq.committed -= 1
-    state.emit(EventKind.AIRCRAFT_LOST, flight=f.id, faction=f.faction, count=1, cause="player", player=player_id)
+    state.emit(EventKind.AIRCRAFT_LOST, flight=f.id, faction=f.faction, count=1, cause=LossReason.PLAYER, player=player_id)
 
 
 def player_disconnected(state: CampaignState, player_id: str) -> None:
@@ -1246,12 +1251,12 @@ def waypoint_marks(state: CampaignState, f: Flight) -> list[tuple[str, Vec2]]:
     return briefing.waypoint_marks(state, f)
 
 
-def ato_board(state: CampaignState, side: str, limit: int = 8) -> list[dict]:
+def ato_board(state: CampaignState, side: Side, limit: int = 8) -> list[dict]:
     """What players of ``side`` can join, for in-game menus.
 
     Args:
         state: The campaign.
-        side: Coalition side (``blue``/``red``).
+        side: Game side.
         limit: Maximum number of packages.
 
     Returns:

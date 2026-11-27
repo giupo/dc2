@@ -12,11 +12,17 @@ from .geo import Vec2
 
 class Terrain(StrEnum):
     """Province terrain types."""
+    #: Open ground: full speed, no help for the defender.
     PLAINS = "plains"
+    #: Slower movement, some cover for the defender.
     FOREST = "forest"
+    #: Slower movement, good positions for the defender.
     HILLS = "hills"
+    #: Very slow movement, the strongest defence.
     MOUNTAIN = "mountain"
+    #: Streets slow the advance; the defender fights from cover.
     URBAN = "urban"
+    #: Very slow movement, hard to attack across.
     MARSH = "marsh"
 
 
@@ -45,8 +51,11 @@ TERRAIN: dict[Terrain, TerrainProfile] = {
 
 class LinkKind(StrEnum):
     """Kind of connection between two provinces."""
+    #: A paved road: full speed.
     ROAD = "road"
+    #: A dirt track: slower.
     TRACK = "track"
+    #: A railway: full speed.
     RAIL = "rail"
 
 

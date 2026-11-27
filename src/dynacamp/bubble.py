@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .adapters.base import PlayerKind
+from .adapters.base import PlayerKind, Side
 from .forces import Authority, MobileEntity
 from .geo import Vec2
-from .state import CampaignState
+from .state import BattleKind, CampaignState
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class Player:
     """
     id: str
     name: str
-    side: str
+    side: Side
     kind: PlayerKind
     position: Vec2
     altitude: float
@@ -155,7 +155,7 @@ class BubbleManager:
             held = any(_held_by_game(state.divisions[i]) for i in members if i in state.divisions)
             extra = self.config.hysteresis_m if held else 0.0
             where = t.provinces[battle.province].center
-            if battle.kind == "meeting":
+            if battle.kind is BattleKind.MEETING:
                 from .systems.combat import battle_point
 
                 where = battle_point(state, battle)

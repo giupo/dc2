@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from .adapters.base import Side
 from .air import AIRCRAFT, Airbase, Squadron, Task
 from .air_defense import SYSTEMS, AirDefenseUnit, place_sites
 from .forces import DEFAULT_TEMPLATES, Division, DivisionTemplate
@@ -14,6 +15,9 @@ from .projection import from_latlon
 from .state import CampaignState, Faction, Objective
 from .world import Depot, LinkKind, Province, Terrain, Theater
 from . import bullseye, units
+
+#: Theatre of a scenario that names none (no projection: plain plane coordinates).
+UNNAMED_THEATER = "unnamed"
 
 
 class ScenarioError(ValueError):
@@ -35,7 +39,7 @@ def load(path: str | Path, with_roads: bool = True) -> CampaignState:
 
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
-    theater = data.get("campaign", {}).get("theater", "unnamed")
+    theater = data.get("campaign", {}).get("theater", UNNAMED_THEATER)
     return from_dict(data, roads.load(path, theater) if with_roads else None)
 
 
@@ -84,6 +88,24 @@ def point(spec: dict[str, Any], theater: str, what: str) -> Vec2:
     if "pos" in spec:
         return Vec2(*pair("pos"))
     raise ScenarioError(f"{what}: no position (ll = [lat, lon])")
+
+
+def _side(value: str, faction_id: str) -> Side:
+    """A faction's game side, checked.
+
+    Args:
+        value: The side named in the scenario (default: the faction id).
+        faction_id: The faction, for the error message.
+
+    Returns:
+        The side.
+
+    Raises:
+        ScenarioError: If it is not a game side.
+    """
+    if value not in Side:
+        raise ScenarioError(f"faction {faction_id}: side {value!r} is not one of {', '.join(Side)}")
+    return Side(value)
 
 
 def _set_bullseyes(specs: list[dict[str, Any]], factions: dict[str, Faction], theater: Theater) -> None:
@@ -155,7 +177,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         ScenarioError: On unknown references (factions, provinces, templates...).
     """
     meta = data.get("campaign", {})
-    theater = Theater(meta.get("theater", "unnamed"))
+    theater = Theater(meta.get("theater", UNNAMED_THEATER))
 
     factions: dict[str, Faction] = {}
     for f in data.get("factions", []):
@@ -164,7 +186,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         factions[faction_id] = Faction(
             id=faction_id,
             name=f.get("name", faction_id),
-            side=f.get("side", faction_id),
+            side=_side(f.get("side", faction_id), faction_id),
             enemies=set(f.get("enemies", [])),
             objectives=[
                 Objective(
@@ -184,7 +206,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
                 id=p["id"],
                 name=p.get("name", p["id"]),
                 center=point(p, theater.name, f"province {p['id']}"),
-                terrain=Terrain(p.get("terrain", "plains")),
+                terrain=Terrain(p.get("terrain", Terrain.PLAINS)),
                 controller=p["controller"],
                 owner=p.get("owner", ""),
                 infrastructure=p.get("infrastructure", 2),
@@ -207,7 +229,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         theater.connect(
             link["a"],
             link["b"],
-            kind=LinkKind(link.get("kind", "road")),
+            kind=LinkKind(link.get("kind", LinkKind.ROAD)),
             river=link.get("river", False),
             length=link.get("length"),
             route=route,

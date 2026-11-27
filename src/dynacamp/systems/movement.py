@@ -6,7 +6,7 @@ from ..forces import Convoy, Division, MobileEntity, OrderKind
 from ..state import CampaignState
 from ..world import LINK_SPEED, TERRAIN, infra_factor
 from . import contact, control, supply
-from ..events import EventKind
+from ..events import EventKind, OrderEnd
 
 
 def run(state: CampaignState, dt: float) -> None:
@@ -66,6 +66,7 @@ def _advance(state: CampaignState, ent: MobileEntity, dt: float) -> None:
             else:
                 mv.progress -= speed * remaining
             return
+
         if state.hostile_province(ent.faction, nxt):
             if isinstance(ent, Division) and ent.order.kind is OrderKind.ATTACK:
                 if state.hostile_divisions_in(ent.faction, nxt):
@@ -75,9 +76,11 @@ def _advance(state: CampaignState, ent: MobileEntity, dt: float) -> None:
                     if mv.progress < limit:
                         mv.progress = min(limit, mv.progress + speed * remaining)
                     return
+
             else:
                 _blocked(state, ent)
                 return
+
         length = t.link(ent.location, nxt).length
         needed = (length - ent.movement.progress) / speed
         if needed <= remaining:
@@ -133,4 +136,4 @@ def _blocked(state: CampaignState, ent: MobileEntity) -> None:
     # No way forward: turn back to the province it left (approximated as a snap back).
     ent.movement = None
     state.set_order(ent, type(ent.order)())
-    state.emit(EventKind.ORDER_CANCELLED, division=ent.id, reason="route blocked")
+    state.emit(EventKind.ORDER_CANCELLED, division=ent.id, reason=OrderEnd.ROUTE_BLOCKED)

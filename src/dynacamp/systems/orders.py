@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..air import Flight, FlightStatus, Package, Task
+from ..air import Flight, FlightReason, FlightStatus, Package, TargetKind, Task
 from ..events import clock
 from ..geo import Vec2
-from ..state import CampaignState
+from ..state import CampaignState, IdPrefix
 from . import air, ato, intel
 from ..events import EventKind
 
@@ -36,16 +36,16 @@ SAME_POINT_M = 50.0
 LANDING_TOLERANCE_M = 1_000.0
 
 #: Kinds of target each main task can be ordered against.
-TARGET_KINDS: dict[Task, tuple[str, ...]] = {
-    Task.CAS: ("battle",),
-    Task.BAI: ("division", "convoy"),
-    Task.STRIKE: ("depot",),
-    Task.SEAD: ("sam",),
-    Task.DEAD: ("sam",),
-    Task.CAP: ("point",),
-    Task.AWACS: ("point",),
-    Task.TANKER: ("point",),
-    Task.TRANSPORT: ("airlift", "resupply"),
+TARGET_KINDS: dict[Task, tuple[TargetKind, ...]] = {
+    Task.CAS: (TargetKind.BATTLE,),
+    Task.BAI: (TargetKind.DIVISION, TargetKind.CONVOY),
+    Task.STRIKE: (TargetKind.DEPOT,),
+    Task.SEAD: (TargetKind.SAM,),
+    Task.DEAD: (TargetKind.SAM,),
+    Task.CAP: (TargetKind.POINT,),
+    Task.AWACS: (TargetKind.POINT,),
+    Task.TANKER: (TargetKind.POINT,),
+    Task.TRANSPORT: (TargetKind.AIRLIFT, TargetKind.RESUPPLY),
 }
 
 
@@ -73,13 +73,12 @@ class Target:
     """What a new package is ordered against.
 
     Attributes:
-        kind: ``battle``, ``division``, ``convoy``, ``depot``, ``sam``,
-            ``point``, ``airlift`` or ``resupply``.
+        kind: What it is (every kind but ``flight``, reserved to scrambles).
         id: Battle, division, convoy, province (depot), SAM site, airbase
             (airlift) or own brigade (resupply) id; unused for ``point``.
         point: Position, for ``point`` targets only.
     """
-    kind: str
+    kind: TargetKind
     id: str = ""
     point: Vec2 | None = None
 
@@ -377,50 +376,49 @@ def _request(state: CampaignState, fid: str, task: Task, target: Target) -> ato.
     if target.kind not in TARGET_KINDS.get(task, ()):
         allowed = ", ".join(TARGET_KINDS.get(task, ())) or "nothing (it escorts other packages)"
         raise OrderError(f"{task.value} is flown against: {allowed}")
-    kind, tid = target.kind, target.id
-    if kind == "point":
+    kind, tid = TargetKind(target.kind), target.id
+    if kind is TargetKind.POINT:
         if target.point is None:
             raise OrderError("a point target needs a position")
         p = target.point
         near = t.nearest(p).name
         if task is Task.CAP:
-            return ato.Request(task, 0, f"CAP near {near}", p, "point", state.new_id("pt"))
-        label = "AWACS orbit" if task is Task.AWACS else "Tanker track"
-        return ato.Request(task, 0, f"{label} near {near}", p, "point", task.value.lower())
-    if kind == "battle":
+            return ato.Request(task, 0, f"CAP near {near}", p, TargetKind.POINT, state.new_id(IdPrefix.POINT))
+        return ato.Request(task, 0, f"{ato.SUPPORT_STATION[task]} near {near}", p, TargetKind.POINT, task.lower())
+    if kind is TargetKind.BATTLE:
         b = state.battles.get(tid)
         if b is None or fid not in (b.attacker_faction, b.defender_faction):
             raise OrderError(f"no battle {tid} involving our forces")
         prov = t.provinces[b.province]
-        return ato.Request(task, 0, f"enemy forces at {prov.name}", prov.center, "battle", tid)
-    if kind == "depot":
+        return ato.Request(task, 0, f"enemy forces at {prov.name}", prov.center, TargetKind.BATTLE, tid)
+    if kind is TargetKind.DEPOT:
         prov = t.provinces.get(tid)
         if prov is None or prov.depot is None or not state.at_war(fid, prov.controller):
             raise OrderError(f"no enemy supply depot in {tid}")
-        return ato.Request(task, 0, f"supply depot {prov.name}", prov.center, "depot", tid)
-    if kind in ("division", "convoy", "sam"):
+        return ato.Request(task, 0, f"supply depot {prov.name}", prov.center, TargetKind.DEPOT, tid)
+    if kind in (TargetKind.DIVISION, TargetKind.CONVOY, TargetKind.SAM):
         c = intel.knows(state, fid, tid)
         if c is None or c.kind != kind:
             raise OrderError(f"no {kind} contact {tid} in our intelligence picture")
         near = t.nearest(c.position).name
-        if kind == "division":
+        if kind is TargetKind.DIVISION:
             label = f"{c.detail.get('name', 'enemy brigade')} near {near}"
-        elif kind == "convoy":
+        elif kind is TargetKind.CONVOY:
             label = f"supply convoy near {near}"
         else:
             label = f"{c.detail.get('system_name', 'SAM')} site near {near}"
         return ato.Request(task, 0, label, c.position, kind, tid)
-    if kind == "airlift":
+    if kind is TargetKind.AIRLIFT:
         b = state.airbases.get(tid)
         prov = t.provinces.get(b.province) if b and b.province else None
         if b is None or b.owner(t) != fid or prov is None or prov.depot is None:
             raise OrderError(f"no friendly airbase with a depot {tid}")
-        return ato.Request(task, 0, f"airlift to {b.name}", b.position, "airlift", tid)
+        return ato.Request(task, 0, f"airlift to {b.name}", b.position, TargetKind.AIRLIFT, tid)
     # resupply
     d = state.divisions.get(tid)
     if d is None or d.faction != fid:
         raise OrderError(f"no friendly brigade {tid}")
-    return ato.Request(task, 0, f"resupply {d.name}", d.position(t), "resupply", tid)
+    return ato.Request(task, 0, f"resupply {d.name}", d.position(t), TargetKind.RESUPPLY, tid)
 
 
 def order_package(
@@ -548,5 +546,5 @@ def cancel_package(state: CampaignState, package_id: str, faction: str | None = 
     if not grounded:
         raise OrderError(f"package {pkg.number} has no flights on the ground to cancel")
     for f in grounded:
-        air._cancel(state, f, "cancelled by the planner")
+        air._cancel(state, f, FlightReason.PLANNER)
     return [f.callsign for f in grounded]

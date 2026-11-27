@@ -143,22 +143,22 @@ def _scalar(kind: str, value: Any) -> Any:
         TypeError: If the value does not fit the annotation.
         LookupError: If the annotation is not a plain scalar (needs a converter).
     """
-    if kind == "bool":
+    if kind == bool.__name__:
         if not isinstance(value, bool):
             raise TypeError(f"expected true/false, got {value!r}")
         return value
 
-    if kind == "float":
+    if kind == float.__name__:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError(f"expected a number, got {value!r}")
         return float(value)
 
-    if kind == "int":
+    if kind == int.__name__:
         if isinstance(value, bool) or not isinstance(value, int):
             raise TypeError(f"expected an integer, got {value!r}")
         return value
 
-    if kind == "str":
+    if kind == str.__name__:
         if not isinstance(value, str):
             raise TypeError(f"expected a string, got {value!r}")
         return value

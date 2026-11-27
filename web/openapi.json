@@ -457,11 +457,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "metric",
-                    "imperial"
-                  ],
-                  "type": "string"
+                  "$ref": "#/components/schemas/UnitDomain"
                 },
                 {
                   "type": "null"
@@ -1502,6 +1498,26 @@
         "title": "AuthView",
         "description": "Whether commands need a token, and whether the one sent is valid."
       },
+      "Authority": {
+        "type": "string",
+        "enum": [
+          "campaign",
+          "materializing",
+          "delegated",
+          "dematerializing"
+        ],
+        "title": "Authority",
+        "description": "Who simulates an entity right now.\n\nCAMPAIGN -> MATERIALIZING -> DELEGATED -> DEMATERIALIZING -> CAMPAIGN.\nIn the two transitional states nobody simulates it: the entity is frozen\nuntil the game adapter acknowledges the handoff (or the handoff times out)."
+      },
+      "BattleKind": {
+        "type": "string",
+        "enum": [
+          "assault",
+          "meeting"
+        ],
+        "title": "BattleKind",
+        "description": "Kind of battle."
+      },
       "BattleView": {
         "properties": {
           "pos": {
@@ -1540,12 +1556,7 @@
             "title": "Name"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "assault",
-              "meeting"
-            ],
-            "title": "Kind",
+            "$ref": "#/components/schemas/BattleKind",
             "description": "assault on the province's defence line, or meeting engagement on the road (province = nearest)",
             "default": "assault"
           },
@@ -1614,20 +1625,7 @@
             "title": "Label"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "seats": {
             "type": "integer",
@@ -1725,20 +1723,7 @@
             "title": "Aircraft"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "size": {
             "type": "integer",
@@ -1975,13 +1960,7 @@
             "description": "[lat, lon] WGS84, null without projection"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "sam",
-              "shorad",
-              "fighters"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/ThreatKind"
           },
           "name": {
             "type": "string",
@@ -1996,13 +1975,7 @@
             "title": "Range Km"
           },
           "severity": {
-            "type": "string",
-            "enum": [
-              "high",
-              "medium",
-              "low"
-            ],
-            "title": "Severity"
+            "$ref": "#/components/schemas/Severity"
           },
           "bulls": {
             "type": "string",
@@ -2028,12 +2001,7 @@
       "BriefingView": {
         "properties": {
           "units": {
-            "type": "string",
-            "enum": [
-              "metric",
-              "imperial"
-            ],
-            "title": "Units"
+            "$ref": "#/components/schemas/UnitDomain"
           },
           "package_number": {
             "type": "string",
@@ -2061,20 +2029,7 @@
             "title": "Title"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "aircraft": {
             "type": "string",
@@ -2286,12 +2241,7 @@
             "description": "saving (null without a running engine)"
           },
           "units": {
-            "type": "string",
-            "enum": [
-              "metric",
-              "imperial"
-            ],
-            "title": "Units",
+            "$ref": "#/components/schemas/UnitDomain",
             "description": "units of the texts for players (default of the UI)"
           },
           "control": {
@@ -2473,14 +2423,7 @@
             "title": "Id"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "division",
-              "convoy",
-              "flight",
-              "sam"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/EntityKind"
           },
           "faction": {
             "type": "string",
@@ -2669,14 +2612,7 @@
             ]
           },
           "authority": {
-            "type": "string",
-            "enum": [
-              "campaign",
-              "materializing",
-              "delegated",
-              "dematerializing"
-            ],
-            "title": "Authority"
+            "$ref": "#/components/schemas/Authority"
           },
           "intel": {
             "anyOf": [
@@ -2945,14 +2881,7 @@
             "title": "Battle"
           },
           "authority": {
-            "type": "string",
-            "enum": [
-              "campaign",
-              "materializing",
-              "delegated",
-              "dematerializing"
-            ],
-            "title": "Authority"
+            "$ref": "#/components/schemas/Authority"
           },
           "moving": {
             "type": "boolean",
@@ -2993,6 +2922,17 @@
         ],
         "title": "DivisionView",
         "description": "A brigade."
+      },
+      "EntityKind": {
+        "type": "string",
+        "enum": [
+          "division",
+          "convoy",
+          "flight",
+          "sam"
+        ],
+        "title": "EntityKind",
+        "description": "Kind of mobile entity: what adapters spawn and intelligence reports."
       },
       "EventKind": {
         "type": "string",
@@ -3238,6 +3178,19 @@
         "title": "FireView",
         "description": "A recent artillery fire mission: from the guns to the impact."
       },
+      "FlightStatus": {
+        "type": "string",
+        "enum": [
+          "scheduled",
+          "airborne",
+          "on_station",
+          "rtb",
+          "done",
+          "cancelled"
+        ],
+        "title": "FlightStatus",
+        "description": "Life cycle of a flight."
+      },
       "FlightView": {
         "properties": {
           "pos": {
@@ -3314,32 +3267,10 @@
             "title": "Helo"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "scheduled",
-              "airborne",
-              "on_station",
-              "rtb",
-              "done",
-              "cancelled"
-            ],
-            "title": "Status"
+            "$ref": "#/components/schemas/FlightStatus"
           },
           "size": {
             "type": "integer",
@@ -3391,14 +3322,7 @@
             "description": "longest route the flight may plan (twice the combat radius, more with a tanker up)"
           },
           "authority": {
-            "type": "string",
-            "enum": [
-              "campaign",
-              "materializing",
-              "delegated",
-              "dematerializing"
-            ],
-            "title": "Authority"
+            "$ref": "#/components/schemas/Authority"
           },
           "on_station_until": {
             "anyOf": [
@@ -3701,6 +3625,16 @@
         "title": "IntelView",
         "description": "A faction's intelligence picture and its air-search sensors."
       },
+      "LinkKind": {
+        "type": "string",
+        "enum": [
+          "road",
+          "track",
+          "rail"
+        ],
+        "title": "LinkKind",
+        "description": "Kind of connection between two provinces."
+      },
       "LinkView": {
         "properties": {
           "pos": {
@@ -3739,13 +3673,7 @@
             "title": "B"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "road",
-              "track",
-              "rail"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/LinkKind"
           },
           "river": {
             "type": "boolean",
@@ -3956,15 +3884,27 @@
         "title": "ObjectiveView",
         "description": "A faction objective and whether it is held."
       },
+      "OrderKind": {
+        "type": "string",
+        "enum": [
+          "hold",
+          "move",
+          "attack"
+        ],
+        "title": "OrderKind",
+        "description": "What a division has been told to do."
+      },
       "OrderView": {
         "properties": {
           "kind": {
-            "type": "string",
-            "enum": [
-              "hold",
-              "move",
-              "attack",
-              "unknown"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              },
+              {
+                "type": "string",
+                "const": "unknown"
+              }
             ],
             "title": "Kind"
           },
@@ -3996,20 +3936,7 @@
             "title": "Faction"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "target": {
             "$ref": "#/components/schemas/TargetIn"
@@ -4088,20 +4015,7 @@
             "title": "Faction"
           },
           "task": {
-            "type": "string",
-            "enum": [
-              "CAP",
-              "ESCORT",
-              "SEAD",
-              "DEAD",
-              "CAS",
-              "BAI",
-              "STRIKE",
-              "AWACS",
-              "TANKER",
-              "TRANSPORT"
-            ],
-            "title": "Task"
+            "$ref": "#/components/schemas/Task"
           },
           "target": {
             "type": "string",
@@ -4149,6 +4063,16 @@
         "title": "PackageView",
         "description": "An ATO package."
       },
+      "PlayerKind": {
+        "type": "string",
+        "enum": [
+          "air",
+          "helo",
+          "ground"
+        ],
+        "title": "PlayerKind",
+        "description": "What a player is flying or driving."
+      },
       "PlayerView": {
         "properties": {
           "pos": {
@@ -4187,13 +4111,7 @@
             "title": "Side"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "air",
-              "helo",
-              "ground"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/PlayerKind"
           },
           "altitude": {
             "type": "integer",
@@ -4404,16 +4322,7 @@
             "title": "Name"
           },
           "terrain": {
-            "type": "string",
-            "enum": [
-              "plains",
-              "forest",
-              "hills",
-              "mountain",
-              "urban",
-              "marsh"
-            ],
-            "title": "Terrain"
+            "$ref": "#/components/schemas/Terrain"
           },
           "infrastructure": {
             "type": "integer",
@@ -4552,6 +4461,17 @@
         "title": "RouteView",
         "description": "Remaining route along the roads."
       },
+      "SamRole": {
+        "type": "string",
+        "enum": [
+          "long",
+          "medium",
+          "short",
+          "ewr"
+        ],
+        "title": "SamRole",
+        "description": "Class of air defence system."
+      },
       "SamSiteView": {
         "properties": {
           "pos": {
@@ -4598,24 +4518,10 @@
             "title": "System Name"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "long",
-              "medium",
-              "short",
-              "ewr"
-            ],
-            "title": "Role"
+            "$ref": "#/components/schemas/SamRole"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "setting_up",
-              "moving",
-              "suppressed"
-            ],
-            "title": "Status"
+            "$ref": "#/components/schemas/SamStatus"
           },
           "location": {
             "type": "string",
@@ -4685,14 +4591,7 @@
             ]
           },
           "authority": {
-            "type": "string",
-            "enum": [
-              "campaign",
-              "materializing",
-              "delegated",
-              "dematerializing"
-            ],
-            "title": "Authority"
+            "$ref": "#/components/schemas/Authority"
           },
           "intel": {
             "anyOf": [
@@ -4732,6 +4631,17 @@
         "title": "SamSiteView",
         "description": "A SAM site or early-warning radar."
       },
+      "SamStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "setting_up",
+          "moving",
+          "suppressed"
+        ],
+        "title": "SamStatus",
+        "description": "Operational state of a site."
+      },
       "SaveRecordView": {
         "properties": {
           "saved_at": {
@@ -4744,13 +4654,7 @@
             "description": "campaign time saved"
           },
           "trigger": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "api",
-              "exit"
-            ],
-            "title": "Trigger",
+            "$ref": "#/components/schemas/SaveTrigger",
             "description": "autosave, request (POST /api/save) or shutdown"
           }
         },
@@ -4763,6 +4667,16 @@
         ],
         "title": "SaveRecordView",
         "description": "A save of the campaign."
+      },
+      "SaveTrigger": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "api",
+          "exit"
+        ],
+        "title": "SaveTrigger",
+        "description": "What asked for a save."
       },
       "SaveView": {
         "properties": {
@@ -4815,6 +4729,18 @@
         "title": "SaveView",
         "description": "Saving of the campaign by the server (``dynacamp serve --save``)."
       },
+      "SeatState": {
+        "type": "string",
+        "enum": [
+          "assigned",
+          "airborne",
+          "landed",
+          "lost",
+          "left"
+        ],
+        "title": "SeatState",
+        "description": "State of a player's seat in a flight."
+      },
       "SeatView": {
         "properties": {
           "id": {
@@ -4826,15 +4752,7 @@
             "title": "Name"
           },
           "state": {
-            "type": "string",
-            "enum": [
-              "assigned",
-              "airborne",
-              "landed",
-              "lost",
-              "left"
-            ],
-            "title": "State"
+            "$ref": "#/components/schemas/SeatState"
           }
         },
         "additionalProperties": false,
@@ -4890,6 +4808,16 @@
         "title": "SectorView",
         "description": "A front province with local force ratio."
       },
+      "SensorKind": {
+        "type": "string",
+        "enum": [
+          "awacs",
+          "aircraft",
+          "ground_radar"
+        ],
+        "title": "SensorKind",
+        "description": "Kind of air-search sensor."
+      },
       "SensorView": {
         "properties": {
           "pos": {
@@ -4916,13 +4844,7 @@
             "description": "[lat, lon] WGS84, null without projection"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "awacs",
-              "aircraft",
-              "ground_radar"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/SensorKind"
           },
           "name": {
             "type": "string",
@@ -4968,6 +4890,16 @@
         ],
         "title": "SensorView",
         "description": "A friendly sensor and its reach."
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "Severity",
+        "description": "How dangerous a threat is, most dangerous first."
       },
       "SnapshotView": {
         "properties": {
@@ -5035,19 +4967,7 @@
           },
           "tasks": {
             "items": {
-              "type": "string",
-              "enum": [
-                "CAP",
-                "ESCORT",
-                "SEAD",
-                "DEAD",
-                "CAS",
-                "BAI",
-                "STRIKE",
-                "AWACS",
-                "TANKER",
-                "TRANSPORT"
-              ]
+              "$ref": "#/components/schemas/Task"
             },
             "type": "array",
             "title": "Tasks"
@@ -5096,18 +5016,7 @@
       "TargetIn": {
         "properties": {
           "kind": {
-            "type": "string",
-            "enum": [
-              "battle",
-              "division",
-              "convoy",
-              "depot",
-              "sam",
-              "point",
-              "airlift",
-              "resupply"
-            ],
-            "title": "Kind"
+            "$ref": "#/components/schemas/TargetKind"
           },
           "id": {
             "type": "string",
@@ -5135,10 +5044,34 @@
         "title": "TargetIn",
         "description": "What a new package flies against."
       },
+      "TargetKind": {
+        "type": "string",
+        "enum": [
+          "battle",
+          "division",
+          "convoy",
+          "depot",
+          "sam",
+          "point",
+          "airlift",
+          "resupply",
+          "flight"
+        ],
+        "title": "TargetKind",
+        "description": "What a flight flies against (with ``target_id``, the target itself)."
+      },
       "TargetRef": {
         "properties": {
           "kind": {
-            "type": "string",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TargetKind"
+              },
+              {
+                "type": "string",
+                "const": "unknown"
+              }
+            ],
             "title": "Kind"
           },
           "id": {
@@ -5154,6 +5087,46 @@
         ],
         "title": "TargetRef",
         "description": "Reference to a flight's target."
+      },
+      "Task": {
+        "type": "string",
+        "enum": [
+          "CAP",
+          "ESCORT",
+          "SEAD",
+          "DEAD",
+          "CAS",
+          "BAI",
+          "STRIKE",
+          "AWACS",
+          "TANKER",
+          "TRANSPORT"
+        ],
+        "title": "Task",
+        "description": "Air mission types."
+      },
+      "Terrain": {
+        "type": "string",
+        "enum": [
+          "plains",
+          "forest",
+          "hills",
+          "mountain",
+          "urban",
+          "marsh"
+        ],
+        "title": "Terrain",
+        "description": "Province terrain types."
+      },
+      "ThreatKind": {
+        "type": "string",
+        "enum": [
+          "sam",
+          "shorad",
+          "fighters"
+        ],
+        "title": "ThreatKind",
+        "description": "Kind of threat listed in a briefing."
       },
       "Time": {
         "properties": {
@@ -5203,6 +5176,15 @@
         ],
         "title": "TotRequest",
         "description": "Move the time on target of a package."
+      },
+      "UnitDomain": {
+        "type": "string",
+        "enum": [
+          "metric",
+          "imperial"
+        ],
+        "title": "UnitDomain",
+        "description": "System of units of the texts for people."
       },
       "ValidationError": {
         "properties": {

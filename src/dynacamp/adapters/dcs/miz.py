@@ -17,12 +17,15 @@ Requires the optional dependency ``pydcs`` (``uv sync --extra miz``).
 from __future__ import annotations
 
 import datetime as dt
+from enum import StrEnum
 import logging
 import re
 import warnings
 from pathlib import Path
 
+from ...adapters.base import Side
 from ...air import Task
+from ...projection import TheaterMap
 from ...state import CampaignState
 from . import LUA_BRIDGE, catalog
 
@@ -37,46 +40,44 @@ with warnings.catch_warnings():
 logging.getLogger("dcs").setLevel(logging.ERROR)  # "no DCS installation found" noise
 
 #: pydcs terrain class of each supported theatre.
-THEATERS = {"caucasus": Caucasus, "syria": Syria}
+THEATERS = {TheaterMap.CAUCASUS: Caucasus, TheaterMap.SYRIA: Syria}
 
 # ---------------------------------------------------------------- loadouts
 # pydcs only knows default loadouts when a DCS installation is present, so we
 # compose them from its per-pylon weapon tables: every pick is valid for that
-# pylon by construction. A recipe is a list of (weapon name patterns in order of
-# preference, number of pylons to fill). Pylons are filled outside-in.
+# pylon by construction. The recipes (weapon name patterns in order of
+# preference, number of pylons to fill) are DCS data: adapters/dcs/data/recipes.toml.
+# Pylons are filled outside-in.
 
-_A2A_LONG = "AIM-120C|AIM-120B|AIM-54C|AIM-54A|R-77|R-33|R-27ER|R-27R|SD-10|Super 530D|AIM-7M|AIM-7F|R-24R|R-40R|Sky Flash|RB-71"
-_A2A_SHORT = "AIM-9X|AIM-9M|AIM-9L|AIM-9P5|R-73|R-60|PL-5|Magic|R-550|R-13|R-3S|RB-74|RB-24"
-_TANK = "Fuel tank|Fuel Tank|PTB|Drop Tank"
-_POD = "LITENING|Sniper|AN/AAQ-28|Shkval|Kopyo|ATLIS|Damocles|WMD7|TGM-65"
-_ARM = "AGM-88C|AGM-88|Kh-58U|Kh-31P|Kh-25MPU|ALARM|LD-10|AGM-45"
-_PGM_ANTIARMOR = "AGM-65D|AGM-65H|AGM-65K|AGM-65E|AGM-65F|Kh-25ML|Kh-29L|Kh-29T|S-25L|RB-75|BK-90|AGM-114"
-_CLUSTER = "CBU-97|CBU-87|CBU-99|Mk-20|BL755|RBK-500|RBK-250|BetAB|BLG-66"
-_BOMB = "GBU-12|GBU-38|Mk-82|FAB-250|FAB-500|SAMP-250|Mk-81|OFAB-250"
-_HEAVY = "AGM-86|AGM-154|Kh-65|Kh-555|Kh-101|Kh-22|GBU-31|GBU-27|GBU-10|GBU-24|KAB-1500|KAB-500|BLU-109|Mk-84|FAB-1500|FAB-500|Mk-83|Mk-82|FAB-250|SAB"
-_ROCKET = "S-8KOM|S-8OFP2|M151|S-5KO|S-13|S-24|Zuni|Hydra|SNEB|ARF-8|M261|LAU-61|LAU-68|B-8|UB-32"
 
-#: Loadouts composed when ``data/loadouts.json`` has none, by recipe name: (store name patterns in
-#: order of preference, pylons to fill).
-RECIPES: dict[str, list[tuple[str, int]]] = {
-    "A2A": [(_A2A_LONG, 4), (_A2A_SHORT, 2), (_TANK, 1)],
-    "SEAD": [(_ARM, 2), (_A2A_LONG, 2), (_A2A_SHORT, 2), ("ALQ-184|ALQ-131|ALQ-119|SPS-141|Sorbtsiya", 1), (_TANK, 1)],
-    "MUD": [
-        (_PGM_ANTIARMOR, 2),
-        (_CLUSTER, 2),
-        (_BOMB, 2),
-        (_ROCKET, 2),
-        (_A2A_SHORT, 2),
-        ("ALQ-131|ALQ-184|ALQ-119|SPS-141", 1),
-        (_POD, 1),
-        (_TANK, 1),
-    ],
-    "STRIKE": [(_HEAVY, 4), (_A2A_SHORT, 2), (_POD, 1), (_TANK, 1)],
-    "BOMBER": [(_HEAVY, 99)],  # heavy bombers: every station with heavy ordnance
-    "HELO": [("AGM-114K|AGM-114L|9M114|9M120|Vikhr|TOW|BGM-71|HOT", 4), (_ROCKET, 4)],
+class Recipe(StrEnum):
+    """Kind of loadout composed for a flight."""
+    #: Air-to-air missiles.
+    A2A = "A2A"
+    #: Anti-radiation missiles and a jammer.
+    SEAD = "SEAD"
+    #: Ground attack.
+    MUD = "MUD"
+    #: Heavy bombs on fixed targets.
+    STRIKE = "STRIKE"
+    #: Heavy bombers: every station.
+    BOMBER = "BOMBER"
+    #: Attack helicopters.
+    HELO = "HELO"
+
+
+#: ``adapters/dcs/data/recipes.toml``.
+_RECIPES = catalog.data("recipes")
+#: Loadouts composed from DCS' pylon tables, by recipe: (store name pattern, pylons to fill),
+#: from ``adapters/dcs/data/recipes.toml``.
+RECIPES: dict[Recipe, list[tuple[str, int]]] = {
+    Recipe(r): [(_RECIPES["patterns"][pattern], int(n)) for pattern, n in steps]
+    for r, steps in _RECIPES["recipes"].items()
 }
-#: Aircraft ids loaded with the ``BOMBER`` recipe.
-BOMBERS = {"b1b", "b52h", "tu22m3", "tu95ms", "f117"}
+#: Recipe of each task (the others: :attr:`Recipe.MUD`).
+TASK_RECIPE = {Task.CAP: Recipe.A2A, Task.ESCORT: Recipe.A2A, Task.SEAD: Recipe.SEAD, Task.STRIKE: Recipe.STRIKE}
+#: Aircraft ids loaded with the :attr:`Recipe.BOMBER` recipe.
+BOMBERS = frozenset(_RECIPES["bombers"])
 #: pydcs main task of a mission group (template or player slot), by campaign task; it also
 #: selects the default loadout.
 MAIN_TASK = {
@@ -91,11 +92,12 @@ MAIN_TASK = {
     Task.TRANSPORT: dcs.task.Transport,
 }
 #: DCS country of each side in the generated missions.
-COUNTRY_NAME = {"blue": "USA", "red": "Russia"}
-_EXCLUDE = re.compile(r"practice|training|inert|dummy|smoke|empty|TsM|M257|M274|M156|illum|ROCKEYE.*training|BDU|SUU-20", re.IGNORECASE)
+COUNTRY_NAME = {Side.BLUE: "USA", Side.RED: "Russia"}
+#: Stores never picked for a loadout (training rounds, smoke...), from ``recipes.toml``.
+_EXCLUDE = re.compile(_RECIPES["exclude"], re.IGNORECASE)
 
 
-def _recipe(task: Task, helo: bool, aircraft: str = "") -> str:
+def _recipe(task: Task, helo: bool, aircraft: str = "") -> Recipe:
     """Loadout recipe name for an aircraft and task.
 
     Args:
@@ -104,21 +106,21 @@ def _recipe(task: Task, helo: bool, aircraft: str = "") -> str:
         aircraft: Campaign aircraft id (bombers get their own recipe).
 
     Returns:
-        The recipe name (``A2A``, ``SEAD``, ``STRIKE``, ``MUD``, ``BOMBER`` or ``HELO``).
+        The recipe.
     """
     if helo:
-        return "HELO"
+        return Recipe.HELO
     if aircraft in BOMBERS:
-        return "BOMBER"
-    return {Task.CAP: "A2A", Task.ESCORT: "A2A", Task.SEAD: "SEAD", Task.STRIKE: "STRIKE"}.get(task, "MUD")
+        return Recipe.BOMBER
+    return TASK_RECIPE.get(task, Recipe.MUD)
 
 
-def compose_loadout(unit_type, recipe: str) -> list[tuple[int, dict]]:
+def compose_loadout(unit_type, recipe: Recipe) -> list[tuple[int, dict]]:
     """Pick weapons for every pylon from pydcs' pylon tables, following a recipe.
 
     Args:
         unit_type: pydcs aircraft type.
-        recipe: Key of ``RECIPES``.
+        recipe: The kind of loadout.
 
     Returns:
         (pylon, weapon) pairs, valid by construction.
@@ -170,7 +172,7 @@ def apply_loadout(fg, unit_type, task: Task, helo: bool, aircraft: str = "") -> 
     """
     from ... import loadouts
 
-    briefed = loadouts.stores(aircraft, task.value) if aircraft else []
+    briefed = loadouts.stores(aircraft, task) if aircraft else []
     if briefed:
         picks = [(s["pylon"], {"clsid": s["clsid"], "name": s["name"], "weight": s.get("weight", 0.0)}) for s in briefed]
     else:
@@ -260,7 +262,13 @@ def generate_loadouts(path: Path | None = None) -> Path:
                 continue  # AWACS, tankers and transports carry no ordnance
             picks = compose_loadout(unit_type, _recipe(task, ac.helo, ac.id))
             out.setdefault(ac.id, {})[task.value] = [
-                {"pylon": p, "name": w["name"], "clsid": w["clsid"], "weight": round(float(w.get("weight") or 0.0), 1)}
+                {
+                    "pylon": p,
+                    "name": w["name"],
+                    "clsid": w["clsid"],
+                    "weight": round(float(w.get("weight") or 0.0), 1),
+                    **catalog.classify_store(w["name"]),
+                }
                 for p, w in sorted(picks, key=lambda x: x[0])
             ]
     path = path or loadouts.DATA
@@ -311,8 +319,8 @@ def build_mission(
 
     countries = {side: m.country(name) for side, name in COUNTRY_NAME.items()}
     for side, name in COUNTRY_NAME.items():
-        if countries[side].id != catalog.COUNTRY[side]:
-            notes.append(f"country id mismatch for {side}: {countries[side].id} vs catalog {catalog.COUNTRY[side]}")
+        if countries[side].name.upper() != catalog.COUNTRY[side]:
+            notes.append(f"country mismatch for {side}: {countries[side].name} vs catalog {catalog.COUNTRY[side]}")
 
     def point(v) -> Point:
         """Campaign point -> pydcs point.
@@ -407,7 +415,7 @@ def build_mission(
         "Requires a desanitised MissionScripting.lua (LuaSocket).\n\n"
         "Pick a slot, then F10 > Other > DynaCamp ATO to join a flight."
     )
-    for side, setter in (("blue", m.set_description_bluetask_text), ("red", m.set_description_redtask_text)):
+    for side, setter in ((Side.BLUE, m.set_description_bluetask_text), (Side.RED, m.set_description_redtask_text)):
         f = state.faction_for_side(side)
         if f is not None:
             objectives = ", ".join(state.theater.provinces[o.province].name for o in f.objectives)

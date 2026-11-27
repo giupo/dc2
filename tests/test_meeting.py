@@ -5,6 +5,7 @@ from dynacamp.air_defense import SYSTEMS, AirDefenseUnit
 from dynacamp.engine import Engine
 from dynacamp.forces import Convoy, Movement, Order, OrderKind
 from dynacamp.geo import Vec2
+from dynacamp.state import BattleKind
 from dynacamp.systems import combat
 
 
@@ -50,7 +51,7 @@ def test_columns_crossing_on_the_road_fight_where_they_meet():
     assert state.set_order(bl, Order(OrderKind.MOVE, "b")) and state.set_order(rd, Order(OrderKind.MOVE, "d"))
     assert run_until(state, lambda: bl.battle is not None)
     b = state.battles[bl.battle]
-    assert b.kind == "meeting" and rd.id in b.attackers + b.defenders
+    assert b.kind is BattleKind.MEETING and rd.id in b.attackers + b.defenders
     assert combat.battle_point(state, b).length() < combat.MEET_RANGE_M  # at the crossing, not at a province
     (ev,) = state.events.of_kind("battle_started")
     assert ev.data["battle_kind"] == "meeting"
@@ -101,7 +102,7 @@ def test_an_assault_approach_is_not_a_meeting():
     bl, rd = state.divisions["bl"], state.divisions["rd"]
     state.set_order(bl, Order(OrderKind.ATTACK, "c"))  # straight at the province the red brigade holds
     run_until(state, lambda: bool(state.battles), hours=6)
-    assert state.battles and all(b.kind == "assault" for b in state.battles.values())
+    assert state.battles and all(b.kind is BattleKind.ASSAULT for b in state.battles.values())
     assert rd.id in next(iter(state.battles.values())).defenders
 
 

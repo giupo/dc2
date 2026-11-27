@@ -18,14 +18,30 @@ Every AI cycle, in this order:
 
 from __future__ import annotations
 
+from logging import getLogger
 from collections import deque
+from enum import StrEnum
 
 from ..forces import Authority, Division, Order, OrderKind
-from ..state import CampaignState, Faction
+from ..state import CampaignState, Faction, Timer
 from ..world import TERRAIN
 from . import intel
 from .combat import ENTRENCHMENT, RIVER_PENALTY
 from ..events import EventKind
+
+
+log = getLogger(__name__)
+
+
+class AiOrder(StrEnum):
+    """What the theatre AI orders a brigade to do (``ai_order``)."""
+    #: Move to plug a hole in the front line.
+    SECURE = "secure"
+    #: Redeploy to another province.
+    MOVE = "move"
+    #: Attack an enemy province.
+    ATTACK = "attack"
+
 
 #: Seconds between two planning rounds of the theatre AI.
 AI_INTERVAL_S = 3600.0
@@ -51,16 +67,20 @@ GARRISON_MIN_STRENGTH = 0.3
 WATCH_M = 12_000.0
 
 
-def run(state: CampaignState, dt: float) -> None:
+def run(state: CampaignState, _: float) -> None:
     """Plan for every faction every ``AI_INTERVAL_S``.
 
     Args:
         state: The campaign.
         dt: Campaign seconds elapsed (unused: planning runs on its own timer).
     """
-    if state.time < state.timers.get("ai", 0.0):
+
+    # there's no time for AI, bail out
+    if state.time < state.timers.get(Timer.AI, 0.0):
+        log.warn("No time for AI, bailing out")
         return
-    state.timers["ai"] = state.time + AI_INTERVAL_S
+
+    state.timers[Timer.AI] = state.time + AI_INTERVAL_S
     for faction in state.factions.values():
         plan(state, faction)
 
@@ -95,11 +115,15 @@ def _expected_defence(state: CampaignState, fid: str, target: str, divs: list[Di
         The expected defending combat power (0 = known to be empty).
     """
     known = _defence_power(intel.known_divisions_in(state, fid, target))
+
     if known > 0:
         return known
+
     centre = state.theater.provinces[target].center
+
     if any(pos.distance_to(centre) <= min(rng, WATCH_M) for pos, rng, _ in intel.ground_observers(state, fid)):
         return 0.0
+
     powers = sorted(_defence_power([d]) for d in divs if d.strength >= GARRISON_MIN_STRENGTH)
     return powers[len(powers) // 2] if powers else 0.0
 
@@ -367,7 +391,7 @@ def _secure(
 
         counts[hole] = counts.get(hole, 0) + 1
         moved.add(d.id)
-        state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="secure", target=hole)
+        state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order=AiOrder.SECURE, target=hole)
 
     return moved
 
@@ -467,7 +491,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
         for d in group:
             if state.set_order(d, Order(OrderKind.ATTACK, target)):
                 committed.add(d.id)
-                state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="attack", target=target)
+                state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order=AiOrder.ATTACK, target=target)
 
     # ---- 3. reserves to the front
     threat = {
@@ -504,7 +528,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
             continue
         if state.set_order(d, Order(OrderKind.MOVE, best[1])):
             assigned[best[1]] += d.combat_power()
-            state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order="move", target=best[1])
+            state.emit(EventKind.AI_ORDER, faction=fid, division=d.id, order=AiOrder.MOVE, target=best[1])
 
 
 def _man_the_front(state: CampaignState, fid: str, divs: list[Division], fronts: set[str], busy: set[str]) -> None:

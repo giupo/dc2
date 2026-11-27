@@ -11,6 +11,8 @@ Pickle keeps the format free of hand-written serialisers, at a price:
 * only load save files you trust (unpickling can run arbitrary code);
 * a save may stop loading after deep refactors of the state classes; the
   envelope's :data:`FORMAT_VERSION` is bumped when that is done on purpose.
+  Classes that were only moved or renamed are found through
+  :data:`RENAMED_CLASSES`.
 
 What a game was doing is not saved: when a campaign is loaded, entities that a
 game was simulating come back under campaign control with their last known
@@ -27,11 +29,12 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .forces import Authority
+from .forces import Authority, EntityKind
 from .state import CampaignState
 from .events import EventKind
 
@@ -42,7 +45,40 @@ if TYPE_CHECKING:  # pragma: no cover
 MAGIC = "dynacamp-save"
 #: Version of the save format: bumped only for incompatible changes (renamed fields, changed types).
 FORMAT_VERSION = 1
+#: First bytes of a gzip file: how a save is told from a scenario.
 _GZIP_MAGIC = b"\x1f\x8b"
+#: Classes moved or renamed since saves were first written: (module, name) as
+#: pickled -> (module, name) now.
+RENAMED_CLASSES = {
+    ("dynacamp.systems.intel", "ContactKind"): ("dynacamp.forces", "EntityKind"),
+}
+
+
+class SaveTrigger(StrEnum):
+    """What asked for a save."""
+    #: The periodic autosave.
+    AUTO = "auto"
+    #: A request (POST /api/save).
+    API = "api"
+    #: The server shutting down.
+    EXIT = "exit"
+
+
+class _Unpickler(pickle.Unpickler):
+    """Unpickler that finds moved or renamed classes (see :data:`RENAMED_CLASSES`)."""
+
+    def find_class(self, module: str, name: str) -> Any:
+        """Resolve a pickled class reference, under its current name.
+
+        Args:
+            module: Module the class was pickled from.
+            name: Name it was pickled under.
+
+        Returns:
+            The class.
+        """
+        module, name = RENAMED_CLASSES.get((module, name), (module, name))
+        return super().find_class(module, name)
 
 
 class SaveError(ValueError):
@@ -158,7 +194,7 @@ def _read_envelope(path: str | Path) -> dict[str, Any]:
     """
     try:
         with gzip.open(path, "rb") as fh:
-            envelope = pickle.load(fh)
+            envelope = _Unpickler(fh).load()
     except (OSError, EOFError, pickle.UnpicklingError, AttributeError, ImportError, TypeError) as exc:
         raise SaveError(f"{path}: not a readable DynaCamp save ({exc})") from exc
     if not isinstance(envelope, dict) or envelope.get("format") != MAGIC:
@@ -217,6 +253,27 @@ def _add_missing_fields(state: CampaignState) -> None:
             faction.bullseye = bullseye.centre(held or [p.center for p in state.theater.provinces.values()])
 
 
+def _strings_to_enums(state: CampaignState) -> None:
+    """Turn into enum members the plain strings that older saves hold in
+    fields that are enums now (the code compares them by identity).
+
+    Args:
+        state: The unpickled campaign, updated in place.
+    """
+    from .adapters.base import Side
+    from .air import TargetKind
+    from .state import BattleKind
+
+    for faction in state.factions.values():
+        faction.side = Side(faction.side)
+    for battle in state.battles.values():
+        battle.kind = BattleKind(battle.kind)
+    for ent in [*state.entities(), *state.archived_flights.values()]:
+        ent.kind = EntityKind(ent.kind)
+    for f in [*state.flights.values(), *state.archived_flights.values()]:
+        f.target_kind = TargetKind(f.target_kind or TargetKind.POINT)
+
+
 def _detach_from_game(state: CampaignState) -> None:
     """Bring back under campaign control what a game held when the save was made.
 
@@ -254,6 +311,7 @@ def load(path: str | Path) -> tuple[CampaignState, SaveInfo]:
     envelope = _read_envelope(path)
     state: CampaignState = envelope["state"]
     _add_missing_fields(state)
+    _strings_to_enums(state)
     _detach_from_game(state)
     info = _info(envelope)
     state.emit(EventKind.CAMPAIGN_RESUMED, saved_by=info.version, saved_at=info.saved_at)
@@ -283,11 +341,11 @@ class SaveRecord:
     Attributes:
         saved_at: Wall-clock time (Unix seconds).
         campaign_time: Campaign seconds at the save.
-        trigger: What asked for it: ``"auto"``, ``"api"`` or ``"exit"``.
+        trigger: What asked for it.
     """
     saved_at: float
     campaign_time: float
-    trigger: str
+    trigger: SaveTrigger
 
 
 class Saver:
@@ -319,12 +377,12 @@ class Saver:
         self._last_attempt = clock()
         self._lock = threading.Lock()
 
-    def save(self, engine: Engine, trigger: str) -> SaveRecord:
+    def save(self, engine: Engine, trigger: SaveTrigger) -> SaveRecord:
         """Save now and record a ``campaign_saved`` event.
 
         Args:
             engine: The running engine.
-            trigger: ``"auto"``, ``"api"`` or ``"exit"``.
+            trigger: What asks for it.
 
         Returns:
             The record of this save.
@@ -341,7 +399,7 @@ class Saver:
             record = SaveRecord(saved_at=time.time(), campaign_time=when, trigger=trigger)
             self.last = record
         with engine.lock:
-            engine.state.emit(EventKind.CAMPAIGN_SAVED, file=self.path.name, trigger=trigger, campaign_time=when)
+            engine.state.emit(EventKind.CAMPAIGN_SAVED, file=self.path.name, trigger=trigger.value, campaign_time=when)
         return record
 
     def due(self) -> bool:

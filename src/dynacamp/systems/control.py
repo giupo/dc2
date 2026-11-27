@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..state import CampaignState
-from ..events import EventKind
+from ..events import EventKind, LossReason
 
 
 def capture(state: CampaignState, pid: str, faction: str, by: str) -> None:
@@ -34,7 +34,7 @@ def capture(state: CampaignState, pid: str, faction: str, by: str) -> None:
     for u in list(state.air_defense.values()):
         if u.location == pid and state.at_war(faction, u.faction) and not (u.movement and u.movement.progress > 0):
             del state.air_defense[u.id]
-            state.emit(EventKind.SAM_DESTROYED, sam=u.id, system=u.system.name, faction=u.faction, province=pid, reason="overrun")
+            state.emit(EventKind.SAM_DESTROYED, sam=u.id, system=u.system.name, faction=u.faction, province=pid, reason=LossReason.OVERRUN)
             from . import air_defense
 
             air_defense.schedule_replacement(state, u)
@@ -45,7 +45,7 @@ def capture(state: CampaignState, pid: str, faction: str, by: str) -> None:
             convoy.movement and convoy.movement.progress > 0
         ):
             del state.convoys[convoy.id]
-            state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason="captured")
+            state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason=LossReason.CAPTURED)
 
     for f in state.factions.values():
         for obj in f.objectives:

@@ -10,25 +10,19 @@ one of two systems:
 
 from __future__ import annotations
 
-from typing import Literal
 from enum import StrEnum
 
+
 class UnitDomain(StrEnum):
-    """
-    Unit types of the system.
-    """
-
-    "Metric system"
+    """System of units of the texts for people."""
+    #: Kilometres, metres, km/h.
     METRIC = "metric"
-
-    "Imperial system"
+    #: Nautical miles, feet, knots.
     IMPERIAL = "imperial"
 
-Units = Literal[UnitDomain.METRIC, UnitDomain.IMPERIAL]
-#: The unit systems texts can use.
-UNITS: tuple[str, ...] = (UnitDomain.METRIC, UnitDomain.IMPERIAL)
+
 #: Unit system of a campaign that does not choose one.
-DEFAULT_UNITS: Units = UnitDomain.IMPERIAL
+DEFAULT_UNITS = UnitDomain.IMPERIAL
 
 #: Metres per nautical mile.
 M_PER_NM = 1852.0
@@ -38,24 +32,24 @@ M_PER_FT = 0.3048
 KMH_PER_KT = M_PER_NM / 1000.0
 
 
-def check(units: str) -> Units:
+def check(units: str) -> UnitDomain:
     """Validate a units name.
 
     Args:
         units: The name to check.
 
     Returns:
-        The same name, typed as :data:`Units`.
+        The unit system.
 
     Raises:
         ValueError: If it is not ``metric`` or ``imperial``.
     """
-    if units not in UNITS:
-        raise ValueError(f"unknown units {units!r}: use one of {', '.join(UNITS)}")
-    return units  # type: ignore[return-value]
+    if units not in UnitDomain:
+        raise ValueError(f"unknown units {units!r}: use one of {', '.join(UnitDomain)}")
+    return UnitDomain(units)
 
 
-def distance(m: float, units: Units) -> str:
+def distance(m: float, units: UnitDomain) -> str:
     """A distance: ``"64 km"`` or ``"35 NM"``.
 
     Args:
@@ -70,7 +64,7 @@ def distance(m: float, units: Units) -> str:
     return f"{m / 1000:.0f} km"
 
 
-def altitude(m: float, units: Units) -> str:
+def altitude(m: float, units: UnitDomain) -> str:
     """An altitude: ``"1500 m"`` or ``"4900 ft"`` (feet rounded to 100).
 
     Args:
@@ -85,7 +79,7 @@ def altitude(m: float, units: Units) -> str:
     return f"{m:.0f} m"
 
 
-def speed(kmh: float, units: Units) -> str:
+def speed(kmh: float, units: UnitDomain) -> str:
     """A speed: ``"830 km/h"`` or ``"450 kts"`` (rounded to 5).
 
     Args:

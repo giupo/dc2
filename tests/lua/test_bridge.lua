@@ -55,14 +55,17 @@ local function make_unit(name, x, z)
   return u
 end
 
-Group = { Category = { GROUND = 2, SHIP = 3 } }
+Group = { Category = { AIRPLANE = 0, HELICOPTER = 1, GROUND = 2, SHIP = 3 } }
+Unit = { Category = { AIRPLANE = 0, HELICOPTER = 1, GROUND_UNIT = 2, SHIP = 3, STRUCTURE = 4 } }
+country = { id = { RUSSIA = 0, USA = 2 } }
+AI = { Option = { Air = { id = { ECM_USING = 13 }, val = { ECM_USING = { ALWAYS_USE = 3 } } } } }
 function Group.getByName(name) return groups[name] end
 
 local players_by_side = { [1] = {}, [2] = {} }
-coalition = {}
+coalition = { side = { NEUTRAL = 0, RED = 1, BLUE = 2 } }
 function coalition.addGroup(country, category, data)
   if data.units[1].type == "BOOM" then error("unknown unit type") end
-  local g = { name = data.name, units = {}, alive = true, tasks = {}, data = data, category = category }
+  local g = { name = data.name, units = {}, alive = true, tasks = {}, data = data, category = category, country = country }
   for _, u in ipairs(data.units) do g.units[#g.units + 1] = make_unit(u.name, u.x, u.y) end
   function g:isExist() return self.alive end
   function g:getUnits() return self.units end
@@ -115,7 +118,7 @@ check(last_sent().msg == "hello" and last_sent().theatre == "Caucasus", "sends h
 
 -- spawn (line split across two receives to exercise buffering)
 local spawn = json.encode({ cmd = "spawn", id = "d1", groups = {
-  { country = 2, category = "ground", data = { name = "DC.d1.g0", x = 100, y = 200, units = {
+  { country = { enum = "country.id.USA" }, category = { enum = "Group.Category.GROUND" }, data = { name = "DC.d1.g0", x = 100, y = 200, units = {
     { type = "M-1 Abrams", name = "DC.d1.mbt.0", x = 100, y = 200 },
     { type = "M-1 Abrams", name = "DC.d1.mbt.1", x = 110, y = 210 } } } } } })
 inbound[#inbound + 1] = { partial = spawn:sub(1, 40) }
@@ -124,21 +127,28 @@ check(groups["DC.d1.g0"] == nil, "waits for full line")
 inbound[#inbound + 1] = { line = spawn:sub(41) }
 DC.step(10.4)
 check(groups["DC.d1.g0"] ~= nil, "spawns group")
+check(groups["DC.d1.g0"].country == 2 and groups["DC.d1.g0"].category == 2, "resolves country and category by name")
 local ack = last_sent()
 check(ack.msg == "spawned" and ack.id == "d1" and ack.ok == true, "acks spawn")
 
 -- failed spawn
 inbound[#inbound + 1] = { line = json.encode({ cmd = "spawn", id = "bad", groups = {
-  { country = 2, category = "ground", data = { name = "DC.bad.g0", units = { { type = "BOOM", name = "DC.bad.x.0" } } } } } }) }
+  { country = { enum = "country.id.USA" }, category = { enum = "Group.Category.GROUND" }, data = { name = "DC.bad.g0", units = { { type = "BOOM", name = "DC.bad.x.0" } } } } } }) }
 DC.step(10.6)
 ack = last_sent()
 check(ack.msg == "spawned" and ack.ok == false and ack.error:find("unknown unit type"), "reports failed spawn")
 check(DC.entities["bad"] == nil, "forgets failed entity")
 
 -- route
-inbound[#inbound + 1] = { line = json.encode({ cmd = "route", id = "d1", points = { { x = 1, y = 2 } } }) }
+inbound[#inbound + 1] = { line = json.encode({ cmd = "route", id = "d1", points = { { x = 1, y = 2, task = { params = {
+  name = { enum = "AI.Option.Air.id.ECM_USING", default = 99 }, value = { enum = "AI.Option.Air.val.ECM_USING.ALWAYS_USE" },
+  weapon = { enum = "Weapon.flag.Auto", default = 7 } } } } } }) }
 DC.step(10.8)
 check(#groups["DC.d1.g0"].tasks == 1 and groups["DC.d1.g0"].tasks[1].id == "Mission", "sets route task")
+local params = groups["DC.d1.g0"].tasks[1].params.route.points[1].task.params
+check(params.name == 13 and params.value == 3, "resolves nested enums from DCS, not the default")
+check(params.weapon == 7, "falls back to the default when DCS lacks the enum")
+check(DC.enum("No.Such.Enum") == nil and DC.enum_name(Unit.Category, 1) == "HELICOPTER", "enum lookups both ways")
 
 -- periodic reports: players + state with one tank dead
 players_by_side[2] = { (function()
@@ -153,7 +163,8 @@ groups["DC.d1.g0"].units[2].alive = false
 sent = {}
 DC.step(20)
 local players = json.decode((sent[1]:gsub("\n$", "")))
-check(players.msg == "players" and players.players[1].id == "Pilot" and players.players[1].coalition == 2, "reports players")
+check(players.msg == "players" and players.players[1].id == "Pilot" and players.players[1].coalition == "BLUE"
+  and players.players[1].category == "AIRPLANE", "reports players, coalition and category by name")
 local state = json.decode((sent[2]:gsub("\n$", "")))
 check(state.msg == "state" and #state.entities[1].units == 1 and state.entities[1].units[1].n == "DC.d1.mbt.0", "reports alive units")
 
@@ -167,13 +178,13 @@ check(groups["DC.d1.g0"] == nil and DC.entities["d1"] == nil, "despawn destroys 
 -- ground vehicles are snapped onto a nearby road, far ones left alone
 land = { getClosestPointOnRoads = function(kind, x, y) return x + 50, y end }
 inbound[#inbound + 1] = { line = json.encode({ cmd = "spawn", id = "d2", groups = {
-  { country = 2, category = "ground", snap_to_road = true, data = { name = "DC.d2.g0", x = 0, y = 0, units = {
+  { country = { enum = "country.id.USA" }, category = { enum = "Group.Category.GROUND" }, snap_to_road = true, data = { name = "DC.d2.g0", x = 0, y = 0, units = {
     { type = "M-1 Abrams", name = "DC.d2.mbt.0", x = 1000, y = 2000 } } } } } }) }
 DC.step(20.3)
 check(groups["DC.d2.g0"].units[1].x == 1050, "snaps vehicle to the road")
 land = { getClosestPointOnRoads = function(kind, x, y) return x + 5000, y end }
 inbound[#inbound + 1] = { line = json.encode({ cmd = "spawn", id = "d3", groups = {
-  { country = 2, category = "ground", snap_to_road = true, data = { name = "DC.d3.g0", x = 0, y = 0, units = {
+  { country = { enum = "country.id.USA" }, category = { enum = "Group.Category.GROUND" }, snap_to_road = true, data = { name = "DC.d3.g0", x = 0, y = 0, units = {
     { type = "M-1 Abrams", name = "DC.d3.mbt.0", x = 1000, y = 2000 } } } } } }) }
 DC.step(20.35)
 check(groups["DC.d3.g0"].units[1].x == 1000, "does not drag a vehicle to a far road")
@@ -182,7 +193,7 @@ check(groups["DC.d3.g0"].units[1].x == 1000, "does not drag a vehicle to a far r
 local alarm = {}
 AI = { Option = { Ground = { id = { ALARM_STATE = 9, ROE = 0 }, val = { ALARM_STATE = { RED = 2 }, ROE = { OPEN_FIRE = 2 } } } } }
 inbound[#inbound + 1] = { line = json.encode({ cmd = "spawn", id = "s1", groups = {
-  { country = 0, category = "ground", alarm_red = true, data = { name = "DC.s1.g0", x = 0, y = 0, units = {
+  { country = { enum = "country.id.RUSSIA" }, category = { enum = "Group.Category.GROUND" }, alarm_red = true, data = { name = "DC.s1.g0", x = 0, y = 0, units = {
     { type = "SA-11 Buk LN 9A310M1", name = "DC.s1.launcher.0", x = 10, y = 20 } } } } } }) }
 local real_add = coalition.addGroup
 coalition.addGroup = function(c, cat, data)
@@ -196,7 +207,7 @@ check(alarm[9] == 2 and alarm[0] == 2, "SAM site set to alarm red, weapons free"
 
 -- air spawn uses the mission-editor template and lands at home
 inbound[#inbound + 1] = { line = json.encode({ cmd = "spawn", id = "fl1", groups = {
-  { country = 2, category = "airplane", templates = { "DC_TPL_f16c_SEAD", "DC_TPL_f16c" }, land_at = "Kutaisi",
+  { country = { enum = "country.id.USA" }, category = { enum = "Group.Category.AIRPLANE" }, templates = { "DC_TPL_f16c_SEAD", "DC_TPL_f16c" }, land_at = "Kutaisi",
     data = { name = "DC.fl1.g0", task = "SEAD", units = { { type = "X", name = "DC.fl1.aircraft.0", x = 1, y = 2 },
                                                           { type = "X", name = "DC.fl1.aircraft.1", x = 1, y = 2 } },
              route = { points = { { x = 1, y = 2 }, { x = 3, y = 4 } } } } } } }) }
@@ -207,7 +218,7 @@ check(air.data.units[2].type == "F-16C_50" and air.data.units[2].payload.pylons[
 check(air.data.route.points[2].type == "Land" and air.data.route.points[2].airdromeId == 26, "lands at home base")
 
 -- ATO board -> F10 menu -> join request
-inbound[#inbound + 1] = { line = json.encode({ cmd = "ato", coalition = 2, version = 1, packages = {
+inbound[#inbound + 1] = { line = json.encode({ cmd = "ato", coalition = "BLUE", version = 1, packages = {
   { id = "pk1", label = "CAS Senaki TOT D1 10:30", flights = { { id = "fl1", label = "Viper 1 F-16C SEAD (2 free)" } } } } }) }
 DC.step(20.6)
 local join
@@ -216,9 +227,10 @@ check(join ~= nil and join.gid == 501, "builds ATO menu for player group")
 sent = {}
 join.fn(join.args)
 local req = last_sent()
-check(req.msg == "join" and req.flight == "fl1" and req.player == "Pilot" and req.type == "F-16C_50", "join sends request")
+check(req.msg == "join" and req.flight == "fl1" and req.player == "Pilot" and req.type == "F-16C_50"
+  and req.category == "AIRPLANE", "join sends request")
 local count = #menus
-inbound[#inbound + 1] = { line = json.encode({ cmd = "ato", coalition = 2, version = 2, packages = {} }) }
+inbound[#inbound + 1] = { line = json.encode({ cmd = "ato", coalition = "BLUE", version = 2, packages = {} }) }
 DC.step(20.8)
 check(#menus < count, "rebuilds menu on new board")
 

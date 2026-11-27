@@ -15,28 +15,39 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 from . import catalog
-from .forces import MobileEntity
+from .forces import EntityKind, MobileEntity
 from .geo import Vec2
 from .world import Theater
+
+#: Element id of a flight's aircraft in snapshots and game reports.
+AIRCRAFT_ELEMENT = "aircraft"
 
 
 class Task(StrEnum):
     """Air mission types."""
-    CAP = "CAP"  # combat air patrol over a point
-    ESCORT = "ESCORT"  # fighter escort of a package
-    SEAD = "SEAD"  # suppression of enemy air defences
-    # Destruction of enemy air defences: a *package* task only. Its flights are
-    # strikers (STRIKE) on the site, SEAD with ECM keeping the radars down, and
-    # fighter escort; no squadron flies "DEAD" as such.
+    #: Combat air patrol over a point.
+    CAP = "CAP"
+    #: Fighter escort of a package.
+    ESCORT = "ESCORT"
+    #: Suppression of enemy air defences.
+    SEAD = "SEAD"
+    #: Destruction of enemy air defences: a *package* task only. Its flights are strikers (STRIKE).
+    #: on the site, SEAD with ECM keeping the radars down, and fighter escort; no squadron flies
+    #: "DEAD" as such.
     DEAD = "DEAD"
-    CAS = "CAS"  # close air support over a battle
-    BAI = "BAI"  # battlefield interdiction: divisions / convoys behind the front
-    STRIKE = "STRIKE"  # fixed targets (depots)
-    AWACS = "AWACS"  # airborne early warning: the main sensor of the air picture
-    TANKER = "TANKER"  # air-to-air refuelling track
-    TRANSPORT = "TRANSPORT"  # airlift of supply
-    SCRAMBLE = "SCRAMBLE"
-    
+    #: Close air support over a battle.
+    CAS = "CAS"
+    #: Battlefield interdiction: divisions / convoys behind the front.
+    BAI = "BAI"
+    #: Fixed targets (depots).
+    STRIKE = "STRIKE"
+    #: Airborne early warning: the main sensor of the air picture.
+    AWACS = "AWACS"
+    #: Air-to-air refuelling track.
+    TANKER = "TANKER"
+    #: Airlift of supply.
+    TRANSPORT = "TRANSPORT"
+
     @property
     def air_to_air(self) -> bool:
         """True for fighter tasks (CAP, escort)."""
@@ -51,6 +62,50 @@ class Task(StrEnum):
     def orbits(self) -> bool:
         """True for missions that hold a station (CAP, AWACS, tanker)."""
         return self in (Task.CAP, Task.AWACS, Task.TANKER)
+
+
+class FlightReason(StrEnum):
+    """Why a flight is cancelled, heads home or aborts its mission."""
+    #: Its airbase fell before takeoff.
+    AIRBASE_LOST = "airbase lost"
+    #: The squadron has no aircraft left to fly it.
+    NO_CREWS = "no crews"
+    #: Cancelled by a planner's order.
+    PLANNER = "cancelled by the planner"
+    #: Just enough fuel left to get home.
+    BINGO_FUEL = "bingo fuel"
+    #: Its station time is over.
+    END_OF_STATION = "end of station"
+    #: Out of weapons.
+    WINCHESTER = "winchester"
+    #: Too many aircraft lost to go on.
+    LOSSES = "losses"
+    #: Enemy fighters broke up the attack.
+    INTERCEPTED = "intercepted"
+    #: An air defence site it cannot avoid.
+    SAM_THREAT = "SAM threat"
+
+
+class TargetKind(StrEnum):
+    """What a flight flies against (with ``target_id``, the target itself)."""
+    #: A battle (CAS).
+    BATTLE = "battle"
+    #: A brigade (BAI).
+    DIVISION = "division"
+    #: A supply convoy (BAI).
+    CONVOY = "convoy"
+    #: A province's supply depot (STRIKE).
+    DEPOT = "depot"
+    #: An air defence site (SEAD, DEAD).
+    SAM = "sam"
+    #: A station: CAP, AWACS orbit, tanker track.
+    POINT = "point"
+    #: A friendly airbase to supply (TRANSPORT).
+    AIRLIFT = "airlift"
+    #: A friendly brigade to supply by helicopter (TRANSPORT).
+    RESUPPLY = "resupply"
+    #: A hostile aircraft to intercept (scramble).
+    FLIGHT = "flight"
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,11 +294,17 @@ class Squadron:
 
 class FlightStatus(StrEnum):
     """Life cycle of a flight."""
-    SCHEDULED = "scheduled"  # on the ground, waiting for takeoff time
-    AIRBORNE = "airborne"  # flying towards the target / station
-    ON_STATION = "on_station"  # CAP orbiting
+    #: On the ground, waiting for takeoff time.
+    SCHEDULED = "scheduled"
+    #: Flying towards the target / station.
+    AIRBORNE = "airborne"
+    #: Holding its station (CAP, AWACS orbit, tanker track).
+    ON_STATION = "on_station"
+    #: Returning to base.
     RTB = "rtb"
-    DONE = "done"  # landed or lost; aircraft accounted back to the squadron
+    #: Landed or lost; aircraft accounted back to the squadron.
+    DONE = "done"
+    #: Will not fly; its aircraft went back to the squadron.
     CANCELLED = "cancelled"
 
 
@@ -253,10 +314,15 @@ ACTIVE_STATUSES = (FlightStatus.AIRBORNE, FlightStatus.ON_STATION, FlightStatus.
 
 class SeatState(StrEnum):
     """State of a player's seat in a flight."""
+    #: Taken, not yet airborne.
     ASSIGNED = "assigned"
+    #: The player is flying.
     AIRBORNE = "airborne"
+    #: The player landed.
     LANDED = "landed"
+    #: The player's aircraft was lost.
     LOST = "lost"
+    #: The player gave the seat up or disconnected.
     LEFT = "left"
 
 
@@ -292,7 +358,7 @@ class Flight(MobileEntity):
         pos: Current position of the AI part.
         status: Life-cycle status.
         wp_index: Next waypoint.
-        target_kind: ``battle``, ``division``, ``convoy``, ``depot``, ``sam`` or ``point``.
+        target_kind: What it flies against.
         target_id: Target id.
         station_until: End of the CAP station time.
         attacked: The attack has been made.
@@ -323,7 +389,7 @@ class Flight(MobileEntity):
     pos: Vec2
     status: FlightStatus = FlightStatus.SCHEDULED
     wp_index: int = 1  # next waypoint to fly to
-    target_kind: str = ""  # "battle" | "division" | "convoy" | "depot" | "point"
+    target_kind: TargetKind = TargetKind.POINT
     target_id: str = ""
     station_until: float = 0.0
     attacked: bool = False
@@ -340,7 +406,7 @@ class Flight(MobileEntity):
     aam_loaded: int = 0  # missiles at takeoff (0: guns only)
     track: float = 0.0  # direction last flown, radians (0 = north): where the radar looks
     engaging: str = ""  # hostile flight it is committed against
-    kind: str = "flight"
+    kind: EntityKind = EntityKind.FLIGHT
 
     @property
     def target_point(self) -> Vec2:

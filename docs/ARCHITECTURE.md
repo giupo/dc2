@@ -156,6 +156,35 @@ tipo unione e `tsc` controlla le sue tabelle (`EVENT_CATEGORY` in
 membro sia emesso da qualche parte. Gli eventi del bridge DCS
 (`PlayerEventKind` ecc.) sono un protocollo a parte e restano fuori.
 
+Anche i valori dei payload che formano un insieme chiuso sono enum, in
+`events.py`: `LossReason` (perché si perde un'unità), `StrikeResult` (esito di
+un attacco a un SAM), `OrderEnd`, `PlayerExit`, `Simulator` (a chi passa
+un'entità nell'handoff); `air.FlightReason` per i voli. `emit` salva ogni
+membro come il suo valore stringa: log, API e UI vedono testo leggibile.
+
+**Enum e costanti.** Niente stringhe sparse: un insieme chiuso di valori è una
+`StrEnum`, un valore singolo che il codice confronta è una costante con un
+commento `#:`. Si usa `StrEnum` e non `IntEnum` perché i valori escono dal
+motore (TOML, JSON, Lua, salvataggi): restano leggibili e non cambiano se si
+riordinano i membri. Lo schema dell'API usa le enum stesse, così l'OpenAPI e i
+tipi TypeScript non possono divergere. Le principali:
+
+| Enum | Modulo | Cosa |
+|---|---|---|
+| `EntityKind` | `forces` | divisione, convoglio, volo, sito SAM (entità, snapshot, contatti) |
+| `TargetKind`, `FlightReason` | `air` | contro cosa vola un volo; perché rientra o non parte |
+| `BattleKind`, `Timer`, `IdPrefix` | `state` | assalto o scontro d'incontro; chiavi di `state.timers`; prefissi degli id |
+| `Side` | `adapters/base` | lato del gioco (blu, rosso) |
+| `TheaterMap` | `projection` | mappe DCS con proiezione |
+| `UnitDomain` | `units` | sistema di unità dei testi |
+
+`state.timers` contiene sia le pianificazioni dei sistemi (`Timer.ATO`) sia i
+cooldown composti con gli id coinvolti (`Timer.SAM.key(sito, volo)`): i
+membri in `COOLDOWNS` si cancellano scaduti, senza elenchi di prefissi
+ricopiati. Gli id degli elementi del catalogo usati dalle regole sono
+costanti (`forces.TRUCK`, `ARTILLERY`, `MLRS`, `SAM_SHORT`, `AAA`,
+`air_defense.LAUNCHER`), verificate contro il catalogo da un test.
+
 **Salvataggio** (`persistence.py`). Si salva l'intero `CampaignState` come
 pickle compresso con gzip, dentro un involucro con versione del formato,
 versione del pacchetto e compressione temporale. L'`EventLog` non salva i
@@ -168,6 +197,13 @@ fuori dal lock. `persistence.Saver` serve i tre casi: salvataggio automatico
 dal thread del motore, `POST /api/save` dal threadpool dell'API, e chiusura
 del server. Un lock proprio impedisce che due salvataggi si accavallino; ogni
 salvataggio emette `campaign_saved`.
+
+I salvataggi vecchi restano leggibili dopo i refactoring compatibili: i campi
+nuovi prendono il default (`_add_missing_fields`), le stringhe dei campi
+diventati enum vengono convertite (`_strings_to_enums`: il codice confronta le
+enum con `is`) e le classi spostate o rinominate si ritrovano con
+`RENAMED_CLASSES` (per esempio `intel.ContactKind` → `forces.EntityKind`). Per
+i cambi incompatibili si alza `FORMAT_VERSION`.
 
 **Determinismo.** Senza giochi collegati, stesso scenario + stesso seed = stessa
 campagna (c'è un test). Il seed non sta nello scenario: è `DYNACAMP_SEED`,
@@ -232,6 +268,9 @@ ricognizione armata: segue la colonna.
 raggio d'azione, di più con un tanker in stazione; i pianificatori usano 2) e
 i missili aria-aria del suo armamento (`loadouts.air_to_air`: radar con la
 loro portata di lancio, infrarossi; i colpi da addestramento non contano). Il
+motore non legge i nomi delle armi DCS: `dynacamp loadouts` segna ogni arma di
+`loadouts.json` con `kind` (`loadouts.StoreKind`: `bvr`, `wvr`, `ecm`),
+`count` e `range_m`, secondo le regole di `adapters/dcs/data/weapons.toml`. Il
 volo consuma autonomia, e in orbita il 60%. Quando gli resta solo il ritorno
 più la riserva rientra (*bingo fuel*). Un caccia che ha sparato tutto rientra
 (*winchester*). L'ATO pianifica il tempo in stazione delle CAP entro il
@@ -546,19 +585,39 @@ Ogni entità ha un'`Authority` con questa macchina a stati:
 * **Menu F10:** per ogni gruppo con un giocatore, "DynaCamp ATO" con i
   pacchetti, i voli con posti liberi, "My assignment" e "Leave my flight".
   Briefing con `outTextForGroup`, waypoint con `markToGroup`. Le capacità
-  dell'aereo del giocatore (`catalog.PLAYER_TASKS`) filtrano i voli a cui può
+  dell'aereo del giocatore (`adapters/dcs/data/players.toml`) filtrano i voli a cui può
   unirsi: un A-10 non prende posto in un CAP.
 * `miz.py` (richiede pydcs) genera la missione di uno scenario: bridge
   incorporato, template con carichi composti dalle tabelle dei piloni di pydcs
   (scelte valide per costruzione), slot client, zone delle province. I nomi di
   aeroporti e tipi di unità del catalogo sono verificati contro i database di
-  pydcs. Un test fa girare il bridge in `lua5.1` sulla tabella `mission` reale
+  pydcs. Un test fa girare il bridge in Lua 5.1 sulla tabella `mission` reale
   del `.miz` generato.
 * `adapter.py`: server TCP (thread di I/O + code), API `send`/`poll` non bloccante.
 * `lua/dynacamp_bridge.lua`: client LuaSocket nell'ambiente mission. Ogni 0.2 s
-  legge i comandi (`spawn`/`route`/`despawn`/`ping`), ogni 2 s manda giocatori
-  (`coalition.getPlayers`) e stato dei gruppi. Ha un JSON integrato. È testato
-  con `lua5.1` contro mock di DCS e LuaSocket (`tests/lua/test_bridge.lua`).
+  legge i comandi (`protocol.Cmd`: `spawn`/`route`/`despawn`/`ato`/`notify`/
+  `ping`), ogni 2 s manda giocatori (`coalition.getPlayers`) e stato dei gruppi
+  (`protocol.Msg`). Ha un JSON integrato. È testato con Lua 5.1 contro mock di
+  DCS e LuaSocket (`tests/lua/test_bridge.lua`).
+
+**Nomi e numeri di DCS.** Eagle Dynamics li cambia tra una versione e l'altra,
+quindi non stanno nel codice:
+
+* i **nomi** (tipi di aerei e unità, armi, moduli giocabili, call sign) sono
+  dati: le tabelle `[<id>.dcs]` del catalogo, `data/catalog/callsigns.toml`,
+  e i file di `adapters/dcs/data/`: `weapons.toml` (come il motore legge le
+  armi), `players.toml` (compiti per modulo giocabile), `recipes.toml`
+  (armamenti composti dalle tabelle dei piloni). Se DCS rinomina qualcosa si
+  corregge il TOML e si rigenera (`dynacamp loadouts`, `build-miz`).
+  `tests/test_dcs_boundary.py` raccoglie tutti i nomi DCS dai file dati e
+  fallisce se uno compare nel codice Python;
+* le **enum** (paesi, coalizioni, categorie, opzioni dell'IA, flag delle armi)
+  viaggiano per nome. In uscita `protocol.dcs_enum("country.id.USA")` diventa
+  `{enum = "country.id.USA"}` e il bridge lo risolve con le tabelle di DCS
+  (`DC.resolve`); in entrata il bridge manda il nome della chiave
+  (`"BLUE"`, `"HELICOPTER"`, con `DC.enum_name`). Se DCS non ha un nome, il
+  bridge usa il valore di riserva di `protocol.ENUM_FALLBACK` (solo per i nomi
+  non ancora verificati nel gioco) e lo scrive nel log.
 
 Coordinate: core `(x est, y nord)` ⇄ DCS `(x nord, z est)`. Nelle tabelle dei
 gruppi DCS l'est si chiama `y`.

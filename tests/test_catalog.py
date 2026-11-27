@@ -6,10 +6,11 @@ from dataclasses import dataclass
 import pytest
 
 from dynacamp import catalog
-from dynacamp.adapters.dcs.catalog import AIRCRAFT_TYPES, RATIO, SAM_TYPES, SIDES, UNIT_TYPES
+from dynacamp.adapters.base import Side
+from dynacamp.adapters.dcs.catalog import AIRCRAFT_TYPES, RATIO, SAM_TYPES, UNIT_TYPES
 from dynacamp.air import AIRCRAFT, Task
-from dynacamp.air_defense import SYSTEMS
-from dynacamp.forces import DEFAULT_TEMPLATES, ELEMENTS
+from dynacamp.air_defense import LAUNCHER, RADAR_ELEMENTS, SYSTEMS
+from dynacamp.forces import AAA, ARTILLERY, DEFAULT_TEMPLATES, ELEMENTS, MLRS, SAM_SHORT, TRUCK
 
 SUPPORT = {Task.AWACS, Task.TANKER, Task.TRANSPORT}
 
@@ -39,7 +40,7 @@ def test_every_site_element_has_a_dcs_unit():
 
 def test_every_ground_element_has_a_ratio_and_a_unit_per_side():
     assert set(RATIO) == set(ELEMENTS)
-    for side in SIDES:
+    for side in Side:
         assert set(UNIT_TYPES[side]) == set(ELEMENTS), side
 
 
@@ -139,3 +140,10 @@ def test_missing_file_and_section(catalogue_dir):
     write(catalogue_dir, '[x]\nname = "X"\n')
     with pytest.raises(catalog.CatalogError, match=r"missing \[elements\]"):
         catalog.entries("things", "elements")
+
+
+def test_element_ids_the_rules_name_are_in_the_catalogue():
+    assert {TRUCK, ARTILLERY, MLRS, SAM_SHORT, AAA} <= ELEMENTS.keys()
+    assert not ELEMENTS[TRUCK].combat
+    site_elements = {e for s in SYSTEMS.values() for e in s.elements}
+    assert LAUNCHER in site_elements and set(RADAR_ELEMENTS) <= site_elements

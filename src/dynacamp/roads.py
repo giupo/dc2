@@ -29,6 +29,8 @@ FORMAT_VERSION = 2
 
 #: Route request to the public OSRM server.
 OSRM_URL = "https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=full&geometries=geojson"
+#: ``code`` of a successful OSRM answer.
+OSRM_OK = "Ok"
 #: Client name sent to OSRM (generic: no personal data).
 USER_AGENT = "dynacamp-route-tool"
 #: Douglas-Peucker tolerance of the road polylines.
@@ -160,7 +162,7 @@ def fetch_route(theater: str, a: Vec2, b: Vec2) -> list[Vec2]:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=30) as r:
         data: dict[str, Any] = json.loads(r.read())
-    if data.get("code") != "Ok" or not data.get("routes"):
+    if data.get("code") != OSRM_OK or not data.get("routes"):
         raise RuntimeError(f"OSRM: {data.get('code')} {data.get('message', '')}")
     out = []
     for lon, lat in data["routes"][0]["geometry"]["coordinates"]:

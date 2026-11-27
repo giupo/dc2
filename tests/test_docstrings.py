@@ -5,9 +5,10 @@ entry in ``Args:``, and a function that returns (or yields) a value has a
 ``Returns:`` (``Yields:``) section. Properties, dunder methods and functions
 annotated ``-> None`` need no ``Returns:``.
 
-Every ``UPPER_CASE`` constant, at module or class level, has a ``#:`` comment
-right above it (or a docstring right after it): that is what Sphinx autodoc
-shows in the reference. Enum members are documented by their class.
+Every ``UPPER_CASE`` constant (``_UPPER_CASE`` private ones too), at module or
+class level, and every enum member has a ``#:`` comment right above it (or a
+docstring right after it): that is what Sphinx autodoc shows in the reference
+(a comment at the end of the line is not shown).
 """
 
 import ast
@@ -18,8 +19,7 @@ SRC = Path(__file__).resolve().parent.parent / "src" / "dynacamp"
 ARGS = re.compile(r"^(?:Args|Arguments|Parameters):[ \t]*\n((?:[ \t]+.*\n?|[ \t]*\n)*)", re.M)
 ENTRY = re.compile(r"^[ \t]+\**(\w+)\s*(?:\([^)]*\))?:", re.M)
 Function = ast.FunctionDef | ast.AsyncFunctionDef
-CONSTANT = re.compile(r"^[A-Z][A-Z0-9_]*$")
-ENUM_BASES = {"Enum", "StrEnum", "IntEnum", "Flag", "IntFlag"}
+CONSTANT = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
 
 
 def _functions():
@@ -111,7 +111,7 @@ def test_every_return_value_is_documented():
 
 
 def _undocumented_constants(path: Path) -> list[str]:
-    """Constants of a module without a ``#:`` comment or a docstring.
+    """Constants and enum members of a module without a ``#:`` comment or a docstring.
 
     Args:
         path: The module file.
@@ -132,8 +132,7 @@ def _undocumented_constants(path: Path) -> list[str]:
         """
         for i, node in enumerate(body):
             if isinstance(node, ast.ClassDef):
-                if not {getattr(b, "id", getattr(b, "attr", "")) for b in node.bases} & ENUM_BASES:
-                    scan(node.body, node.name + ".")
+                scan(node.body, node.name + ".")  # class constants and enum members alike
                 continue
             if isinstance(node, ast.Assign):
                 names = [t.id for t in node.targets if isinstance(t, ast.Name)]
@@ -156,4 +155,4 @@ def _undocumented_constants(path: Path) -> list[str]:
 
 def test_every_constant_is_documented():
     missing = [c for path in sorted(SRC.rglob("*.py")) for c in _undocumented_constants(path)]
-    assert not missing, "constants without a #: comment:\n" + "\n".join(missing)
+    assert not missing, "constants or enum members without a #: comment:\n" + "\n".join(missing)

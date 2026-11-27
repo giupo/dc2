@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from enum import StrEnum
 
 from .geo import Vec2
 
@@ -31,16 +32,29 @@ class TransverseMercator:
     scale_factor: float = 0.9996
 
 
-#: Transverse Mercator parameters of the DCS theatres, by lower-case name.
-THEATERS: dict[str, TransverseMercator] = {
-    "caucasus": TransverseMercator(33, -99516.9999999732, -4998114.999999984),
-    "syria": TransverseMercator(39, 282801.00000003993, -3879865.9999999935),
+class TheaterMap(StrEnum):
+    """A DCS map the campaign supports (lower-case theatre name)."""
+    #: Caucasus (Georgia).
+    CAUCASUS = "caucasus"
+    #: Syria.
+    SYRIA = "syria"
+
+
+#: Transverse Mercator parameters of the DCS theatres.
+THEATERS: dict[TheaterMap, TransverseMercator] = {
+    TheaterMap.CAUCASUS: TransverseMercator(33, -99516.9999999732, -4998114.999999984),
+    TheaterMap.SYRIA: TransverseMercator(39, 282801.00000003993, -3879865.9999999935),
 }
 
-# WGS84
+# -- WGS84 ellipsoid --
+
+#: Semi-major axis, metres.
 _A = 6378137.0
+#: Flattening.
 _F = 1 / 298.257223563
+#: First eccentricity squared.
 _E2 = _F * (2 - _F)
+#: Second eccentricity squared.
 _EP2 = _E2 / (1 - _E2)
 
 

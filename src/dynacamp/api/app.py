@@ -13,6 +13,7 @@ import asyncio
 import json
 import secrets
 from collections.abc import AsyncIterator
+from enum import StrEnum
 from pathlib import Path
 
 
@@ -24,13 +25,51 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import Engine
-from ..units import Units
-from ..persistence import Saver
+from ..units import UnitDomain
+from ..persistence import Saver, SaveTrigger
 from . import schemas, views
 from ..events import EventKind
 
 #: Seconds between two polls of the event stream (and clock ticks sent).
 STREAM_TICK_S = 1.0
+#: Answer to a request without the right bearer token.
+BAD_TOKEN = "missing or wrong API token"
+#: Media type of the Server-Sent Events streams.
+SSE_MEDIA_TYPE = "text/event-stream"
+#: ``Cache-Control`` of the event streams: never cached.
+NO_STORE = {"Cache-Control": "no-store"}
+#: OpenAPI description of a 401 answer.
+UNAUTHORIZED = {401: {"description": BAD_TOKEN}}
+#: OpenAPI description of an endpoint's Server-Sent Events answer.
+SSE_RESPONSE = {200: {"content": {SSE_MEDIA_TYPE: {}}, "description": "Server-Sent Events"}}
+
+
+class Tag(StrEnum):
+    """Groups of endpoints in the OpenAPI schema (``/docs``)."""
+    #: Campaign status, time control, saves.
+    CAMPAIGN = "campaign"
+    #: Theatre, front lines, positions.
+    MAP = "map"
+    #: Ground forces.
+    FORCES = "forces"
+    #: Depots, convoys, supply.
+    LOGISTICS = "logistics"
+    #: ATO, flights, briefings, air defence.
+    AIR = "air"
+    #: A faction's intelligence picture.
+    INTEL = "intel"
+    #: The event log and its stream.
+    EVENTS = "events"
+
+
+class SseEvent(StrEnum):
+    """Names of the Server-Sent Events of the streams (the UI listens to them)."""
+    #: A campaign event.
+    EVENT = "event"
+    #: The clock, every STREAM_TICK_S.
+    TICK = "tick"
+    #: Where everything is.
+    POSITIONS = "positions"
 
 
 def _event_kinds(kinds: str | None) -> set[EventKind] | None:
@@ -138,10 +177,10 @@ def create_app(
         """
         if not authenticated(credentials):
             raise HTTPException(
-                status_code=401, detail="missing or wrong API token", headers={"WWW-Authenticate": "Bearer"}
+                status_code=401, detail=BAD_TOKEN, headers={"WWW-Authenticate": "Bearer"}
             )
 
-    @app.get("/api/auth", response_model=schemas.AuthView, tags=["campaign"])
+    @app.get("/api/auth", response_model=schemas.AuthView, tags=[Tag.CAMPAIGN])
     def get_auth(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
         """Whether commands need a token and whether the one sent (if any) is valid.
 
@@ -155,7 +194,7 @@ def create_app(
         """
         return {"required": token is not None, "authenticated": authenticated(credentials)}
 
-    @app.get("/api/campaign", response_model=schemas.CampaignView, tags=["campaign"])
+    @app.get("/api/campaign", response_model=schemas.CampaignView, tags=[Tag.CAMPAIGN])
     def get_campaign():
         """Clock, factions and objectives, connected players.
 
@@ -168,7 +207,7 @@ def create_app(
             view = views.campaign(state(), engine.live, views.players(engine), views.control(engine))
         return {**view, "save": views.save_view(saver)}
 
-    @app.get("/api/map", response_model=schemas.MapView, tags=["map"])
+    @app.get("/api/map", response_model=schemas.MapView, tags=[Tag.MAP])
     def get_map():
         """Provinces with territory polygons, links, airbases. Geometry never changes: load it once.
 
@@ -180,7 +219,7 @@ def create_app(
         with engine.lock:
             return views.map_view(state())
 
-    @app.get("/api/fronts", response_model=schemas.FrontsView, tags=["map"])
+    @app.get("/api/fronts", response_model=schemas.FrontsView, tags=[Tag.MAP])
     def get_fronts(faction: str | None = FACTION):
         """Front lines, front sectors with local force ratios, battles.
 
@@ -195,7 +234,7 @@ def create_app(
         with engine.lock:
             return views.fronts(state(), viewer(faction))
 
-    @app.get("/api/forces", response_model=schemas.ForcesView, tags=["forces"])
+    @app.get("/api/forces", response_model=schemas.ForcesView, tags=[Tag.FORCES])
     def get_forces(faction: str | None = FACTION):
         """Divisions with state and remaining route, battles.
 
@@ -210,7 +249,7 @@ def create_app(
         with engine.lock:
             return views.forces(state(), viewer(faction))
 
-    @app.get("/api/logistics", response_model=schemas.LogisticsView, tags=["logistics"])
+    @app.get("/api/logistics", response_model=schemas.LogisticsView, tags=[Tag.LOGISTICS])
     def get_logistics(faction: str | None = FACTION):
         """Depots, convoys, supply network reach, division supply.
 
@@ -225,7 +264,7 @@ def create_app(
         with engine.lock:
             return views.logistics(state(), viewer(faction))
 
-    @app.get("/api/ato", response_model=schemas.AtoView, tags=["air"])
+    @app.get("/api/ato", response_model=schemas.AtoView, tags=[Tag.AIR])
     def get_ato(faction: str | None = FACTION):
         """Packages and flights, squadrons, sortie budget, in-game join boards
         (and the enemy radar tracks, in a faction's view).
@@ -241,7 +280,7 @@ def create_app(
         with engine.lock:
             return views.ato(state(), viewer(faction))
 
-    @app.get("/api/ato/packages/{package_id}", response_model=schemas.PackageView, tags=["air"],
+    @app.get("/api/ato/packages/{package_id}", response_model=schemas.PackageView, tags=[Tag.AIR],
              responses={404: {"description": "unknown package (or an enemy's)"}})
     def get_package(package_id: str, faction: str | None = FACTION):
         """A package and its flights, also once it is over (archived).
@@ -261,7 +300,7 @@ def create_app(
                 raise HTTPException(status_code=404, detail=f"no package {package_id}")
             return views.package_view(state(), p)
 
-    @app.get("/api/ato/flights/{flight_id}/package", response_model=schemas.PackageView, tags=["air"],
+    @app.get("/api/ato/flights/{flight_id}/package", response_model=schemas.PackageView, tags=[Tag.AIR],
              responses={404: {"description": "unknown flight (or an enemy's)"}})
     def get_flight_package(flight_id: str, faction: str | None = FACTION):
         """The package of a flight, also once it is over (archived).
@@ -281,11 +320,11 @@ def create_app(
                 raise HTTPException(status_code=404, detail=f"no flight {flight_id}")
             return views.package_view(state(), p)
 
-    @app.get("/api/ato/flights/{flight_id}/briefing", response_model=schemas.BriefingView, tags=["air"])
+    @app.get("/api/ato/flights/{flight_id}/briefing", response_model=schemas.BriefingView, tags=[Tag.AIR])
     def get_briefing(
         flight_id: str,
         faction: str | None = FACTION,
-        units: Units | None = Query(
+        units: UnitDomain | None = Query(
             None, description="units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's)"
         ),
     ):
@@ -313,7 +352,7 @@ def create_app(
     # ------------------------------------------------------------ ATO orders
 
     ORDER_RESPONSES = {
-        401: {"description": "missing or wrong API token"},
+        **UNAUTHORIZED,
         404: {"description": "unknown flight, package or faction"},
         409: {"description": "order refused: `detail` says why"},
     }
@@ -360,7 +399,7 @@ def create_app(
     @app.post(
         "/api/ato/packages",
         response_model=schemas.PackageView,
-        tags=["air"],
+        tags=[Tag.AIR],
         dependencies=[Depends(require_token)],
         responses=ORDER_RESPONSES,
     )
@@ -390,7 +429,7 @@ def create_app(
     @app.post(
         "/api/ato/flights/{flight_id}/route",
         response_model=schemas.FlightView,
-        tags=["air"],
+        tags=[Tag.AIR],
         dependencies=[Depends(require_token)],
         responses=ORDER_RESPONSES,
     )
@@ -421,7 +460,7 @@ def create_app(
     @app.post(
         "/api/ato/packages/{package_id}/tot",
         response_model=schemas.PackageView,
-        tags=["air"],
+        tags=[Tag.AIR],
         dependencies=[Depends(require_token)],
         responses=ORDER_RESPONSES,
     )
@@ -447,7 +486,7 @@ def create_app(
     @app.post(
         "/api/ato/packages/{package_id}/cancel",
         response_model=schemas.CancelView,
-        tags=["air"],
+        tags=[Tag.AIR],
         dependencies=[Depends(require_token)],
         responses=ORDER_RESPONSES,
     )
@@ -479,7 +518,7 @@ def create_app(
                     engine.notify(pid, f"{callsign} has been cancelled. Pick another flight from the ATO menu.")
             return {"cancelled": cancelled}
 
-    @app.get("/api/airdefense",response_model=schemas.AirDefenseView, tags=["air"])
+    @app.get("/api/airdefense",response_model=schemas.AirDefenseView, tags=[Tag.AIR])
     def get_air_defense(faction: str | None = FACTION):
         """SAM sites and early-warning radars, their state, and the IADS network links.
 
@@ -494,7 +533,7 @@ def create_app(
         with engine.lock:
             return views.air_defense(state(), viewer(faction))
 
-    @app.get("/api/intel", response_model=schemas.IntelView, tags=["intel"])
+    @app.get("/api/intel", response_model=schemas.IntelView, tags=[Tag.INTEL])
     def get_intel(faction: str = Query(..., description="faction whose intelligence picture to give")):
         """Fog of war: the contacts a faction holds on the enemy (last known
         position, age, source, identification) and its air-search sensors.
@@ -510,7 +549,7 @@ def create_app(
         with engine.lock:
             return views.intel_view(state(), viewer(faction))
 
-    @app.get("/api/events", response_model=schemas.EventsPage, tags=["events"])
+    @app.get("/api/events", response_model=schemas.EventsPage, tags=[Tag.EVENTS])
     def get_events(
         since: int = Query(0, ge=0, description="first event seq to return"),
         kinds: str | None = Query(None, description="comma separated event kinds to keep"),
@@ -534,7 +573,7 @@ def create_app(
         with engine.lock:
             return views.events(state(), since, wanted, limit, viewer(faction))
 
-    @app.get("/api/snapshot", response_model=schemas.SnapshotView, tags=["campaign"])
+    @app.get("/api/snapshot", response_model=schemas.SnapshotView, tags=[Tag.CAMPAIGN])
     def get_snapshot(faction: str | None = FACTION):
         """Everything above in one document.
 
@@ -553,9 +592,9 @@ def create_app(
 
     @app.get(
         "/api/stream",
-        tags=["events"],
+        tags=[Tag.EVENTS],
         response_class=StreamingResponse,
-        responses={200: {"content": {"text/event-stream": {}}, "description": "Server-Sent Events"}},
+        responses=SSE_RESPONSE,
     )
     async def stream(
         request: Request,
@@ -605,18 +644,18 @@ def create_app(
                     seq = batch["next"]
                     # One write per batch: cheaper, and a client that just left
                     # costs at most one failed send.
-                    yield "".join(_sse("event", e, e["seq"]) for e in batch["events"]) + _sse("tick", tick)
+                    yield "".join(_sse(SseEvent.EVENT, e, e["seq"]) for e in batch["events"]) + _sse(SseEvent.TICK, tick)
                     await asyncio.sleep(STREAM_TICK_S)
             finally:
                 app.state.active_streams -= 1
 
-        return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
+        return StreamingResponse(gen(), media_type=SSE_MEDIA_TYPE, headers=NO_STORE)
 
     @app.get(
         "/api/positions/stream",
-        tags=["map"],
+        tags=[Tag.MAP],
         response_class=StreamingResponse,
-        responses={200: {"content": {"text/event-stream": {}}, "description": "Server-Sent Events"}},
+        responses=SSE_RESPONSE,
     )
     async def positions_stream(
         request: Request,
@@ -660,14 +699,14 @@ def create_app(
             try:
                 while not await request.is_disconnected():
                     start = loop.time()
-                    yield _sse("positions", await anyio.to_thread.run_sync(read))
+                    yield _sse(SseEvent.POSITIONS, await anyio.to_thread.run_sync(read))
                     await asyncio.sleep(max(0.01, period - (loop.time() - start)))
             finally:
                 app.state.active_streams -= 1
 
-        return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
+        return StreamingResponse(gen(), media_type=SSE_MEDIA_TYPE, headers=NO_STORE)
 
-    @app.get("/api/positions", response_model=schemas.PositionsView, tags=["map"])
+    @app.get("/api/positions", response_model=schemas.PositionsView, tags=[Tag.MAP])
     def get_positions(faction: str | None = FACTION):
         """One sample of the positions stream.
 
@@ -682,7 +721,7 @@ def create_app(
         with engine.lock:
             return views.positions(state(), viewer(faction))
 
-    @app.get("/api/control", response_model=schemas.ControlView, tags=["campaign"])
+    @app.get("/api/control", response_model=schemas.ControlView, tags=[Tag.CAMPAIGN])
     def get_control():
         """Pause and speed of the campaign clock.
 
@@ -697,9 +736,9 @@ def create_app(
     @app.post(
         "/api/control",
         response_model=schemas.ControlView,
-        tags=["campaign"],
+        tags=[Tag.CAMPAIGN],
         dependencies=[Depends(require_token)],
-        responses={401: {"description": "missing or wrong API token"}},
+        responses=UNAUTHORIZED,
     )
     def post_control(body: schemas.ControlRequest):
         """Pause / resume and fast-forward the campaign (needs the API token).
@@ -723,7 +762,7 @@ def create_app(
             engine.state.emit(EventKind.TIME_CONTROL, paused=engine.control.paused, compression=engine.control.compression)
             return views.control(engine)
 
-    @app.get("/api/save", response_model=schemas.SaveView, tags=["campaign"])
+    @app.get("/api/save", response_model=schemas.SaveView, tags=[Tag.CAMPAIGN])
     def get_save():
         """Whether the server saves the campaign, where, and the latest save.
 
@@ -737,9 +776,9 @@ def create_app(
     @app.post(
         "/api/save",
         response_model=schemas.SaveView,
-        tags=["campaign"],
+        tags=[Tag.CAMPAIGN],
         dependencies=[Depends(require_token)],
-        responses={401: {"description": "missing or wrong API token"}, 409: {"description": "server started without --save"}},
+        responses={**UNAUTHORIZED, 409: {"description": "server started without --save"}},
     )
     def post_save():
         """Save the campaign now to the server's save file (needs the API token).
@@ -753,12 +792,12 @@ def create_app(
         if saver is None:
             raise HTTPException(status_code=409, detail="saving is disabled: start the server with --save FILE")
         try:
-            saver.save(engine, "api")
+            saver.save(engine, SaveTrigger.API)
         except OSError as exc:
             raise HTTPException(status_code=500, detail=f"save failed: {exc}") from exc
         return views.save_view(saver)
 
-    @app.get("/api", tags=["campaign"])
+    @app.get("/api", tags=[Tag.CAMPAIGN])
     def index():
         """Entry point: list of endpoints.
 
@@ -781,7 +820,7 @@ def create_app(
     return app
 
 
-def _sse(event: str, data, event_id: int | None = None) -> str:
+def _sse(event: SseEvent, data, event_id: int | None = None) -> str:
     """Format one Server-Sent Event.
 
     Args:

@@ -34,7 +34,7 @@ Motore headless di **campagna militare dinamica** ("DynaCamp"):
   simboli NATO APP-6.
 
 Documentazione completa:
-- [README.md](README.md): tutto, compresa la "Storia del progetto" in 25 passi;
+- [README.md](README.md): tutto, compresa la "Storia del progetto" in 26 passi;
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): design;
 - [docs/API.md](docs/API.md): endpoint;
 - [web/README.md](web/README.md): UI;
@@ -44,9 +44,9 @@ Documentazione completa:
 
 ```bash
 uv sync --extra miz --group dev --group docs     # tutto (pydcs serve solo per .miz/loadouts/radio)
-uv run pytest -q -W ignore::SyntaxWarning        # ~250 test in parallelo (xdist, -n auto), ~10 s; -n 0 = seriale
+uv run pytest -q -W ignore::SyntaxWarning        # ~250 test in parallelo (xdist, -n auto), ~20 s; -n 0 = seriale
 tools/watch-tests.sh                             # watcher: rilancia i test a ogni modifica (pytest-watcher)
-lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
+lua tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua  # Lua 5.1 (qui via mise)
 cd web && npx tsc --noEmit -p . && npm run build # UI; `npm run gen:api` dopo ogni modifica all'API
 uv run --group docs sphinx-build -q -b html docs/sphinx docs/sphinx/_build/html   # deve uscire senza avvisi
 
@@ -74,15 +74,34 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   comincia con `Args:` (serve prima la riga di sommario, o napoleon non la
   legge). Negli endpoint FastAPI le sezioni vanno dopo una riga `\f`: FastAPI
   taglia lì la descrizione, così l'OpenAPI non cambia.
-- **Costanti** (`UPPER_CASE`, di modulo o di classe): in cima al modulo dopo
-  gli import (le tabelle indicizzate da una classe del modulo subito dopo la
-  classe), raggruppate per tema con intestazioni `# -- Tema --`, ognuna con un
-  commento `#:` subito sopra (Sphinx lo pubblica; i commenti in coda alla riga
-  no). Lo controlla `tests/test_docstrings.py`. Non duplicarle con alias
-  (`X = altro.X`): si importa l'originale.
+- **Costanti** (`UPPER_CASE`, di modulo o di classe, anche private
+  `_UPPER_CASE`) e **membri delle enum**: in cima al modulo dopo gli import
+  (le tabelle indicizzate da una classe del modulo subito dopo la classe),
+  raggruppate per tema con intestazioni `# -- Tema --`, ognuna con un commento
+  `#:` subito sopra (Sphinx lo pubblica; i commenti in coda alla riga no). Lo
+  controlla `tests/test_docstrings.py`. Non duplicarle con alias
+  (`X = altro.X`): si importa l'originale. Nel bridge Lua ogni funzione ha un
+  commento `--` sopra.
 - **Bridge Lua:** se cambia, **rigenerare i `.miz`**. Lo controlla
   `test_shipped_missions_embed_the_current_bridge`. Il Lua deve girare con
   lua5.1, come DCS. I commenti lunghi si scrivono con `--[==[ ... ]==]`.
+  Resta un esecutore passivo: il Python costruisce i gruppi completi.
+- **Nomi e numeri di DCS:** mai nel codice, perché Eagle Dynamics li cambia.
+  - *Nomi* (tipi di aerei e unità, armi, moduli giocabili, call sign) solo
+    nei dati: le tabelle `[<id>.dcs]` del catalogo, `data/catalog/callsigns.toml`,
+    `adapters/dcs/data/` (`weapons.toml`: come il motore legge le armi;
+    `players.toml`: compiti per modulo; `recipes.toml`: armamenti composti)
+    e `data/loadouts.json` (generato). Il core non legge mai il nome di
+    un'arma: `dynacamp loadouts` scrive `kind`/`count`/`range_m`
+    (`loadouts.StoreKind`). Se DCS rinomina qualcosa: correggere il TOML,
+    poi `dynacamp loadouts` e/o `build-miz`. Lo controlla
+    `tests/test_dcs_boundary.py`.
+  - *Enum* (paesi, coalizioni, categorie, opzioni IA, flag armi) viaggiano
+    **per nome**: in uscita `protocol.dcs_enum("country.id.USA")` →
+    `{enum = ...}`, risolto dal bridge con le tabelle di DCS (`DC.resolve`);
+    in entrata il bridge manda il nome della chiave (`"BLUE"`,
+    `"HELICOPTER"`, `DC.enum_name`). Nel Python solo i valori di riserva di
+    `protocol.ENUM_FALLBACK`, per i nomi non ancora verificati in DCS.
 - **API:** se cambia, `npm run gen:api`. TypeScript resta fissato a ~5.9,
   perché la versione 7 non funziona con openapi-typescript.
 - **`state.emit(EventKind.X, **data)`:** i tipi di evento sono solo i membri
@@ -92,6 +111,32 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   fallisce). Niente elenchi di tipi altrove. Non usare chiavi chiamate `kind`
   nel payload, perché collidono con il primo argomento: si usano per esempio
   `player_kind` e `delivery`.
+- **Enum e stringhe:** niente letterali sparsi. Un insieme chiuso di valori è
+  una `StrEnum` (passa da TOML, JSON, Lua e salvataggi: il valore resta
+  leggibile e stabile se si riordinano i membri); un valore singolo che il
+  codice confronta o ripete è una costante. Restano letterali solo il testo
+  per le persone, le chiavi dei formati esterni (JSON, TOML, messaggi) e gli
+  id DCS usati una volta dentro le strutture DCS. Mai `Literal[...]` che
+  ricopiano i valori: `api/schemas.py` usa le enum (`Unknown` per la nebbia).
+  `emit` salva le enum come `.value`, quindi si passano i membri. Dove stanno:
+  - `forces.EntityKind`, `air.TargetKind`, `air.FlightReason`,
+    `state.BattleKind`, `state.IdPrefix` (per `new_id`), `state.Timer`
+    (`state.timers`: `Timer.X` o `Timer.X.key(*id)`; i cooldown in
+    `COOLDOWNS` si cancellano scaduti), `adapters.base.Side`,
+    `projection.TheaterMap`, `units.UnitDomain`;
+  - vocabolari dei payload in `events.py` (`LossReason`, `StrikeResult`,
+    `OrderEnd`, `PlayerExit`, `Simulator`); `systems/ai.AiOrder`,
+    `systems/air.Phase`, `systems/briefing.WaypointName`/`ThreatKind`/
+    `Severity`, `systems/intel.SensorKind`/`SizeClass`;
+  - protocollo Lua: `protocol.Cmd`/`Msg`/`GroupCategory` (valori condivisi
+    con il bridge: non cambiarli senza cambiare il Lua) e il vocabolario
+    DCS ripetuto in costanti (`TURNING_POINT`, `ALT_BARO`...);
+  - id di elementi del catalogo usati dalle regole: `forces.TRUCK`,
+    `ARTILLERY`, `MLRS`, `SAM_SHORT`, `AAA`, `air_defense.LAUNCHER`,
+    `air.AIRCRAFT_ELEMENT` (un test verifica che esistano nel catalogo).
+  Un campo di stato che diventa enum va convertito al caricamento in
+  `persistence._strings_to_enums` (il codice confronta con `is`); una classe
+  spostata o rinominata va in `persistence.RENAMED_CLASSES`.
 - **Quote:** solo da `air.waypoint_altitudes` / `air.flight_altitude`
   (briefing, rotta DCS, SAM, sensori). Non usare `cruise_alt_m` direttamente
   per la quota di un volo.
@@ -201,7 +246,7 @@ vero**. Funzionalità implementate:
     una barriera sul bordo del primo ombrello;
   - **scramble** (`systems/scramble.py`): un aereo nemico *noto* entro 30 NM
     da una base, o da un asset entro 20 NM da una base, fa partire 2
-    intercettori in 5 min. Sono voli CAP con `target_kind == "flight"`
+    intercettori in 5 min. Sono voli CAP con `target_kind is TargetKind.FLIGHT`
     (`target_id` = l'intruso), che non contano tra le stazioni CAP dell'ATO.
     Inseguono l'ultima posizione nota (`scramble.pursue`) e non entrano nei
     SAM noti. Escluse dall'allarme: i caccia nemici, gli intrusi già coperti
@@ -283,8 +328,11 @@ vero**. Funzionalità implementate:
      blu perde più del rosso, soprattutto in Siria. I package DEAD sono scesi da
      44 a 20 in Siria (si perdono più aerei multiruolo). Da verificare se
      regge su più giorni;
-   - da verificare in DCS: opzione ECM (`ECM_USING` = 13, `ALWAYS` = 3) dei
-     voli SEAD e rotte con molti waypoint.
+   - da verificare in DCS: i nomi delle enum in `protocol.ENUM_FALLBACK`
+     (`AI.Option.Air.id.ECM_USING`, `...val.ECM_USING.ALWAYS_USE`,
+     `Weapon.flag.Auto`: se mancano, il bridge usa il valore di riserva e lo
+     scrive nel log), l'effetto dell'ECM sui voli SEAD e le rotte con molti
+     waypoint.
 6. **DCS:**
    - i contatti scoperti in gioco non tornano al quadro informativo;
    - IADS coordinato (Skynet);

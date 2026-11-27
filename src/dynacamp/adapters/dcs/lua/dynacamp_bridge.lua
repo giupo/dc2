@@ -7,7 +7,10 @@ Connects to the DynaCamp engine over TCP (JSON lines) and:
   * reports alive units and positions of those groups
 
 It is deliberately dumb: the engine builds complete group tables, this script
-only executes them. Requires LuaSocket, i.e. a *desanitised* MissionScripting.lua
+only executes them. DCS enums travel by name, never by number: the engine sends
+{ enum = "country.id.USA" } and this script looks the value up in DCS' own
+tables (DC.resolve); what it reports (coalition, unit category) goes back as the
+name of the enum key (DC.enum_name). Requires LuaSocket, i.e. a *desanitised* MissionScripting.lua
 (comment out the sanitizeModule('require') / sanitizeModule('package') lines).
 
 Load it from a mission trigger (DO SCRIPT):
@@ -30,6 +33,7 @@ DC.rxbuf = ""
 DC.last_report = 0
 DC.last_retry = -1e9
 
+-- Write to dcs.log (or stdout outside DCS), prefixed with [DynaCamp].
 local function log(msg)
   if env and env.info then env.info("[DynaCamp] " .. tostring(msg)) else print("[DynaCamp] " .. tostring(msg)) end
 end
@@ -42,6 +46,7 @@ DC.json = json
 local escapes = { ['"'] = '\\"', ['\\'] = '\\\\', ['\b'] = '\\b', ['\f'] = '\\f',
                   ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
 
+-- Whether a table is a JSON array: keys 1..n, or empty (encoded as []).
 local function is_array(t)
   if next(t) == nil then return true end
   local n = #t
@@ -52,6 +57,7 @@ local function is_array(t)
   return true
 end
 
+-- A Lua value as a JSON string (tables with keys 1..n become arrays).
 function json.encode(v)
   local ty = type(v)
   if v == nil then return "null"
@@ -78,6 +84,7 @@ function json.encode(v)
   error("cannot encode " .. ty)
 end
 
+-- Index of the first non-blank character of s from i.
 local function skip_ws(s, i)
   local _, e = s:find("^[ \n\r\t]*", i)
   return e + 1
@@ -85,6 +92,7 @@ end
 
 local decode_value
 
+-- Decode the JSON string starting at s[i] (the opening quote): value, next index.
 local function decode_string(s, i)
   -- s:sub(i, i) == '"'
   local out, j = {}, i + 1
@@ -155,6 +163,7 @@ decode_value = function(s, i)
   end
 end
 
+-- Parse one JSON document; null becomes nil.
 function json.decode(s)
   local v = decode_value(s, 1)
   return v
@@ -181,6 +190,7 @@ function DC.connect()
   return true
 end
 
+-- Drop the link to the engine (logged with the reason) and remove our groups.
 function DC.disconnect(reason)
   if DC.client then pcall(function() DC.client:close() end) end
   DC.client = nil
@@ -189,6 +199,7 @@ function DC.disconnect(reason)
   for id, _ in pairs(DC.entities) do DC.destroy_entity(id) end
 end
 
+-- Send one message as a JSON line; false if not connected or the link closed.
 function DC.send(tbl)
   if not DC.client then return false end
   local ok, err = DC.client:send(json.encode(tbl) .. "\n")
@@ -196,6 +207,7 @@ function DC.send(tbl)
   return true
 end
 
+-- Read every complete line waiting on the socket and handle it (partial lines wait in rxbuf).
 function DC.receive()
   while DC.client do
     local line, err, partial = DC.client:receive("*l", DC.rxbuf)
@@ -224,21 +236,45 @@ end
 local handlers = {}
 DC.handlers = handlers
 
+-- Run the handler of an engine command (handlers[msg.cmd]); unknown ones are logged.
 function DC.handle(msg)
   local h = handlers[msg.cmd]
   if h then h(msg) else log("unknown command " .. tostring(msg.cmd)) end
 end
 
--- Group.Category values (fallbacks if the enum is missing)
-local CATEGORY = { airplane = 0, helicopter = 1, ground = 2, ship = 3 }
-local CATEGORY_KEY = { airplane = "AIRPLANE", helicopter = "HELICOPTER", ground = "GROUND", ship = "SHIP" }
-
-local function group_category(name)
-  local key = CATEGORY_KEY[name or "ground"] or "GROUND"
-  if Group and Group.Category and Group.Category[key] then return Group.Category[key] end
-  return CATEGORY[name or "ground"] or CATEGORY.ground
+---------------------------------------------------------------- DCS enums
+-- The value of a DCS enum by its path, e.g. "AI.Option.Air.id.ECM_USING". If
+-- DCS lacks it, the engine's default (if any) is used and the miss is logged.
+function DC.enum(path, default)
+  local v = _G
+  for part in string.gmatch(path, "[^%.]+") do
+    if type(v) ~= "table" then v = nil; break end
+    v = v[part]
+  end
+  if v == nil then
+    log("unknown DCS enum " .. path .. (default ~= nil and (", using " .. tostring(default)) or ""))
+    return default
+  end
+  return v
 end
 
+-- Replace every { enum = path [, default = n] } in a message by its DCS value.
+function DC.resolve(v)
+  if type(v) ~= "table" then return v end
+  if v.enum then return DC.enum(v.enum, v.default) end
+  for k, x in pairs(v) do v[k] = DC.resolve(x) end
+  return v
+end
+
+-- The key of a value in a DCS enum table, e.g. Unit.Category, 1 -> "HELICOPTER".
+function DC.enum_name(tbl, value)
+  for k, x in pairs(tbl or {}) do
+    if x == value then return k end
+  end
+  return nil
+end
+
+-- A deep copy of a value (template payloads must not be shared between spawns).
 local function deepcopy(v)
   if type(v) ~= "table" then return v end
   local out = {}
@@ -252,6 +288,7 @@ DC.deepcopy = deepcopy
 -- (e.g. DC_TPL_f16c_SEAD) give aircraft type, livery and payload to spawns.
 DC.templates = nil
 
+-- Collect the template groups of the mission (aircraft and helicopters), by name.
 function DC.index_templates()
   DC.templates = {}
   local mission = env and env.mission
@@ -270,6 +307,7 @@ function DC.index_templates()
   end
 end
 
+-- Give a group's units the type, payload and livery of its first existing template.
 function DC.apply_template(g)
   if not g.templates then return end
   if not DC.templates then DC.index_templates() end
@@ -303,6 +341,7 @@ function DC.apply_callsign(g)
   end
 end
 
+-- Make the last route point of a flight a landing at g.land_at (airdrome id from DCS).
 function DC.apply_landing(g)
   if not g.land_at or not Airbase then return end
   local ab = Airbase.getByName(g.land_at)
@@ -319,6 +358,7 @@ end
 -- them up on (OpenStreetMap) roads; this absorbs the small differences with the
 -- game's road network so nothing ends up stuck in a forest.
 DC.road_snap_m = 300
+-- Move each vehicle of the group onto the nearest road, if one is within road_snap_m.
 function DC.snap_to_road(g)
   if not g.snap_to_road or not land or not land.getClosestPointOnRoads then return end
   for _, u in ipairs(g.data.units) do
@@ -341,15 +381,17 @@ function DC.alarm_red(name)
   pcall(ctl.setOption, ctl, AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.OPEN_FIRE)
 end
 
+-- cmd spawn: create the entity's groups (enums resolved), then answer "spawned".
 function handlers.spawn(msg)
   local names = {}
   local ok, err = pcall(function()
+    DC.resolve(msg.groups)
     for _, g in ipairs(msg.groups) do
       DC.snap_to_road(g)
       DC.apply_callsign(g)
       DC.apply_template(g)
       DC.apply_landing(g)
-      coalition.addGroup(g.country, group_category(g.category), g.data)
+      coalition.addGroup(g.country, g.category, g.data)
       names[#names + 1] = g.data.name
       if g.alarm_red then DC.alarm_red(g.data.name) end
     end
@@ -363,15 +405,18 @@ function handlers.spawn(msg)
   end
 end
 
+-- cmd despawn: remove the entity and report its units at that moment.
 function handlers.despawn(msg)
   local units = DC.collect_units(msg.id)
   DC.destroy_entity(msg.id)
   DC.send({ msg = "despawned", id = msg.id, units = units })
 end
 
+-- cmd route: give the entity's groups a new route (enums resolved).
 function handlers.route(msg)
   local ent = DC.entities[msg.id]
   if not ent then return end
+  DC.resolve(msg.points)
   for _, name in ipairs(ent.groups) do
     local grp = Group.getByName(name)
     if grp and grp:isExist() then
@@ -383,21 +428,24 @@ end
 ---------------------------------------------------------------- ATO menus
 -- The engine publishes, per coalition, the packages players can join. Every
 -- player group gets an F10 menu "DynaCamp ATO" rebuilt when the board changes.
-DC.ato = DC.ato or {}       -- coalition -> { version = n, packages = {...} }
-DC.players = DC.players or {} -- player name -> { gid, coalition, unit, type, category }
+DC.ato = DC.ato or {}       -- coalition name -> { version = n, packages = {...} }
+DC.players = DC.players or {} -- player name -> { gid, coalition name, unit, type, category name }
 DC.menus = DC.menus or {}     -- gid -> { version = n, path = menu path, player = name }
 DC.marks = DC.marks or {}     -- player name -> { mark ids }
 DC.next_mark = DC.next_mark or 72000
 
+-- cmd ato: the packages a coalition's players can join; rebuild the menus.
 function handlers.ato(msg)
   DC.ato[msg.coalition] = { version = msg.version, packages = msg.packages or {} }
   DC.refresh_menus()
 end
 
+-- F10 menu callback: forward the player's request to the engine.
 local function request(args)
   DC.send(args)
 end
 
+-- (Re)build the "DynaCamp ATO" F10 menu of a player's group from its coalition's board.
 function DC.build_menu(gid, info, player)
   local old = DC.menus[gid]
   if old and old.path then pcall(missionCommands.removeItemForGroup, gid, old.path) end
@@ -417,6 +465,7 @@ function DC.build_menu(gid, info, player)
   DC.menus[gid] = { version = board.version, path = root, player = player }
 end
 
+-- Rebuild the menus whose board version or player changed.
 function DC.refresh_menus()
   if not missionCommands then return end
   for player, info in pairs(DC.players) do
@@ -430,6 +479,7 @@ function DC.refresh_menus()
   end
 end
 
+-- cmd notify: text for a player's group and map marks, replacing the previous marks.
 function handlers.notify(msg)
   local info = DC.players[msg.player]
   if not info then return end
@@ -457,6 +507,7 @@ DC.PLAYER_EVENTS = PLAYER_EVENTS
 DC.lost_reported = DC.lost_reported or {}
 
 DC.event_handler = {}
+-- DCS event handler: report takeoff, landing and loss of player aircraft (a loss once).
 function DC.event_handler:onEvent(e)
   local kind = PLAYER_EVENTS[e.id]
   if not kind or not e.initiator then return end
@@ -471,10 +522,12 @@ function DC.event_handler:onEvent(e)
   DC.send({ msg = "player_event", player = player, event = kind })
 end
 
+-- cmd ping: answer pong with the mission time.
 function handlers.ping(msg)
   DC.send({ msg = "pong", time = timer.getTime() })
 end
 
+-- Destroy the groups of an entity and forget it.
 function DC.destroy_entity(id)
   local ent = DC.entities[id]
   if not ent then return end
@@ -504,9 +557,11 @@ function DC.collect_units(id)
   return out
 end
 
+-- Send the human players (coalition and unit category by name) and refresh their menus.
 function DC.report_players()
   local players, seen = {}, {}
-  for _, side in ipairs({ 1, 2 }) do
+  for _, side in ipairs({ coalition.side.RED, coalition.side.BLUE }) do
+    local side_name = DC.enum_name(coalition.side, side)
     for _, u in ipairs(coalition.getPlayers(side) or {}) do
       if u and u:isExist() then
         local p = u:getPoint()
@@ -514,9 +569,10 @@ function DC.report_players()
         local name = u:getPlayerName() or u:getName()
         local gid = u:getGroup():getID()
         local typ = u:getTypeName()
-        seen[name] = { gid = gid, coalition = side, unit = u:getName(), type = typ, category = desc.category or 0 }
-        players[#players + 1] = { id = name, name = name, coalition = side, type = typ,
-                                  category = desc.category or 0, x = p.x, z = p.z, alt = p.y }
+        local category = DC.enum_name(Unit.Category, desc.category)
+        seen[name] = { gid = gid, coalition = side_name, unit = u:getName(), type = typ, category = category }
+        players[#players + 1] = { id = name, name = name, coalition = side_name, type = typ,
+                                  category = category, x = p.x, z = p.z, alt = p.y }
       end
     end
   end
@@ -525,6 +581,7 @@ function DC.report_players()
   DC.refresh_menus()
 end
 
+-- Send the alive units of every spawned entity.
 function DC.report_state()
   local entities = {}
   for id, _ in pairs(DC.entities) do
@@ -551,6 +608,7 @@ function DC.step(now)
   end
 end
 
+-- Scheduled every DC.tick seconds: one protected step.
 function DC.loop(_, now)
   local ok, err = pcall(DC.step, now)
   if not ok then log("step error: " .. tostring(err)) end

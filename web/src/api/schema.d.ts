@@ -589,6 +589,22 @@ export interface components {
             authenticated: boolean;
         };
         /**
+         * Authority
+         * @description Who simulates an entity right now.
+         *
+         *     CAMPAIGN -> MATERIALIZING -> DELEGATED -> DEMATERIALIZING -> CAMPAIGN.
+         *     In the two transitional states nobody simulates it: the entity is frozen
+         *     until the game adapter acknowledges the handoff (or the handoff times out).
+         * @enum {string}
+         */
+        Authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+        /**
+         * BattleKind
+         * @description Kind of battle.
+         * @enum {string}
+         */
+        BattleKind: "assault" | "meeting";
+        /**
          * BattleView
          * @description A battle in progress, located where the forces meet.
          */
@@ -610,12 +626,10 @@ export interface components {
             /** Name */
             name: string;
             /**
-             * Kind
              * @description assault on the province's defence line, or meeting engagement on the road (province = nearest)
              * @default assault
-             * @enum {string}
              */
-            kind: "assault" | "meeting";
+            kind: components["schemas"]["BattleKind"];
             /** Attacker */
             attacker: string;
             /** Defender */
@@ -642,11 +656,7 @@ export interface components {
             id: string;
             /** Label */
             label: string;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: components["schemas"]["Task"];
             /** Seats */
             seats: number;
         };
@@ -692,11 +702,7 @@ export interface components {
             callsign: string;
             /** Aircraft */
             aircraft: string;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: components["schemas"]["Task"];
             /** Size */
             size: number;
             /** Base */
@@ -805,22 +811,14 @@ export interface components {
              * @description [lat, lon] WGS84, null without projection
              */
             ll: number[] | null;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "sam" | "shorad" | "fighters";
+            kind: components["schemas"]["ThreatKind"];
             /** Name */
             name: string;
             /** Detail */
             detail: string;
             /** Range Km */
             range_km: number;
-            /**
-             * Severity
-             * @enum {string}
-             */
-            severity: "high" | "medium" | "low";
+            severity: components["schemas"]["Severity"];
             /**
              * Bulls
              * @description magnetic bearing/range from the side's bullseye
@@ -833,11 +831,7 @@ export interface components {
          *     ``range_km``); texts are written in ``units``.
          */
         BriefingView: {
-            /**
-             * Units
-             * @enum {string}
-             */
-            units: "metric" | "imperial";
+            units: components["schemas"]["UnitDomain"];
             /** Package Number */
             package_number: string;
             bullseye: components["schemas"]["BriefingBullseye"];
@@ -853,11 +847,7 @@ export interface components {
             radio_callsign: string;
             /** Title */
             title: string;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: components["schemas"]["Task"];
             /** Aircraft */
             aircraft: string;
             /** Size */
@@ -943,12 +933,8 @@ export interface components {
         CampaignView: {
             /** @description saving (null without a running engine) */
             save?: components["schemas"]["SaveView"] | null;
-            /**
-             * Units
-             * @description units of the texts for players (default of the UI)
-             * @enum {string}
-             */
-            units: "metric" | "imperial";
+            /** @description units of the texts for players (default of the UI) */
+            units: components["schemas"]["UnitDomain"];
             /** @description pause and speed (null without a running engine) */
             control?: components["schemas"]["ControlView"] | null;
             /** Api Version */
@@ -1040,11 +1026,7 @@ export interface components {
             ll: number[] | null;
             /** Id */
             id: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "division" | "convoy" | "flight" | "sam";
+            kind: components["schemas"]["EntityKind"];
             /** Faction */
             faction: string;
             /** Source */
@@ -1129,11 +1111,7 @@ export interface components {
             /** Heading To */
             heading_to: string;
             route: components["schemas"]["RouteView"] | null;
-            /**
-             * Authority
-             * @enum {string}
-             */
-            authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            authority: components["schemas"]["Authority"];
             intel?: components["schemas"]["ContactInfo"] | null;
         };
         /**
@@ -1230,16 +1208,18 @@ export interface components {
             route: components["schemas"]["RouteView"] | null;
             /** Battle */
             battle: string | null;
-            /**
-             * Authority
-             * @enum {string}
-             */
-            authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            authority: components["schemas"]["Authority"];
             /** Moving */
             moving: boolean;
             /** @description set on enemy brigades in a faction's view */
             intel?: components["schemas"]["ContactInfo"] | null;
         };
+        /**
+         * EntityKind
+         * @description Kind of mobile entity: what adapters spawn and intelligence reports.
+         * @enum {string}
+         */
+        EntityKind: "division" | "convoy" | "flight" | "sam";
         /**
          * EventKind
          * @description Every type of campaign event.
@@ -1324,6 +1304,12 @@ export interface components {
             age_s: number;
         };
         /**
+         * FlightStatus
+         * @description Life cycle of a flight.
+         * @enum {string}
+         */
+        FlightStatus: "scheduled" | "airborne" | "on_station" | "rtb" | "done" | "cancelled";
+        /**
          * FlightView
          * @description A flight of the ATO.
          */
@@ -1366,16 +1352,8 @@ export interface components {
             aircraft_name: string;
             /** Helo */
             helo: boolean;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "scheduled" | "airborne" | "on_station" | "rtb" | "done" | "cancelled";
+            task: components["schemas"]["Task"];
+            status: components["schemas"]["FlightStatus"];
             /** Size */
             size: number;
             /** Ai */
@@ -1402,11 +1380,7 @@ export interface components {
              * @description longest route the flight may plan (twice the combat radius, more with a tanker up)
              */
             fuel_km: number;
-            /**
-             * Authority
-             * @enum {string}
-             */
-            authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            authority: components["schemas"]["Authority"];
             on_station_until: components["schemas"]["Time"] | null;
             /** @description set on enemy radar tracks in a faction's view */
             intel?: components["schemas"]["ContactInfo"] | null;
@@ -1494,6 +1468,12 @@ export interface components {
             };
         };
         /**
+         * LinkKind
+         * @description Kind of connection between two provinces.
+         * @enum {string}
+         */
+        LinkKind: "road" | "track" | "rail";
+        /**
          * LinkView
          * @description A road/track/rail link with its geometry.
          */
@@ -1506,11 +1486,7 @@ export interface components {
             a: string;
             /** B */
             b: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "road" | "track" | "rail";
+            kind: components["schemas"]["LinkKind"];
             /** River */
             river: boolean;
             /** Length Km */
@@ -1601,15 +1577,18 @@ export interface components {
             achieved: boolean;
         };
         /**
+         * OrderKind
+         * @description What a division has been told to do.
+         * @enum {string}
+         */
+        OrderKind: "hold" | "move" | "attack";
+        /**
          * OrderView
          * @description A division's order.
          */
         OrderView: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "hold" | "move" | "attack" | "unknown";
+            /** Kind */
+            kind: components["schemas"]["OrderKind"] | "unknown";
             /** Target */
             target: string | null;
         };
@@ -1620,11 +1599,7 @@ export interface components {
         PackageRequest: {
             /** Faction */
             faction: string;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: components["schemas"]["Task"];
             target: components["schemas"]["TargetIn"];
             /**
              * Squadron
@@ -1661,11 +1636,7 @@ export interface components {
             number: string;
             /** Faction */
             faction: string;
-            /**
-             * Task
-             * @enum {string}
-             */
-            task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+            task: components["schemas"]["Task"];
             /** Target */
             target: string;
             tot: components["schemas"]["Time"];
@@ -1681,6 +1652,12 @@ export interface components {
             /** Flights */
             flights: components["schemas"]["FlightView"][];
         };
+        /**
+         * PlayerKind
+         * @description What a player is flying or driving.
+         * @enum {string}
+         */
+        PlayerKind: "air" | "helo" | "ground";
         /**
          * PlayerView
          * @description A connected player.
@@ -1702,11 +1679,7 @@ export interface components {
             name: string;
             /** Side */
             side: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "air" | "helo" | "ground";
+            kind: components["schemas"]["PlayerKind"];
             /** Altitude */
             altitude: number;
             /**
@@ -1793,11 +1766,7 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /**
-             * Terrain
-             * @enum {string}
-             */
-            terrain: "plains" | "forest" | "hills" | "mountain" | "urban" | "marsh";
+            terrain: components["schemas"]["Terrain"];
             /** Infrastructure */
             infrastructure: number;
             /** Victory Points */
@@ -1844,6 +1813,12 @@ export interface components {
             provinces: string[];
         };
         /**
+         * SamRole
+         * @description Class of air defence system.
+         * @enum {string}
+         */
+        SamRole: "long" | "medium" | "short" | "ewr";
+        /**
          * SamSiteView
          * @description A SAM site or early-warning radar.
          */
@@ -1868,16 +1843,8 @@ export interface components {
             system: string;
             /** System Name */
             system_name: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "long" | "medium" | "short" | "ewr";
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "active" | "setting_up" | "moving" | "suppressed";
+            role: components["schemas"]["SamRole"];
+            status: components["schemas"]["SamStatus"];
             /** Location */
             location: string;
             /**
@@ -1911,13 +1878,15 @@ export interface components {
              */
             networked_to: string | null;
             route: components["schemas"]["RouteView"] | null;
-            /**
-             * Authority
-             * @enum {string}
-             */
-            authority: "campaign" | "materializing" | "delegated" | "dematerializing";
+            authority: components["schemas"]["Authority"];
             intel?: components["schemas"]["ContactInfo"] | null;
         };
+        /**
+         * SamStatus
+         * @description Operational state of a site.
+         * @enum {string}
+         */
+        SamStatus: "active" | "setting_up" | "moving" | "suppressed";
         /**
          * SaveRecordView
          * @description A save of the campaign.
@@ -1930,13 +1899,15 @@ export interface components {
             saved_at: number;
             /** @description campaign time saved */
             time: components["schemas"]["Time"];
-            /**
-             * Trigger
-             * @description autosave, request (POST /api/save) or shutdown
-             * @enum {string}
-             */
-            trigger: "auto" | "api" | "exit";
+            /** @description autosave, request (POST /api/save) or shutdown */
+            trigger: components["schemas"]["SaveTrigger"];
         };
+        /**
+         * SaveTrigger
+         * @description What asked for a save.
+         * @enum {string}
+         */
+        SaveTrigger: "auto" | "api" | "exit";
         /**
          * SaveView
          * @description Saving of the campaign by the server (``dynacamp serve --save``).
@@ -1961,6 +1932,12 @@ export interface components {
             last?: components["schemas"]["SaveRecordView"] | null;
         };
         /**
+         * SeatState
+         * @description State of a player's seat in a flight.
+         * @enum {string}
+         */
+        SeatState: "assigned" | "airborne" | "landed" | "lost" | "left";
+        /**
          * SeatView
          * @description A player's seat in a flight.
          */
@@ -1969,11 +1946,7 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "assigned" | "airborne" | "landed" | "lost" | "left";
+            state: components["schemas"]["SeatState"];
         };
         /**
          * SectorView
@@ -1994,6 +1967,12 @@ export interface components {
             divisions: string[];
         };
         /**
+         * SensorKind
+         * @description Kind of air-search sensor.
+         * @enum {string}
+         */
+        SensorKind: "awacs" | "aircraft" | "ground_radar";
+        /**
          * SensorView
          * @description A friendly sensor and its reach.
          */
@@ -2008,11 +1987,7 @@ export interface components {
              * @description [lat, lon] WGS84, null without projection
              */
             ll: number[] | null;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "awacs" | "aircraft" | "ground_radar";
+            kind: components["schemas"]["SensorKind"];
             /** Name */
             name: string;
             /** Range Km */
@@ -2028,6 +2003,12 @@ export interface components {
              */
             half_angle_deg?: number | null;
         };
+        /**
+         * Severity
+         * @description How dangerous a threat is, most dangerous first.
+         * @enum {string}
+         */
+        Severity: "high" | "medium" | "low";
         /**
          * SnapshotView
          * @description Every view in one document.
@@ -2059,7 +2040,7 @@ export interface components {
             /** Aircraft Name */
             aircraft_name: string;
             /** Tasks */
-            tasks: ("CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT")[];
+            tasks: components["schemas"]["Task"][];
             /** Strength */
             strength: number;
             /** Available */
@@ -2080,11 +2061,7 @@ export interface components {
          * @description What a new package flies against.
          */
         TargetIn: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "battle" | "division" | "convoy" | "depot" | "sam" | "point" | "airlift" | "resupply";
+            kind: components["schemas"]["TargetKind"];
             /**
              * Id
              * @description battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)
@@ -2095,15 +2072,39 @@ export interface components {
             point?: components["schemas"]["PointIn"] | null;
         };
         /**
+         * TargetKind
+         * @description What a flight flies against (with ``target_id``, the target itself).
+         * @enum {string}
+         */
+        TargetKind: "battle" | "division" | "convoy" | "depot" | "sam" | "point" | "airlift" | "resupply" | "flight";
+        /**
          * TargetRef
          * @description Reference to a flight's target.
          */
         TargetRef: {
             /** Kind */
-            kind: string;
+            kind: components["schemas"]["TargetKind"] | "unknown";
             /** Id */
             id: string;
         };
+        /**
+         * Task
+         * @description Air mission types.
+         * @enum {string}
+         */
+        Task: "CAP" | "ESCORT" | "SEAD" | "DEAD" | "CAS" | "BAI" | "STRIKE" | "AWACS" | "TANKER" | "TRANSPORT";
+        /**
+         * Terrain
+         * @description Province terrain types.
+         * @enum {string}
+         */
+        Terrain: "plains" | "forest" | "hills" | "mountain" | "urban" | "marsh";
+        /**
+         * ThreatKind
+         * @description Kind of threat listed in a briefing.
+         * @enum {string}
+         */
+        ThreatKind: "sam" | "shorad" | "fighters";
         /**
          * Time
          * @description A campaign time.
@@ -2133,6 +2134,12 @@ export interface components {
             /** Faction */
             faction?: string | null;
         };
+        /**
+         * UnitDomain
+         * @description System of units of the texts for people.
+         * @enum {string}
+         */
+        UnitDomain: "metric" | "imperial";
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -2431,7 +2438,7 @@ export interface operations {
                 /** @description faction whose fog-of-war view to give (omit for the umpire's view) */
                 faction?: string | null;
                 /** @description units of the texts: imperial = kts/ft/NM, metric = km/h/m/km (default: the campaign's) */
-                units?: ("metric" | "imperial") | null;
+                units?: components["schemas"]["UnitDomain"] | null;
             };
             header?: never;
             path: {

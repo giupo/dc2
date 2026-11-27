@@ -1,0 +1,15 @@
+# Callsigns DCS voices that are not tied to an aircraft type (the type-specific
+# ones are in aircraft.toml, under [<id>.dcs] callsigns). DCS numbers them in
+# this order, starting from 1: keep it. Copied from DCS (via pydcs).
+
+# Generic western flight callsigns: the stand-ins for names DCS cannot voice.
+[generic.dcs]
+callsigns = ["Enfield", "Springfield", "Uzi", "Colt", "Dodge", "Ford", "Chevy", "Pontiac"]
+
+# AWACS flights.
+[awacs.dcs]
+callsigns = ["Overlord", "Magic", "Wizard", "Focus", "Darkstar"]
+
+# Tankers.
+[tanker.dcs]
+callsigns = ["Texaco", "Arco", "Shell"]

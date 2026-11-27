@@ -23,6 +23,7 @@ from .adapters.base import (
     NotifyPlayer,
     PlayerEvent,
     PlayerEventKind,
+    PlayerKind,
     PlayerLeft,
     PlayerSeen,
     PublishAto,
@@ -30,11 +31,11 @@ from .adapters.base import (
     UpdateRoute,
 )
 from . import callsigns
-from .air import Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
+from .air import AIRCRAFT_ELEMENT, Flight, FlightStatus, flight_altitude, waypoint_altitudes
 from .air_defense import AirDefenseUnit
 from .bubble import BubbleConfig, BubbleManager, Player
-from .events import EventKind
-from .forces import Authority, Convoy, Division, MobileEntity
+from .events import EventKind, LossReason, PlayerExit, Simulator
+from .forces import TRUCK, Authority, Convoy, Division, MobileEntity
 from .state import CampaignState
 from .systems import PIPELINE, air, ato, combat, movement
 
@@ -134,9 +135,11 @@ class Engine:
         self.config = config or EngineConfig()
         self.bubbles = BubbleManager(self.config.bubble)
         self.wall_clock = wall_clock
+
         self._outbox: list[Command] = []
         self._in_game: set[str] = set()  # ids the game currently holds
         self._published_ato: dict[str, tuple] = {}  # side -> last board sent
+
         # Held for the whole of a step; readers (the HTTP API) take it to see a
         # consistent state between steps.
         self.lock = threading.RLock()
@@ -180,14 +183,14 @@ class Engine:
                 self.state.emit(
                     EventKind.PLAYER_LEFT,
                     player=pid,
-                    reason="timeout"
+                    reason=PlayerExit.TIMEOUT
                 )
 
             self._handoffs()
 
         # Players are sensors too (see systems.intel).
         self.state.player_positions = {
-            p.id: (p.side, p.position, "air" if p.kind.value in ("air", "helo") else "ground")
+            p.id: (p.side, p.position, PlayerKind.GROUND if p.kind is PlayerKind.GROUND else PlayerKind.AIR)
             for p in self.bubbles.players.values()
         }
         
@@ -228,13 +231,13 @@ class Engine:
                 ent.handoff_started = state.time
                 self._outbox.append(Materialize(self._snapshot(ent)))
                 self._in_game.add(ent.id)
-                state.emit(EventKind.HANDOFF, entity=ent.id, to="game")
+                state.emit(EventKind.HANDOFF, entity=ent.id, to=Simulator.GAME)
 
             elif a is Authority.DELEGATED and ent.id not in wanted:
                 ent.authority = Authority.DEMATERIALIZING
                 ent.handoff_started = state.time
                 self._outbox.append(Dematerialize(ent.id))
-                state.emit(EventKind.HANDOFF, entity=ent.id, to="campaign")
+                state.emit(EventKind.HANDOFF, entity=ent.id, to=Simulator.CAMPAIGN)
 
             elif a in (Authority.MATERIALIZING, Authority.DEMATERIALIZING):
                 assert ent.handoff_started is not None
@@ -297,15 +300,14 @@ class Engine:
             case PlayerLeft():
                 if r.player_id in self.bubbles.players:
                     self.bubbles.remove_player(r.player_id)
-                    state.emit(EventKind.PLAYER_LEFT, player=r.player_id, reason="left")
+                    state.emit(EventKind.PLAYER_LEFT, player=r.player_id, reason=PlayerExit.LEFT)
                 ato.player_disconnected(state, r.player_id)
 
             case JoinRequest():
                 player = self.bubbles.players.get(r.player_id)
                 if player is None:
                     return
-                capable = None if r.capable_tasks is None else frozenset(Task(t) for t in r.capable_tasks if t in Task.__members__)
-                ok, text = ato.join(state, r.player_id, player.name, player.side, r.flight_id, capable)
+                ok, text = ato.join(state, r.player_id, player.name, player.side, r.flight_id, r.capable_tasks)
                 self._notify(r.player_id, text, with_marks=ok)
 
             case LeaveRequest():
@@ -424,10 +426,10 @@ class Engine:
             pos: Position reported by the game (None if no unit is alive).
             elements: Alive elements reported by the game (``aircraft``).
         """
-        if "aircraft" in elements:
-            alive = int(round(elements["aircraft"]))
+        if AIRCRAFT_ELEMENT in elements:
+            alive = int(round(elements[AIRCRAFT_ELEMENT]))
             if alive < f.ai_count:
-                air.lose_aircraft(self.state, f, f.ai_count - alive, "game")
+                air.lose_aircraft(self.state, f, f.ai_count - alive, LossReason.GAME)
         if pos is None:
             return
         f.pos = pos
@@ -487,7 +489,7 @@ class Engine:
                 self.state.emit(EventKind.GAME_LOSSES, entity=ent.id, strength=round(ent.strength, 3))
 
         elif isinstance(ent, Convoy) and elements:
-            trucks = min(ent.trucks, elements.get("truck", 0.0))
+            trucks = min(ent.trucks, elements.get(TRUCK, 0.0))
             if trucks < ent.trucks:
                 ent.cargo *= trucks / ent.trucks if ent.trucks else 0.0
                 ent.trucks = trucks
@@ -495,7 +497,7 @@ class Engine:
 
             if ent.trucks <= 0:
                 self.state.convoys.pop(ent.id, None)
-                self.state.emit(EventKind.CONVOY_DESTROYED, convoy=ent.id, faction=ent.faction, reason="game")
+                self.state.emit(EventKind.CONVOY_DESTROYED, convoy=ent.id, faction=ent.faction, reason=LossReason.GAME)
                 return
 
         if pos is None:
@@ -528,14 +530,14 @@ class Engine:
             name, elements, speed = ent.name, dict(ent.elements), ent.template.speed_kmh
 
         elif isinstance(ent, Convoy):
-            name, elements, speed = f"Convoy {ent.id}", {"truck": ent.trucks}, ent.speed_kmh
+            name, elements, speed = f"Convoy {ent.id}", {TRUCK: ent.trucks}, ent.speed_kmh
 
         elif isinstance(ent, Flight):
             return self._flight_snapshot(ent)
 
         elif isinstance(ent, AirDefenseUnit):
             return EntitySnapshot(
-                id=ent.id, kind="sam", name=ent.name, faction=ent.faction, side=faction.side,
+                id=ent.id, kind=ent.kind, name=ent.name, faction=ent.faction, side=faction.side,
                 position=ent.position(t), heading=ent.heading(t), elements=dict(ent.elements),
                 waypoints=self._waypoints(ent), speed_kmh=ent.system.speed_kmh,
                 attrs={"system": ent.system.id, "road_back": self._road_behind(ent), "deployed": ent.movement is None},
@@ -611,13 +613,13 @@ class Engine:
         faction = self.state.factions[f.faction]
         return EntitySnapshot(
             id=f.id,
-            kind="flight",
+            kind=f.kind,
             name=f.callsign,
             faction=f.faction,
             side=faction.side,
             position=f.pos,
             heading=f.heading(self.state.theater),
-            elements={"aircraft": float(f.ai_count)},
+            elements={AIRCRAFT_ELEMENT: float(f.ai_count)},
             waypoints=self._waypoints(f),
             speed_kmh=f.aircraft_type.cruise_kmh,
             altitude=flight_altitude(f),
@@ -625,7 +627,7 @@ class Engine:
                 # planned altitude at each waypoint sent (the briefing's profile)
                 "altitudes": tuple(waypoint_altitudes(f)[self._route_start(f):]),
                 "aircraft": f.aircraft_type.id,
-                "task": f.task.value,
+                "task": f.task,
                 "callsign": f.callsign,
                 # DCS radio callsign (None for eastern sides); AI after the players' seats
                 "radio_callsign": callsigns.radio_callsign(self.state, f),

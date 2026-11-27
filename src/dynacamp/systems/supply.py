@@ -12,9 +12,11 @@ import heapq
 import math
 
 from ..forces import Authority, Convoy, Division, Movement
-from ..state import CampaignState
-from ..events import EventKind
+from ..state import CampaignState, IdPrefix, Timer
+from ..events import EventKind, LossReason
 
+#: Appended to the name of a re-formed brigade.
+REFORMED_SUFFIX = "(reformed)"
 #: Brigades within this road distance of a depot are supplied directly (no convoy).
 DIRECT_RANGE_M = 40_000.0
 #: Supply a brigade draws per hour from a depot in direct range.
@@ -65,8 +67,8 @@ def run(state: CampaignState, dt: float) -> None:
         if div.authority not in ACTIVE:
             continue
         _consume_and_recover(state, div, hours, networks[div.faction])
-    if state.time >= state.timers.get("logistics", 0.0):
-        state.timers["logistics"] = state.time + LOGISTICS_INTERVAL_S
+    if state.time >= state.timers.get(Timer.LOGISTICS, 0.0):
+        state.timers[Timer.LOGISTICS] = state.time + LOGISTICS_INTERVAL_S
         for faction in state.factions:
             _dispatch_convoys(state, faction, networks[faction])
 
@@ -195,7 +197,7 @@ def _reform(state: CampaignState) -> None:
             pending.append((ready if depots else state.time + 12 * 3600, faction, template, name))
             continue
         home = max(depots, key=lambda p: (p.depot.stock, p.id))
-        div = Division(id=state.new_id("rd"), name=name if "(reformed)" in name else f"{name} (reformed)",
+        div = Division(id=state.new_id(IdPrefix.REFORMED), name=name if REFORMED_SUFFIX in name else f"{name} {REFORMED_SUFFIX}",
                        faction=faction, location=home.id, template=template, org=0.5)
         for k in div.elements:
             div.elements[k] *= REFORM_STRENGTH
@@ -246,7 +248,7 @@ def _dispatch_convoys(state: CampaignState, faction: str, network: dict[str, tup
         depot.stock -= cargo
         depot.trucks -= trucks
         convoy = Convoy(
-            id=state.new_id("cv"),
+            id=state.new_id(IdPrefix.CONVOY),
             faction=faction,
             location=dep_id,
             home=dep_id,
@@ -309,4 +311,4 @@ def on_convoy_blocked(state: CampaignState, convoy: Convoy) -> None:
             return
     # Cut off: the column is lost.
     state.convoys.pop(convoy.id, None)
-    state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason="cut off")
+    state.emit(EventKind.CONVOY_DESTROYED, convoy=convoy.id, faction=convoy.faction, reason=LossReason.CUT_OFF)

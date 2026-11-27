@@ -16,7 +16,7 @@ cut across the sea or through a forest, and spawn on roads in the game.
 
 from __future__ import annotations
 
-from ..forces import Division
+from ..forces import ARTILLERY, ELEMENTS, MLRS, Division
 from ..sensors import EYEBALL_M
 from ..state import CampaignState
 
@@ -62,8 +62,8 @@ def contact_range(div: Division) -> float:
         ``INDIRECT_CONTACT_M`` if guns are at least ``INDIRECT_SHARE`` of its combat elements, else
         ``DIRECT_CONTACT_M``.
     """
-    guns = div.elements.get("artillery", 0.0) + div.elements.get("mlrs", 0.0)
-    combat = sum(n for k, n in div.elements.items() if k != "truck")
+    guns = div.elements.get(ARTILLERY, 0.0) + div.elements.get(MLRS, 0.0)
+    combat = sum(n for k, n in div.elements.items() if ELEMENTS[k].combat)
     return INDIRECT_CONTACT_M if combat and guns / combat >= INDIRECT_SHARE else DIRECT_CONTACT_M
 
 

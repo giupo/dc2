@@ -20,13 +20,13 @@ Battles touching a player bubble are *delegated*: the game produces the losses
 
 from __future__ import annotations
 
-from ..forces import Authority, Division, Movement, Order, OrderKind
+from ..forces import ELEMENTS, Authority, Division, Movement, Order, OrderKind
 from ..geo import Vec2
 from ..sensors import EYEBALL_M
-from ..state import Battle, CampaignState
+from ..state import Battle, BattleKind, CampaignState, IdPrefix, Timer
 from ..world import TERRAIN
 from . import contact
-from ..events import EventKind
+from ..events import EventKind, LossReason, OrderEnd
 
 #: Organisation lost per hit, spread over a side's elements.
 ORG_PER_HIT = 0.9
@@ -132,10 +132,10 @@ def _open_battles(state: CampaignState) -> None:
         defenders = state.hostile_divisions_in(div.faction, target)
         if not defenders:
             continue
-        battle = next((b for b in state.battles.values() if b.province == target and b.kind == "assault"), None)
+        battle = next((b for b in state.battles.values() if b.province == target and b.kind is BattleKind.ASSAULT), None)
         if battle is None:
             battle = Battle(
-                id=state.new_id("bt"),
+                id=state.new_id(IdPrefix.BATTLE),
                 province=target,
                 attacker_faction=div.faction,
                 defender_faction=state.theater.provinces[target].controller,
@@ -160,7 +160,7 @@ def _refresh(state: CampaignState, battle: Battle) -> None:
         state: The campaign.
         battle: The battle, updated in place.
     """
-    if battle.kind == "meeting":
+    if battle.kind is BattleKind.MEETING:
         for side in (battle.attackers, battle.defenders):
             side[:] = [i for i in side if i in state.divisions and state.divisions[i].battle == battle.id]
         return
@@ -270,7 +270,7 @@ def _fight(state: CampaignState, battle: Battle, hours: float) -> None:
 
     def_hard, att_hard = side_hardness(defenders), side_hardness(attackers)
 
-    if battle.kind == "meeting":
+    if battle.kind is BattleKind.MEETING:
         # Two forces on the move: nobody is dug in, nobody crosses a river.
         att_fire = sum(d.firepower(def_hard) * readiness(d) for d in attackers) * terrain.attack_factor
         def_fire = sum(d.firepower(att_hard) * readiness(d) for d in defenders) * terrain.attack_factor
@@ -310,9 +310,9 @@ def _size(d: Division) -> float:
         d: The division.
 
     Returns:
-        Its elements other than trucks.
+        Its combat elements (not the trucks).
     """
-    return sum(n for k, n in d.elements.items() if k != "truck")
+    return sum(n for k, n in d.elements.items() if ELEMENTS[k].combat)
 
 
 def _distribute(side: list[Division], hits: float) -> None:
@@ -343,7 +343,7 @@ def _check_breaks(state: CampaignState, battle: Battle) -> None:
         state: The campaign.
         battle: The battle, updated in place.
     """
-    if battle.kind == "meeting":
+    if battle.kind is BattleKind.MEETING:
         for side, limit in ((battle.attackers, ATTACKER_BREAK_ORG), (battle.defenders, ATTACKER_BREAK_ORG)):
             for i in list(side):
                 d = state.divisions[i]
@@ -413,7 +413,7 @@ def _retreat(state: CampaignState, div: Division, battle: Battle | None = None, 
     ]
     if not options or div.strength < DESTROYED_STRENGTH:
         div.elements = {k: 0.0 for k in div.elements}
-        state.emit(EventKind.DIVISION_DESTROYED, division=div.id, faction=div.faction, province=div.location, reason="encircled" if not options else "shattered")
+        state.emit(EventKind.DIVISION_DESTROYED, division=div.id, faction=div.faction, province=div.location, reason=LossReason.ENCIRCLED if not options else LossReason.SHATTERED)
         return
 
     def danger(pid: str) -> int:
@@ -450,8 +450,8 @@ def _end(state: CampaignState, battle: Battle) -> None:
             state.divisions[i].battle = None
     del state.battles[battle.id]
     state.emit(EventKind.BATTLE_ENDED, battle=battle.id, province=battle.province, winner=winner, hours=round((state.time - battle.started) / 3600, 1),
-               battle_kind=battle.kind)
-    if battle.attackers and battle.kind == "assault":
+               battle_kind=battle.kind.value)
+    if battle.attackers and battle.kind is BattleKind.ASSAULT:
         _advance_after_victory(state, battle)
 
 
@@ -546,7 +546,7 @@ def _contested(state: CampaignState, fid: str, a: str, b: str) -> None:
             continue
         if {d.location, mv.path[0]} == {a, b} and d.authority is Authority.CAMPAIGN:
             withdraw(state, d)
-            state.emit(EventKind.ORDER_CANCELLED, division=d.id, reason="road contested")
+            state.emit(EventKind.ORDER_CANCELLED, division=d.id, reason=OrderEnd.ROAD_CONTESTED)
 
 
 def _assaulting(div: Division, other: Division) -> bool:
@@ -586,7 +586,7 @@ def _meeting_engagements(state: CampaignState) -> None:
                 continue
             if _assaulting(a, b) or _assaulting(b, a):
                 continue  # an attack on the other's province: the assault mechanics decide
-            key = "meet:" + ":".join(sorted((a.id, b.id)))
+            key = Timer.MEET.key(*sorted((a.id, b.id)))
             if state.timers.get(key, 0.0) > state.time:
                 continue
             state.timers[key] = state.time + MEET_COOLDOWN_S
@@ -594,14 +594,14 @@ def _meeting_engagements(state: CampaignState) -> None:
             point = pos[a.id].lerp(pos[b.id], 0.5)
             province = t.nearest(point).id
             battle = Battle(
-                id=state.new_id("bt"),
+                id=state.new_id(IdPrefix.BATTLE),
                 province=province,
                 attacker_faction=first.faction,
                 defender_faction=second.faction,
                 attackers=[],
                 defenders=[],
                 started=state.time,
-                kind="meeting",
+                kind=BattleKind.MEETING,
                 point=point,
             )
             for d in free:
@@ -617,7 +617,7 @@ def _meeting_engagements(state: CampaignState) -> None:
             state.battles[battle.id] = battle
             state.emit(
                 EventKind.BATTLE_STARTED, battle=battle.id, province=province, attacker=first.faction,
-                defender=second.faction, battle_kind="meeting",
+                defender=second.faction, battle_kind=BattleKind.MEETING.value,
             )
 
 

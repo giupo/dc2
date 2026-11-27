@@ -13,7 +13,19 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from ..air import Task
+from ..forces import EntityKind
 from ..geo import Vec2
+
+
+
+class Side(StrEnum):
+    """A game side (a DCS coalition): factions are mapped to one."""
+    #: The blue coalition.
+    BLUE = "blue"
+    #: The red coalition.
+    RED = "red"
+
 
 # ------------------------------------------------------------------ core -> game
 
@@ -24,7 +36,7 @@ class EntitySnapshot:
 
     Attributes:
         id: Entity id.
-        kind: ``division``, ``convoy``, ``flight`` or ``sam``.
+        kind: What the entity is.
         name: Display name.
         faction: Owning faction.
         side: Game side.
@@ -37,10 +49,10 @@ class EntitySnapshot:
         attrs: Kind-specific details (aircraft, task, SAM system, road behind...).
     """
     id: str
-    kind: str  # "division" | "convoy"
+    kind: EntityKind
     name: str
     faction: str
-    side: str  # game-facing side ("blue"/"red")
+    side: Side
     position: Vec2
     heading: float  # radians, 0 = north
     elements: dict[str, float]
@@ -81,7 +93,7 @@ class UpdateRoute:
 class PublishAto:
     """The flights players of ``side`` can join (see systems.ato.ato_board)."""
 
-    side: str
+    side: Side
     packages: tuple[dict[str, Any], ...]
 
 
@@ -101,8 +113,11 @@ Command = Materialize | Dematerialize | UpdateRoute | PublishAto | NotifyPlayer
 
 class PlayerKind(StrEnum):
     """What a player is flying or driving."""
+    #: A fixed-wing aircraft.
     AIR = "air"
+    #: A helicopter.
     HELO = "helo"
+    #: A ground unit (combined arms) or a ship.
     GROUND = "ground"
 
 
@@ -121,7 +136,7 @@ class PlayerSeen:
     """
     player_id: str
     name: str
-    side: str
+    side: Side
     kind: PlayerKind
     position: Vec2
     altitude: float = 0.0
@@ -179,9 +194,12 @@ class GameDisconnected:
 
 class PlayerEventKind(StrEnum):
     """Player flight events."""
+    #: The player's aircraft took off.
     TAKEOFF = "takeoff"
+    #: The player's aircraft landed.
     LANDED = "landed"
-    LOST = "lost"  # crashed, ejected, killed
+    #: Crashed, ejected or killed.
+    LOST = "lost"
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,7 +215,7 @@ class JoinRequest:
 
     player_id: str
     flight_id: str
-    capable_tasks: frozenset[str] | None = None  # None = no restriction known
+    capable_tasks: frozenset[Task] | None = None  # None = no restriction known
 
 
 @dataclass(frozen=True, slots=True)

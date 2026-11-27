@@ -5,14 +5,16 @@ from __future__ import annotations
 import random
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from .geo import Vec2
 from .air import Airbase, Flight, Package, Squadron
 from .air_defense import AirDefenseUnit
 from .events import EventKind, EventLog
+from .adapters.base import Side
 from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
-from .units import UnitDomain, Units
+from .units import UnitDomain
 
 @dataclass(slots=True)
 class Objective:
@@ -35,16 +37,24 @@ class Faction:
         name: Display name.
         bullseye: The side's fixed reference point for bearing/range calls
             (``BULLS 045/32``, see :mod:`dynacamp.bullseye`).
-        side: Game-facing side (``"blue"``/``"red"``), mapped to coalitions by adapters.
+        side: Game side, mapped to a coalition by adapters.
         enemies: Factions it is at war with.
         objectives: Provinces it wants.
     """
     id: str
     name: str
     bullseye: Vec2
-    side: str  # game-facing side, e.g. "blue" / "red"; adapters map it to coalitions
+    side: Side
     enemies: set[str] = field(default_factory=set)
     objectives: list[Objective] = field(default_factory=list)
+
+
+class BattleKind(StrEnum):
+    """Kind of battle."""
+    #: On a province's defence line.
+    ASSAULT = "assault"
+    #: Two forces ran into each other on the road.
+    MEETING = "meeting"
 
 
 @dataclass
@@ -61,8 +71,7 @@ class Battle:
         defenders: Defending division ids.
         started: Campaign time it began.
         attack_from: Attacker id -> province it attacks from.
-        kind: ``"assault"`` (on a province's defence line) or ``"meeting"``
-            (two forces ran into each other: no defensive line, no river crossing).
+        kind: Assault, or meeting engagement (no defensive line, no river crossing).
         point: Where a meeting engagement happens (None for assaults).
     """
     id: str
@@ -74,8 +83,85 @@ class Battle:
     started: float
     # attacker id -> province it attacks from (needed for river penalties / retreat)
     attack_from: dict[str, str] = field(default_factory=dict)
-    kind: str = "assault"
+    kind: BattleKind = BattleKind.ASSAULT
     point: Vec2 | None = None
+
+
+class IdPrefix(StrEnum):
+    """Prefix of the ids the campaign hands out (:meth:`CampaignState.new_id`)."""
+    #: A battle.
+    BATTLE = "bt"
+    #: An ATO package.
+    PACKAGE = "pk"
+    #: A flight.
+    FLIGHT = "fl"
+    #: A supply convoy.
+    CONVOY = "cv"
+    #: A re-formed brigade.
+    REFORMED = "rd"
+    #: A replacement air defence battery.
+    AIR_DEFENSE = "ad"
+    #: An ordered CAP station.
+    POINT = "pt"
+
+
+class Timer(StrEnum):
+    """Keys of :attr:`CampaignState.timers`.
+
+    A periodic system keys its next run time with the bare member. A cooldown
+    keys an expiry time with :meth:`key` and the ids involved; the members in
+    :data:`COOLDOWNS` are dropped once expired.
+    """
+
+    # next run of the periodic systems
+    #: Next planning round of the theatre AI.
+    AI = "ai"
+    #: Next ATO planning cycle.
+    ATO = "ato"
+    #: Next sweep of the sensors.
+    INTEL = "intel"
+    #: Set once the pre-war intelligence has been handed out.
+    INTEL_SEEDED = "intel_seeded"
+    #: Next logistics round (depots, convoys).
+    LOGISTICS = "logistics"
+    #: Next air defence round (deployment and relocation of the sites).
+    ADA = "ada"
+    #: Next delivery of replacement aircraft.
+    AIR_REPLACEMENTS = "air_replacements"
+    #: Next scramble alert check; with (faction, intruder), when the faction may scramble on it again.
+    SCRAMBLE = "scramble"
+    #: Per faction: last refill of the sortie budget.
+    SORTIE_TOKENS = "sortie_t"
+    # cooldowns
+    #: A flight's next air-to-air shot.
+    AA = "aa"
+    #: A flight's next pass on a hostile one.
+    AA_PASS = "aa_pass"
+    #: A SAM site's next salvo at a flight.
+    SAM = "sam"
+    #: A SEAD flight's next anti-radiation shot.
+    HARM = "harm"
+    #: A flight already dodged a SAM site.
+    EVADE = "evade"
+    #: A road a faction lost a fight on.
+    CONTESTED = "contested"
+    #: Two brigades already met on the road.
+    MEET = "meet"
+
+    def key(self, *parts: str) -> str:
+        """The key of this timer for the given ids.
+
+        Args:
+            *parts: Ids (faction, entities...) the timer is about.
+
+        Returns:
+            ``"<timer>:<part>:<part>..."``.
+        """
+        return ":".join((self.value, *parts))
+
+
+#: Timers that are cooldowns: dropped from the campaign once expired.
+COOLDOWNS = (Timer.AA, Timer.AA_PASS, Timer.SAM, Timer.HARM, Timer.EVADE, Timer.SCRAMBLE, Timer.CONTESTED, Timer.MEET)
 
 
 @dataclass
@@ -113,7 +199,7 @@ class CampaignState:
     factions: dict[str, Faction]
     seed: int = 0
     time: float = 0.0  # campaign seconds since start
-    units: Units = UnitDomain.IMPERIAL # of texts for players: "imperial" (kts/ft/NM) or "metric"
+    units: UnitDomain = UnitDomain.IMPERIAL  # of texts for players: "imperial" (kts/ft/NM) or "metric"
     divisions: dict[str, Division] = field(default_factory=dict)
     convoys: dict[str, Convoy] = field(default_factory=dict)
     battles: dict[str, Battle] = field(default_factory=dict)
@@ -140,7 +226,7 @@ class CampaignState:
     # Entities whose orders/route changed this step (adapters must hear about it).
     dirty: set[str] = field(default_factory=set)
     # Next campaign time each periodic system runs (e.g. "ai", "logistics").
-    timers: dict[str, float] = field(default_factory=dict)
+    timers: dict[str, float] = field(default_factory=dict)  # keys: see Timer
     _counter: int = 0
 
     def __post_init__(self) -> None:
@@ -149,17 +235,17 @@ class CampaignState:
 
     # ------------------------------------------------------------ ids / events
 
-    def new_id(self, prefix: str) -> str:
+    def new_id(self, prefix: IdPrefix) -> str:
         """A new unique id.
 
         Args:
-            prefix: Id prefix, e.g. ``"bt"``.
+            prefix: What the id is for.
 
         Returns:
             The id, ``prefix`` followed by a campaign-wide counter.
         """
         self._counter += 1
-        return f"{prefix}{self._counter}"
+        return f"{prefix.value}{self._counter}"
 
     def emit(self, kind: EventKind, **data: object) -> None:
         """Append an event at the current campaign time.
@@ -283,11 +369,11 @@ class CampaignState:
             if p.controller == faction and any(self.hostile_province(faction, n) for n in t.neighbors(pid))
         ]
 
-    def faction_for_side(self, side: str) -> Faction | None:
+    def faction_for_side(self, side: Side) -> Faction | None:
         """The faction playing a game side.
 
         Args:
-            side: ``"blue"`` or ``"red"``.
+            side: The game side.
 
         Returns:
             The first faction of that side, or None.
@@ -346,7 +432,7 @@ class CampaignState:
             a: One end of the road.
             b: The other end.
         """
-        self.timers[f"contested:{faction}:" + "|".join(sorted((a, b)))] = self.time + self.CONTESTED_ROAD_S
+        self.timers[Timer.CONTESTED.key(faction, "|".join(sorted((a, b))))] = self.time + self.CONTESTED_ROAD_S
 
     def road_penalty(self, faction: str) -> Callable[[str, str], float]:
         """Link cost multiplier for ``faction``'s routes: roads it recently lost a
@@ -358,7 +444,7 @@ class CampaignState:
         Returns:
             A function giving the cost multiplier of the link between two provinces.
         """
-        prefix = f"contested:{faction}:"
+        prefix = Timer.CONTESTED.key(faction, "")
         contested = {k[len(prefix):] for k, v in self.timers.items() if k.startswith(prefix) and v > self.time}
 
         def penalty(a: str, b: str) -> float:

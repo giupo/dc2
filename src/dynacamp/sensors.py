@@ -152,7 +152,7 @@ def jam(state: CampaignState, f: Flight) -> float:
     if escort_jammer(state, f) is not None:
         return ESCORT_JAM
 
-    if loadouts.has_ecm_pod(f.aircraft_type.id, f.task.value):
+    if loadouts.has_ecm_pod(f.aircraft_type.id, f.task):
         return SELF_JAM
 
     return 1.0

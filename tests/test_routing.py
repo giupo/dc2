@@ -2,7 +2,7 @@
 
 import pytest
 
-from dynacamp.air import AIRCRAFT, Flight, FlightStatus, Squadron, Task
+from dynacamp.air import AIRCRAFT, Flight, FlightStatus, Squadron, TargetKind, Task
 from dynacamp.air_defense import SYSTEMS
 from dynacamp.engine import Engine
 from dynacamp.geo import Vec2
@@ -95,13 +95,13 @@ def test_dead_package_puts_strikers_behind_the_sead():
     state.squadrons["sq2"] = Squadron("sq2", "Vipers 2", "blue", "ab", AIRCRAFT["f16c"], 12, "Venom")
     site = state.air_defense["s1"]
     intel.reveal(state, "blue", site, "test")
-    reqs = [r for r in ato.requests(state, state.factions["blue"]) if r.target_kind == "sam"]
+    reqs = [r for r in ato.requests(state, state.factions["blue"]) if r.target_kind is TargetKind.SAM]
     assert reqs and reqs[0].task is Task.DEAD
     pkg = ato.build_package(state, state.factions["blue"], reqs[0])
     assert pkg is not None and pkg.task is Task.DEAD
     flights = {state.flights[f].task: state.flights[f] for f in pkg.flights}
     assert set(flights) == {Task.SEAD, Task.STRIKE}
-    assert flights[Task.STRIKE].target_kind == "sam" and flights[Task.STRIKE].target_id == site.id
+    assert flights[Task.STRIKE].target_kind is TargetKind.SAM and flights[Task.STRIKE].target_id == site.id
     assert flights[Task.SEAD].tot == flights[Task.STRIKE].tot - 120
     assert ato.package_size(state, "blue", reqs[0]) == 4
 
@@ -110,7 +110,7 @@ def test_strikers_bomb_a_sam_site_even_with_its_radar_on():
     state = world(sam="buk", at="d")
     site = state.air_defense["s1"]
     f = flight(state, site.position(state.theater), task=Task.STRIKE, target=site.position(state.theater))
-    f.target_kind, f.target_id = "sam", site.id
+    f.target_kind, f.target_id = TargetKind.SAM, site.id
     state.rng.seed(1)
     air_sys.attack(state, f)
     assert [e for e in state.events if e.kind == "sam_struck"]

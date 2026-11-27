@@ -19,13 +19,13 @@ import math
 from collections.abc import Iterable
 
 from .geo import Vec2
-from .projection import to_latlon
+from .projection import TheaterMap, to_latlon
 from .state import CampaignState
-from .units import M_PER_NM, UnitDomain, Units
+from .units import M_PER_NM, UnitDomain
 
 #: Magnetic variation of each theatre, degrees, east positive: around 2024, from the World
 #: Magnetic Model at the theatre's centre (to verify against what DCS computes from the date).
-MAGNETIC_VARIATION_DEG = {"caucasus": 6.5, "syria": 5.0}
+MAGNETIC_VARIATION_DEG = {TheaterMap.CAUCASUS: 6.5, TheaterMap.SYRIA: 5.0}
 
 
 def centre(points: Iterable[Vec2]) -> Vec2:
@@ -86,7 +86,7 @@ def bearing_range(state: CampaignState, fid: str, point: Vec2) -> tuple[float, f
     return (true_bearing(theater, bulls, point) - variation) % 360, bulls.distance_to(point)
 
 
-def label(state: CampaignState, fid: str, point: Vec2, units: Units) -> str:
+def label(state: CampaignState, fid: str, point: Vec2, units: UnitDomain) -> str:
     """``point`` as the radio says it, ``"045/32"``: magnetic bearing and range
     from faction ``fid``'s bullseye (NM in imperial units, km in metric).
 

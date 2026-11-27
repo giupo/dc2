@@ -27,9 +27,10 @@ budget like any other flight, but the alert does not wait for it.
 
 from __future__ import annotations
 
-from ..air import ACTIVE_STATUSES, CAP_ALT_M, FlightStatus, Task
+from ..air import ACTIVE_STATUSES, CAP_ALT_M, FlightStatus, TargetKind, Task
+from ..forces import EntityKind
 from ..geo import Vec2
-from ..state import CampaignState
+from ..state import CampaignState, Timer
 from ..units import M_PER_NM as NM
 from . import ato, intel, routing
 from ..events import EventKind
@@ -67,9 +68,9 @@ def run(state: CampaignState, dt: float) -> None:
         state: The campaign.
         dt: Campaign seconds elapsed (unused: the check runs on its own timer).
     """
-    if state.time < state.timers.get("scramble", 0.0):
+    if state.time < state.timers.get(Timer.SCRAMBLE, 0.0):
         return
-    state.timers["scramble"] = state.time + CHECK_INTERVAL_S
+    state.timers[Timer.SCRAMBLE] = state.time + CHECK_INTERVAL_S
     for fid in state.factions:
         if any(sq.faction == fid and Task.CAP in sq.tasks for sq in state.squadrons.values()):
             check(state, fid)
@@ -87,7 +88,7 @@ def active(state: CampaignState, fid: str) -> list:
     """
     return [
         f for f in state.flights.values()
-        if f.faction == fid and f.target_kind == "flight" and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
+        if f.faction == fid and f.target_kind == TargetKind.FLIGHT and f.status not in (FlightStatus.DONE, FlightStatus.CANCELLED)
     ]
 
 
@@ -142,13 +143,13 @@ def check(state: CampaignState, fid: str) -> None:
         f.pos for f in state.flights.values()
         if f.faction == fid and f.task.air_to_air and f.status in ACTIVE_STATUSES and f.ai_count > 0
     ]
-    for c in sorted(intel.known(state, fid, "flight", CONTACT_MAX_AGE_S), key=lambda c: c.entity_id):
+    for c in sorted(intel.known(state, fid, EntityKind.FLIGHT, CONTACT_MAX_AGE_S), key=lambda c: c.entity_id):
         intruder = state.flights.get(c.entity_id)
         if c.entity_id in chased or intruder is None or intruder.status not in ACTIVE_STATUSES:
             continue
         if not state.at_war(fid, intruder.faction) or intruder.task.air_to_air:
             continue
-        if state.timers.get(f"scramble:{fid}:{c.entity_id}", 0.0) > state.time:
+        if state.timers.get(Timer.SCRAMBLE.key(fid, c.entity_id), 0.0) > state.time:
             continue
         pos, label, base_id = min(points, key=lambda p: p[0].distance_to(c.position))
         if pos.distance_to(c.position) > SCRAMBLE_RADIUS_M:
@@ -158,7 +159,7 @@ def check(state: CampaignState, fid: str) -> None:
         if any(t.contains(c.position) for t in umbrellas):
             continue
         if launch(state, fid, c, base_id, label):
-            state.timers[f"scramble:{fid}:{c.entity_id}"] = state.time + REARM_S
+            state.timers[Timer.SCRAMBLE.key(fid, c.entity_id)] = state.time + REARM_S
             if len(busy) + 1 >= MAX_ACTIVE:
                 return
             busy.append(None)
@@ -186,9 +187,9 @@ def launch(state: CampaignState, fid: str, c: intel.Contact, base_id: str, label
         return False
     sq, dist = found
     home = state.airbases[sq.airbase].position
-    what = c.detail.get("aircraft_name") or "unidentified aircraft"
+    what = c.detail.get("aircraft_name") or intel.UNIDENTIFIED
     tot = state.time + ALERT_DELAY_S + dist / (sq.aircraft_type.cruise_kmh / 3.6)
-    r = ato.Request(Task.CAP, 10.0, f"scramble: {what} over {label}", c.position, "flight", c.entity_id)
+    r = ato.Request(Task.CAP, 10.0, f"scramble: {what} over {label}", c.position, TargetKind.FLIGHT, c.entity_id)
     pkg = ato._new_package(state, fid, r, tot)
     f = ato._add_flight(state, pkg, sq, Task.CAP, SIZE, tot, r, ([home, c.position, home], 1))
     f.station_until = tot + STATION_S
@@ -220,7 +221,7 @@ def pursue(state: CampaignState, f) -> None:
     target = state.flights.get(f.target_id)
     pos = None
     if target is not None and target.status in ACTIVE_STATUSES and target.size > 0:
-        pos = intel.located(state, f.faction, f.target_id, intel.TTL_S["flight"])
+        pos = intel.located(state, f.faction, f.target_id, intel.TTL_S[EntityKind.FLIGHT])
     if pos is not None and (
         pos.distance_to(f.waypoints[-1]) > CHASE_LIMIT_M
         or any(t.contains(pos) for t in routing.threats(state, f.faction, CAP_ALT_M))

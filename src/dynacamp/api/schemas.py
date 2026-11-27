@@ -10,14 +10,24 @@ Conventions: ``pos`` = [east, north] metres on the theater plane, ``ll`` =
 
 from __future__ import annotations
 
-from ..events import EventKind
-from ..units import Units
-
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Authority = Literal["campaign", "materializing", "delegated", "dematerializing"]
+from ..adapters.base import PlayerKind
+from ..air import FlightStatus, SeatState, TargetKind, Task
+from ..air_defense import SamRole, SamStatus
+from ..events import EventKind
+from ..forces import Authority, EntityKind, OrderKind
+from ..persistence import SaveTrigger
+from ..state import BattleKind
+from ..systems.briefing import Severity, ThreatKind
+from ..systems.intel import SensorKind
+from ..units import UnitDomain
+from ..world import LinkKind, Terrain
+
+#: What the API shows where the fog of war hides the value.
+Unknown = Literal["unknown"]
 
 
 class Model(BaseModel):
@@ -73,7 +83,7 @@ class PlayerView(Located):
     id: str
     name: str
     side: str
-    kind: Literal["air", "helo", "ground"]
+    kind: PlayerKind
     altitude: int
     flight: str | None = Field(description="flight id of the seat the player holds")
 
@@ -82,7 +92,7 @@ class SaveRecordView(Model):
     """A save of the campaign."""
     saved_at: float = Field(description="wall-clock time, Unix seconds")
     time: Time = Field(description="campaign time saved")
-    trigger: Literal["auto", "api", "exit"] = Field(description="autosave, request (POST /api/save) or shutdown")
+    trigger: SaveTrigger = Field(description="autosave, request (POST /api/save) or shutdown")
 
 
 class SaveView(Model):
@@ -96,7 +106,7 @@ class SaveView(Model):
 class CampaignView(Model):
     """Campaign overview: clock, factions, players."""
     save: SaveView | None = Field(None, description="saving (null without a running engine)")
-    units: Units = Field(description="units of the texts for players (default of the UI)")
+    units: UnitDomain = Field(description="units of the texts for players (default of the UI)")
     control: ControlView | None = Field(None, description="pause and speed (null without a running engine)")
     api_version: int
     name: str
@@ -117,7 +127,7 @@ class ProvinceView(Located):
     """A province with its territory polygon."""
     id: str
     name: str
-    terrain: Literal["plains", "forest", "hills", "mountain", "urban", "marsh"]
+    terrain: Terrain
     infrastructure: int
     victory_points: int
     owner: str
@@ -131,7 +141,7 @@ class LinkView(Polyline):
     """A road/track/rail link with its geometry."""
     a: str
     b: str
-    kind: Literal["road", "track", "rail"]
+    kind: LinkKind
     river: bool
     length_km: float
     road: bool = Field(description="geometry follows the real road (else a straight segment)")
@@ -179,8 +189,8 @@ class BattleView(Located):
     id: str
     province: str
     name: str
-    kind: Literal["assault", "meeting"] = Field(
-        "assault", description="assault on the province's defence line, or meeting engagement on the road (province = nearest)")
+    kind: BattleKind = Field(
+        BattleKind.ASSAULT, description="assault on the province's defence line, or meeting engagement on the road (province = nearest)")
     attacker: str
     defender: str
     attackers: list[str]
@@ -218,7 +228,7 @@ class ContactInfo(Model):
 
 class OrderView(Model):
     """A division's order."""
-    kind: Literal["hold", "move", "attack", "unknown"]
+    kind: OrderKind | Unknown
     target: str | None
 
 
@@ -311,19 +321,16 @@ class LogisticsView(Model):
 
 # ---------------------------------------------------------------- ATO
 
-Task = Literal["CAP", "ESCORT", "SEAD", "DEAD", "CAS", "BAI", "STRIKE", "AWACS", "TANKER", "TRANSPORT"]
-
-
 class SeatView(Model):
     """A player's seat in a flight."""
     id: str
     name: str
-    state: Literal["assigned", "airborne", "landed", "lost", "left"]
+    state: SeatState
 
 
 class TargetRef(Model):
     """Reference to a flight's target."""
-    kind: str
+    kind: TargetKind | Unknown
     id: str
 
 
@@ -342,7 +349,7 @@ class FlightView(Located):
     aircraft_name: str
     helo: bool
     task: Task
-    status: Literal["scheduled", "airborne", "on_station", "rtb", "done", "cancelled"]
+    status: FlightStatus
     size: int
     ai: int
     seats_free: int
@@ -446,11 +453,11 @@ class BriefingTarget(Located):
 class BriefingThreat(Located):
     """A threat to the flight."""
 
-    kind: Literal["sam", "shorad", "fighters"]
+    kind: ThreatKind
     name: str
     detail: str
     range_km: float
-    severity: Literal["high", "medium", "low"]
+    severity: Severity
     bulls: str = Field(description="magnetic bearing/range from the side's bullseye")
 
 
@@ -476,7 +483,7 @@ class BriefingFlight(Model):
 class BriefingSupport(Located):
     """A friendly AWACS or tanker available during the mission."""
 
-    task: Literal["AWACS", "TANKER"]
+    task: Literal[Task.AWACS, Task.TANKER]
     callsign: str
     aircraft: str
     status: str
@@ -495,7 +502,7 @@ class BriefingBullseye(Located):
 class BriefingView(Model):
     """The mission package of a flight. Numbers are SI (``alt_m``, ``speed_kmh``,
     ``range_km``); texts are written in ``units``."""
-    units: Units
+    units: UnitDomain
     package_number: str
     bullseye: BriefingBullseye
 
@@ -536,8 +543,8 @@ class SamSiteView(Located):
     faction: str
     system: str
     system_name: str
-    role: Literal["long", "medium", "short", "ewr"]
-    status: Literal["active", "setting_up", "moving", "suppressed"]
+    role: SamRole
+    status: SamStatus
     location: str
     range_km: float = Field(description="engagement range (0 for early-warning radars)")
     detection_km: float
@@ -585,7 +592,7 @@ class EventsPage(Model):
 class ContactView(Located):
     """One contact of a faction's intelligence picture."""
     id: str
-    kind: Literal["division", "convoy", "flight", "sam"]
+    kind: EntityKind
     faction: str
     source: str
     seen: Time
@@ -598,7 +605,7 @@ class ContactView(Located):
 
 class SensorView(Located):
     """A friendly sensor and its reach."""
-    kind: Literal["awacs", "aircraft", "ground_radar"]
+    kind: SensorKind
     name: str
     range_km: float
     heading_deg: float | None = Field(None, description="aircraft radars: direction of the cone (null: all round)")
@@ -643,7 +650,7 @@ class RouteRequest(Model):
 
 class TargetIn(Model):
     """What a new package flies against."""
-    kind: Literal["battle", "division", "convoy", "depot", "sam", "point", "airlift", "resupply"]
+    kind: TargetKind
     id: str = Field("", description="battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)")
     point: PointIn | None = Field(None, description="for `point` targets (CAP station, AWACS orbit, tanker track)")
 

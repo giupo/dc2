@@ -16,6 +16,19 @@ from . import catalog
 from .geo import Vec2
 from .world import Theater
 
+# -- Element ids the rules refer to (the elements are in data/catalog/ground.toml) --
+
+#: Supply trucks.
+TRUCK = "truck"
+#: Towed and self-propelled guns.
+ARTILLERY = "artillery"
+#: Rocket launchers.
+MLRS = "mlrs"
+#: Short-range SAM launchers of a brigade.
+SAM_SHORT = "sam_short"
+#: Anti-aircraft guns of a brigade.
+AAA = "aaa"
+
 
 # ---------------------------------------------------------------- elements
 
@@ -89,17 +102,36 @@ class Authority(StrEnum):
     until the game adapter acknowledges the handoff (or the handoff times out).
     """
 
+    #: The campaign engine simulates it.
     CAMPAIGN = "campaign"
+    #: Being spawned in the game: frozen until acknowledged.
     MATERIALIZING = "materializing"
+    #: The game simulates it (inside a player bubble).
     DELEGATED = "delegated"
+    #: Being removed from the game: frozen until acknowledged.
     DEMATERIALIZING = "dematerializing"
 
 
 class OrderKind(StrEnum):
     """What a division has been told to do."""
+    #: Stay and defend where it is.
     HOLD = "hold"
-    MOVE = "move"  # move through friendly territory
-    ATTACK = "attack"  # move and attack the final (hostile) province
+    #: Move through friendly territory.
+    MOVE = "move"
+    #: Move and attack the final (hostile) province.
+    ATTACK = "attack"
+
+
+class EntityKind(StrEnum):
+    """Kind of mobile entity: what adapters spawn and intelligence reports."""
+    #: A ground brigade.
+    DIVISION = "division"
+    #: A supply convoy.
+    CONVOY = "convoy"
+    #: A flight of an ATO package.
+    FLIGHT = "flight"
+    #: An air defence site.
+    SAM = "sam"
 
 
 @dataclass(slots=True)
@@ -144,7 +176,7 @@ class MobileEntity:
         movement: Route progress, or None when stationary.
         game_position: Last position reported by the game while delegated.
         handoff_started: Campaign time a handoff began (for timeouts).
-        kind: Entity kind used by adapters (``"division"``, ``"convoy"``...).
+        kind: Entity kind, fixed by each subclass.
     """
     id: str
     faction: str
@@ -155,7 +187,7 @@ class MobileEntity:
     game_position: Vec2 | None = None
     handoff_started: float | None = None  # campaign time a handoff began
 
-    kind: str = "entity"
+    kind: EntityKind
 
     @property
     def simulated_by_campaign(self) -> bool:
@@ -188,8 +220,10 @@ class MobileEntity:
         """
         if self.game_position is not None and self.authority is not Authority.CAMPAIGN:
             return self.game_position
+
         if not self.movement or not self.movement.path:
             return theater.provinces[self.location].center
+
         return theater.point_on_link(self.location, self.movement.path[0], self.movement.progress)
 
     def heading(self, theater: Theater) -> float:
@@ -201,10 +235,11 @@ class MobileEntity:
         Returns:
             The heading in radians.
         """
-        if self.movement and self.movement.path:
-            h = theater.heading_on_link(self.location, self.movement.path[0], self.movement.progress)
-            return (h + math.pi) % (2 * math.pi) if self.movement.back else h
-        return 0.0
+        if not self.movement or not self.movement.path:
+            return 0.0
+
+        h = theater.heading_on_link(self.location, self.movement.path[0], self.movement.progress)
+        return (h + math.pi) % (2 * math.pi) if self.movement.back else h
 
 
 @dataclass(eq=False, kw_only=True)
@@ -233,7 +268,7 @@ class Division(MobileEntity):
     # towards the neighbouring province ``deployed_toward`` (facing an attack).
     deployed_toward: str | None = None
     deploy_m: float = 0.0
-    kind: str = "division"
+    kind: EntityKind = EntityKind.DIVISION
 
     def __post_init__(self) -> None:
         """Fill elements and supply from the template on creation."""
@@ -284,7 +319,9 @@ class Division(MobileEntity):
             The firepower, soft and hard attacks weighted by the target's hardness.
         """
         soft = sum(ELEMENTS[k].soft_attack * n for k, n in self.elements.items())
+
         hard = sum(ELEMENTS[k].hard_attack * n for k, n in self.elements.items())
+
         return soft * (1.0 - enemy_hardness) + hard * enemy_hardness
 
     def defense(self) -> float:
@@ -343,7 +380,7 @@ class Convoy(MobileEntity):
     cargo: float
     trucks: float
     returning: bool = False
-    kind: str = "convoy"
+    kind: EntityKind = EntityKind.CONVOY
     speed_kmh: float = 40.0
 
     @property

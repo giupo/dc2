@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, field, replace
-from enum import StrEnum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -26,73 +26,131 @@ class EventKind(StrEnum):
     """
 
     # ground war
+    #: The theatre AI gave a brigade an order.
     AI_ORDER = "ai_order"
+    #: An artillery fire mission.
     ARTILLERY_FIRE = "artillery_fire"
+    #: An attacking brigade broke off, disorganised or too weak.
     ATTACK_HALTED = "attack_halted"
+    #: A battle began (assault or meeting engagement).
     BATTLE_STARTED = "battle_started"
+    #: A battle is over: winner and duration.
     BATTLE_ENDED = "battle_ended"
+    #: A brigade on the move broke contact and fell back.
     CONTACT_BROKEN = "contact_broken"
+    #: A brigade was destroyed (see :class:`LossReason`).
     DIVISION_DESTROYED = "division_destroyed"
+    #: A destroyed brigade is back, at a depot.
     DIVISION_REFORMED = "division_reformed"
+    #: A destroyed brigade will be re-formed after a delay.
     DIVISION_REFORMING = "division_reforming"
+    #: A destroyed brigade left the campaign.
     DIVISION_REMOVED = "division_removed"
+    #: A defeated brigade retreated to another province.
     DIVISION_RETREATED = "division_retreated"
+    #: A faction's objective province changed hands.
     OBJECTIVE_CHANGED = "objective_changed"
+    #: A brigade's order was cancelled (see :class:`OrderEnd`).
     ORDER_CANCELLED = "order_cancelled"
+    #: A brigade reached its destination.
     ORDER_COMPLETED = "order_completed"
+    #: A province changed hands.
     PROVINCE_CAPTURED = "province_captured"
+    #: A brigade finished falling back.
     WITHDRAWAL_COMPLETED = "withdrawal_completed"
 
     # logistics
+    #: A convoy unloaded its supply.
     CONVOY_DELIVERED = "convoy_delivered"
+    #: A convoy was lost (see :class:`LossReason`).
     CONVOY_DESTROYED = "convoy_destroyed"
+    #: A convoy left a depot.
     CONVOY_DISPATCHED = "convoy_dispatched"
+    #: A convoy is back at its depot.
     CONVOY_RETURNED = "convoy_returned"
 
     # air
+    #: An air-to-air pass between two flights.
     AIR_ENGAGEMENT = "air_engagement"
+    #: A flight attacked its ground target.
     AIR_STRIKE = "air_strike"
+    #: A squadron received a replacement aircraft.
     AIRCRAFT_DELIVERED = "aircraft_delivered"
+    #: Aircraft lost by a flight.
     AIRCRAFT_LOST = "aircraft_lost"
+    #: A transport delivered supply to an airbase or a brigade.
     AIRLIFT_DELIVERED = "airlift_delivered"
+    #: A flight gave up its mission (see :class:`~dynacamp.air.FlightReason`).
     FLIGHT_ABORTED = "flight_aborted"
+    #: A flight will not fly.
     FLIGHT_CANCELLED = "flight_cancelled"
+    #: A flight is over: aircraft back to the squadron.
     FLIGHT_COMPLETE = "flight_complete"
+    #: The AI part of a flight landed.
     FLIGHT_LANDED = "flight_landed"
+    #: A planner changed a flight's route.
     FLIGHT_REPLANNED = "flight_replanned"
+    #: A flight changed route around a SAM site that fired.
     FLIGHT_REROUTED = "flight_rerouted"
+    #: A flight heads home.
     FLIGHT_RTB = "flight_rtb"
+    #: A flight took off.
     FLIGHT_TAKEOFF = "flight_takeoff"
+    #: All the flights of a package are over.
     PACKAGE_COMPLETE = "package_complete"
+    #: A planner ordered a package.
     PACKAGE_ORDERED = "package_ordered"
+    #: The ATO planned a package.
     PACKAGE_PLANNED = "package_planned"
+    #: A planner moved a package's time on target.
     PACKAGE_RETIMED = "package_retimed"
+    #: Interceptors scrambled against an intruder.
     SCRAMBLE = "scramble"
 
     # air defence
+    #: Anti-radiation missiles on a SAM site (see :class:`StrikeResult`).
     HARM_STRIKE = "harm_strike"
+    #: A SAM site was lost.
     SAM_DESTROYED = "sam_destroyed"
+    #: A SAM site fired at a flight.
     SAM_ENGAGEMENT = "sam_engagement"
+    #: A mobile SAM site moves to a new emplacement.
     SAM_RELOCATING = "sam_relocating"
+    #: A replacement SAM battery arrived at a depot.
     SAM_REPLACED = "sam_replaced"
+    #: Bombs on a SAM site (see :class:`StrikeResult`).
     SAM_STRUCK = "sam_struck"
 
     # players and the live game
+    #: The game went away: what it held is back to the campaign.
     GAME_DISCONNECTED = "game_disconnected"
+    #: The game reported losses of a delegated entity.
     GAME_LOSSES = "game_losses"
+    #: An entity passed between campaign and game (see :class:`Simulator`).
     HANDOFF = "handoff"
+    #: The game could not spawn an entity.
     HANDOFF_FAILED = "handoff_failed"
+    #: The game did not acknowledge a handoff in time.
     HANDOFF_TIMEOUT = "handoff_timeout"
+    #: A player appeared in the game.
     PLAYER_JOINED = "player_joined"
+    #: A seated player landed.
     PLAYER_LANDED = "player_landed"
+    #: A player left (see :class:`PlayerExit`).
     PLAYER_LEFT = "player_left"
+    #: A seated player took off.
     PLAYER_TAKEOFF = "player_takeoff"
+    #: A player gave up a seat.
     SEAT_RELEASED = "seat_released"
+    #: A player took a seat in a flight.
     SEAT_TAKEN = "seat_taken"
 
     # campaign housekeeping
+    #: The campaign was loaded from a save.
     CAMPAIGN_RESUMED = "campaign_resumed"
+    #: The campaign was saved (see :class:`~dynacamp.persistence.SaveTrigger`).
     CAMPAIGN_SAVED = "campaign_saved"
+    #: Pause or time compression changed.
     TIME_CONTROL = "time_control"
 
 
@@ -135,6 +193,69 @@ PUBLIC: frozenset[EventKind] = frozenset({
     EventKind.PLAYER_LEFT,
 })
 """Kinds every faction learns about, whoever caused them (fog of war)."""
+
+
+# Vocabularies of the payloads: closed sets of values, readable in the log.
+
+
+class LossReason(StrEnum):
+    """Why something was destroyed or lost (``reason`` / ``cause`` of the loss events)."""
+    #: An air attack.
+    AIR = "air"
+    #: Short-range air defence over the target.
+    AIR_DEFENCE = "air defence"
+    #: Lost in the game (inside a player bubble).
+    GAME = "game"
+    #: A player's aircraft.
+    PLAYER = "player"
+    #: Its province fell.
+    CAPTURED = "captured"
+    #: No way home.
+    CUT_OFF = "cut off"
+    #: Nowhere to retreat.
+    ENCIRCLED = "encircled"
+    #: Too weak to go on.
+    SHATTERED = "shattered"
+    #: Enemy brigades reached it.
+    OVERRUN = "overrun"
+
+
+class StrikeResult(StrEnum):
+    """Outcome of an attack on a SAM site (``harm_strike``, ``sam_struck``)."""
+    #: The radars switched off in time.
+    WENT_DARK = "went dark"
+    #: The site's radars were hit.
+    RADAR_DESTROYED = "radar destroyed"
+    #: The site shut down for a while.
+    SUPPRESSED = "suppressed"
+    #: No effect.
+    MISSED = "missed"
+    #: The site was destroyed (launchers partly survive).
+    DESTROYED = "destroyed"
+
+
+class OrderEnd(StrEnum):
+    """Why a division's order was cancelled (``order_cancelled``)."""
+    #: No way to the destination any more.
+    ROUTE_BLOCKED = "route blocked"
+    #: The enemy holds the road.
+    ROAD_CONTESTED = "road contested"
+
+
+class PlayerExit(StrEnum):
+    """How a player left (``player_left``)."""
+    #: The game reported that the player left.
+    LEFT = "left"
+    #: Not seen for too long.
+    TIMEOUT = "timeout"
+
+
+class Simulator(StrEnum):
+    """Who an entity is handed to (``handoff``)."""
+    #: The campaign engine.
+    CAMPAIGN = "campaign"
+    #: The game (inside a player bubble).
+    GAME = "game"
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,7 +321,7 @@ class EventLog:
             time: Campaign time in seconds.
             kind: Event type. A plain string is accepted only if it names a
                 member of :class:`EventKind`.
-            **data: Payload fields.
+            **data: Payload fields; enum members are stored as their value.
 
         Returns:
             The new event.
@@ -208,6 +329,7 @@ class EventLog:
         Raises:
             ValueError: If ``kind`` is not a known event type.
         """
+        data = {k: v.value if isinstance(v, Enum) else v for k, v in data.items()}
         event = Event(seq=len(self._events), time=time, kind=EventKind(kind), data=data)
         self._events.append(event)
         for sub in self._subscribers:

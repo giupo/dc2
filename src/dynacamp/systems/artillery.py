@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..forces import Authority, Division
+from ..air_defense import LAUNCHER
+from ..forces import ARTILLERY, MLRS, Authority, Division
 from ..state import CampaignState
 from . import intel
 from ..events import EventKind
@@ -66,7 +67,7 @@ def guns(d: Division) -> float:
     Returns:
         Artillery pieces plus 1.5 per MLRS.
     """
-    return d.elements.get("artillery", 0.0) + 1.5 * d.elements.get("mlrs", 0.0)
+    return d.elements.get(ARTILLERY, 0.0) + 1.5 * d.elements.get(MLRS, 0.0)
 
 
 def fire_range(d: Division) -> float:
@@ -78,7 +79,7 @@ def fire_range(d: Division) -> float:
     Returns:
         ``GROUP_RANGE_M`` with at least one MLRS, else ``ORGANIC_RANGE_M``.
     """
-    return GROUP_RANGE_M if d.elements.get("mlrs", 0.0) >= 1 else ORGANIC_RANGE_M
+    return GROUP_RANGE_M if d.elements.get(MLRS, 0.0) >= 1 else ORGANIC_RANGE_M
 
 
 def run(state: CampaignState, dt: float) -> None:
@@ -127,7 +128,7 @@ def run(state: CampaignState, dt: float) -> None:
             target.org = max(0.0, target.org - ORG_PER_GUN * effect)
         else:  # air defence site: a lucky salvo can knock out a radar or a launcher
             if state.rng.random() < min(0.12, 0.002 * effect):
-                k = state.rng.choice(sorted(e for e, n in target.elements.items() if n >= 1) or ["launcher"])
+                k = state.rng.choice(sorted(e for e, n in target.elements.items() if n >= 1) or [LAUNCHER])
                 target.elements[k] = max(0.0, target.elements.get(k, 0.0) - 1)
             target.scoot = True
         to = target.position(t)

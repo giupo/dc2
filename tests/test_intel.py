@@ -2,7 +2,7 @@
 
 import math
 
-from dynacamp.air import AIRCRAFT, Airbase, Flight, FlightStatus, Package, Squadron, Task
+from dynacamp.air import AIRCRAFT, Airbase, Flight, FlightStatus, Package, Squadron, TargetKind, Task
 from dynacamp.air_defense import SYSTEMS, AirDefenseUnit, SamStatus
 from dynacamp.engine import Engine
 from dynacamp.geo import Vec2
@@ -163,7 +163,7 @@ def test_airlift_fills_a_forward_depot():
     state.airbases["rear"] = Airbase("rear", "Rear", Vec2(-200_000, 0), province=None)
     add_flight(state, "herky", "blue", "c130", Task.TRANSPORT, Vec2(0, -10_000), target=Vec2(0, -10_000))
     f = state.flights["herky"]
-    f.target_kind, f.target_id, f.cargo = "airlift", "ab", 300.0
+    f.target_kind, f.target_id, f.cargo = TargetKind.AIRLIFT, "ab", 300.0
     air.attack(state, f)
     assert depot.stock == 1300.0 and f.cargo == 0.0
     ev = [e for e in state.events if e.kind == "airlift_delivered"]

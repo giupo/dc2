@@ -60,7 +60,8 @@ un'**interfaccia web** React con mappa reale e simbologia NATO.
 ## Installazione
 
 Requisiti: Python ≥ 3.12 e [uv](https://docs.astral.sh/uv/). Per la UI servono
-Node ≥ 20 e npm. `lua5.1` è opzionale e serve solo per i test del bridge.
+Node ≥ 20 e npm. Lua 5.1 (`lua5.1`, oppure `lua` se è la 5.1) è opzionale e
+serve solo per i test del bridge: senza, quei test vengono saltati.
 
 ```bash
 uv sync                       # motore, CLI, API
@@ -257,7 +258,11 @@ magnetiche: rotta vera sull'ellissoide meno la declinazione del teatro.
 
 L'armamento di ogni aereo per ogni compito sta in
 `src/dynacamp/data/loadouts.json`, generato dalle tabelle dei piloni di DCS
-(`dynacamp loadouts`). È la fonte unica per briefing e missioni.
+(`dynacamp loadouts`). È la fonte unica per briefing e missioni. Il
+generatore segna anche, per ogni arma, ciò che serve alle regole (missili BVR
+con gittata, missili WVR, pod ECM) secondo `adapters/dcs/data/weapons.toml`:
+il motore non legge mai il nome di un'arma DCS, quindi se Eagle Dynamics lo
+cambia basta correggere il TOML e rigenerare.
 
 **Mission package** (`systems/briefing.py`). Per ogni volo:
 - **missione e situazione;**
@@ -562,7 +567,7 @@ Dopo aver modificato i collegamenti, ricalcola le strade con
 uv run pytest                          # ~172 test: motore, ATO, difesa aerea, API, DCS, .miz, bridge Lua
 uv run pytest -n 0                     # seriale (per esempio per usare --pdb)
 tools/watch-tests.sh                   # rilancia i test a ogni modifica (anche: tools/watch-tests.sh tests/test_air.py -x)
-lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua
+lua5.1 tests/lua/test_bridge.lua src/dynacamp/adapters/dcs/lua/dynacamp_bridge.lua   # o `lua`, se è la 5.1
 (cd web && npx tsc -b)                 # typecheck della UI
 ```
 
@@ -593,7 +598,7 @@ src/dynacamp/
   air.py air_defense.py                            aviazione e difesa aerea (modello)
   catalog.py                                       caricatore del catalogo (data/catalog/*.toml)
   loadouts.py radio.py units.py                    armamento, frequenze radio, unità di misura
-  data/catalog/                                    catalogo: aircraft, air_defense, ground (TOML, a mano)
+  data/catalog/                                    catalogo: aircraft, air_defense, ground, callsigns (TOML, a mano)
   data/                                            loadouts.json, radio.json (generati dai dati di DCS)
   systems/                                         simulazione:
     ai.py                                            IA di teatro (retrovie, fronte, offensive, riserve)
@@ -608,7 +613,7 @@ src/dynacamp/
   scenario.py persistence.py cli.py                scenari TOML, salvataggio e ripresa, comandi
   api/                                             FastAPI: views, schemas, app, server
   adapters/base.py adapters/fake.py                porta core <-> gioco, gioco finto per i test
-  adapters/dcs/                                    DCS: protocol, adapter TCP, catalog, miz, lua/bridge
+  adapters/dcs/                                    DCS: protocol, adapter TCP, catalog, miz, lua/bridge, data/ (nomi DCS)
 scenarios/                                         scenari TOML + geometria stradale (.roads.json)
 missions/                                          missioni DCS generate
 web/                                               interfaccia web React + Vite + MapLibre
@@ -628,7 +633,7 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
    - *Prima versione:* province, brigate, battaglie, rifornimenti con convogli
      fisici, IA di base, event log e handoff verso il gioco con isteresi e
      timeout.
-   - *DCS:* adapter TCP e bridge Lua, testato con `lua5.1` contro mock di DCS.
+   - *DCS:* adapter TCP e bridge Lua, testato con Lua 5.1 contro mock di DCS.
    - *Scenario:* Georgia occidentale.
 2. **Scenario Siria.** Proiezione Transverse Mercator della mappa Syria (dai
    parametri di pydcs), validata sugli aeroporti con errore sotto 1 km.
@@ -759,6 +764,16 @@ Il progetto è cresciuto per passi, ognuno verificato con test e misure.
     8 seed e 3 giorni: perdite aria-aria circa 2,3 volte quelle di prima, e meno
     spirali in Georgia (massimo 14 province conquistate in 3 giorni invece
     di 24).
+26. **Enum, costanti e confine con DCS.** Le stringhe sparse sono diventate
+    `StrEnum` (insiemi chiusi: tipi di entità e di bersaglio, motivi degli
+    eventi, timer, lati, mappe...) o costanti documentate, e lo schema
+    dell'API usa le enum stesse. I nomi definiti da DCS (tipi, armi, moduli
+    giocabili, call sign) stanno solo nei file dati: se Eagle Dynamics li
+    cambia si corregge un TOML e si rigenera, e un test impedisce che tornino
+    nel codice. Le enum di DCS viaggiano per nome e il bridge le risolve con
+    le tabelle di DCS, quindi nel Python non ci sono numeri di DCS. Le
+    simulazioni sono rimaste identiche byte per byte, e i salvataggi vecchi
+    si caricano ancora.
 
 ## Limiti noti e prossimi passi
 

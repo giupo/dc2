@@ -23,14 +23,14 @@
 
 from __future__ import annotations
 
-from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task, flight_altitude, waypoint_altitudes
+from ..air import ACTIVE_STATUSES, Flight, FlightReason, FlightStatus, Task, flight_altitude, waypoint_altitudes
 from .. import sensors
-from ..air_defense import RADAR_ELEMENTS, AirDefenseUnit, SamRole, SamStatus, place_sites
+from ..air_defense import LAUNCHER, RADAR_ELEMENTS, AirDefenseUnit, SamRole, SamStatus, place_sites
 from ..forces import Authority
 from ..geo import Vec2
-from ..state import CampaignState
+from ..state import CampaignState, IdPrefix, Timer
 from . import air, supply
-from ..events import EventKind
+from ..events import EventKind, StrikeResult
 
 #: Missiles a site fires in one engagement.
 SALVO = 2
@@ -92,10 +92,10 @@ def run(state: CampaignState, dt: float) -> None:
     _engage(state)
     _sead(state)
     _remove_destroyed(state)
-    if "ada" not in state.timers:
-        state.timers["ada"] = state.time + ADA_INTERVAL_S  # respect the scenario's initial deployment
-    if state.time >= state.timers["ada"]:
-        state.timers["ada"] = state.time + ADA_INTERVAL_S
+    if Timer.ADA not in state.timers:
+        state.timers[Timer.ADA] = state.time + ADA_INTERVAL_S  # respect the scenario's initial deployment
+    if state.time >= state.timers[Timer.ADA]:
+        state.timers[Timer.ADA] = state.time + ADA_INTERVAL_S
         for fid in state.factions:
             plan(state, fid)
 
@@ -239,7 +239,7 @@ def _engage(state: CampaignState) -> None:
         targets = [
             f for f in flying
             if state.at_war(u.faction, f.faction) and f.ai_count > 0
-            and state.timers.get(f"sam:{u.id}:{f.id}", 0.0) <= state.time
+            and state.timers.get(Timer.SAM.key(u.id, f.id), 0.0) <= state.time
             and f.pos.distance_to(here) <= u.system.range_m
             and flight_altitude(f) <= u.system.ceiling_m
             and detects(state, u, f.pos, jams[f.id])
@@ -248,7 +248,7 @@ def _engage(state: CampaignState) -> None:
             continue
         f = min(targets, key=lambda x: (x.pos.distance_to(here), x.id))
         networked = network_node(state, u) is not None
-        state.timers[f"sam:{u.id}:{f.id}"] = state.time + PAIR_COOLDOWN_S
+        state.timers[Timer.SAM.key(u.id, f.id)] = state.time + PAIR_COOLDOWN_S
         pk = (
             u.system.pk * DEFENSIVE_FACTOR
             * (NETWORK_PK_BONUS if networked else 1.0)
@@ -269,7 +269,7 @@ def _engage(state: CampaignState) -> None:
         if kills and not f.task.air_to_air and f.task is not Task.SEAD and not f.attacked and f.status is FlightStatus.AIRBORNE:
             f.status = FlightStatus.RTB
             f.wp_index = len(f.waypoints) - 1
-            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason="SAM threat")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason=FlightReason.SAM_THREAT)
         if f.ai_count > 0 and f.status in ACTIVE_STATUSES:
             evade(state, f, u)
 
@@ -301,7 +301,7 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
     """
     from . import ato, routing
 
-    key = f"evade:{f.id}:{u.id}"
+    key = Timer.EVADE.key(f.id, u.id)
     if key in state.timers or f.players or f.task is Task.SEAD or not f.simulated_by_campaign:
         return
     state.timers[key] = state.time + 12 * 3600.0
@@ -313,7 +313,7 @@ def evade(state: CampaignState, f: Flight, u: AirDefenseUnit) -> None:
         if station is None:
             f.status = FlightStatus.RTB
             f.wp_index = f.target_index + 1
-            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason="SAM threat")
+            state.emit(EventKind.FLIGHT_ABORTED, flight=f.id, callsign=f.callsign, reason=FlightReason.SAM_THREAT)
             return
         if station.distance_to(anchor) < 1.0:
             return
@@ -344,7 +344,7 @@ def _sead(state: CampaignState) -> None:
     for f in state.flights.values():
         if f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or not f.simulated_by_campaign or f.ai_count <= 0:
             continue
-        key = f"harm:{f.id}"
+        key = Timer.HARM.key(f.id)
         if state.timers.get(key, 0.0) > state.time:
             continue
         emitters = [
@@ -370,19 +370,19 @@ def hit_on_radar(state: CampaignState, u: AirDefenseUnit, effort: float, by: str
     """
     if network_node(state, u) is not None and state.rng.random() < GO_DARK_CHANCE:
         _suppress(state, u, SUPPRESS_S / 2)
-        state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="went dark")
+        state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result=StrikeResult.WENT_DARK)
         return
     roll = state.rng.random()
     if roll < min(0.6, 0.12 * effort):
         for k in RADAR_ELEMENTS:
             if k in u.elements:
                 u.elements[k] = 0.0
-        result = "radar destroyed"
+        result = StrikeResult.RADAR_DESTROYED
     elif roll < 0.75:
         _suppress(state, u, SUPPRESS_S)
-        result = "suppressed"
+        result = StrikeResult.SUPPRESSED
     else:
-        result = "missed"
+        result = StrikeResult.MISSED
     state.emit(EventKind.HARM_STRIKE, sam=u.id, system=u.system.name, faction=u.faction, by=by, result=result)
 
 
@@ -398,11 +398,11 @@ def strike_site(state: CampaignState, u: AirDefenseUnit, effort: float, by: str)
     exposed = 1.5 if u.status in (SamStatus.MOVING, SamStatus.SETTING_UP) else 1.0
     if state.rng.random() < min(0.85, 0.2 * effort * exposed):
         for k in u.elements:
-            u.elements[k] *= 0.3 if k == "launcher" else 0.0
-        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="destroyed")
+            u.elements[k] *= 0.3 if k == LAUNCHER else 0.0
+        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result=StrikeResult.DESTROYED)
     else:
         _suppress(state, u, SUPPRESS_S)
-        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result="suppressed")
+        state.emit(EventKind.SAM_STRUCK, sam=u.id, system=u.system.name, faction=u.faction, by=by, result=StrikeResult.SUPPRESSED)
 
 
 def _suppress(state: CampaignState, u: AirDefenseUnit, seconds: float) -> None:
@@ -455,7 +455,7 @@ def _reform(state: CampaignState) -> None:
             pending.append((ready if depots else state.time + 12 * 3600, faction, system, name))
             continue
         home = max(depots, key=lambda p: (p.depot.stock, p.id))
-        u = AirDefenseUnit(id=state.new_id("ad"), name=name, faction=faction, location=home.id, system=system,
+        u = AirDefenseUnit(id=state.new_id(IdPrefix.AIR_DEFENSE), name=name, faction=faction, location=home.id, system=system,
                            status=SamStatus.SETTING_UP, ready_at=state.time + system.setup_s)
         state.air_defense[u.id] = u
         state.emit(EventKind.SAM_REPLACED, sam=u.id, system=system.name, faction=faction, province=home.id)

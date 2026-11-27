@@ -17,14 +17,24 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from dynacamp.units import UnitDomain
-
 from . import persistence, scenario
 from .engine import Engine
+from .forces import Authority
 from .state import CampaignState
 from .units import UnitDomain
 from .events import NOTABLE
 from .events import clock as _clock
+
+# -- Environment --
+
+#: Variable with the random seed of new campaigns: it wins over ``--seed``.
+ENV_SEED = "DYNACAMP_SEED"
+#: Variable with the initial time compression (``--compression`` wins).
+ENV_COMPRESSION = "DYNACAMP_COMPRESSION"
+#: Variable with the bearer token of the API commands (``--api-token`` wins).
+ENV_API_TOKEN = "DYNACAMP_API_TOKEN"
+#: Listen addresses meaning "every interface": the link printed uses localhost.
+ANY_HOST = ("0.0.0.0", "::")
 
 
 def _summary(state: CampaignState) -> str:
@@ -44,7 +54,7 @@ def _summary(state: CampaignState) -> str:
             f"    {d.faction:5} {d.id:4} {d.name[:28]:28} @{d.location:11} str {d.strength:4.0%} "
             f"org {d.org:4.0%} sup {d.supply_ratio:4.0%} {d.order.kind.value}"
             + (f"->{d.order.target}" if d.order.target else "")
-            + (f" [{d.authority.value}]" if d.authority.value != "campaign" else "")
+            + (f" [{d.authority.value}]" if d.authority is not Authority.CAMPAIGN else "")
         )
 
     return "\n".join(lines)
@@ -100,14 +110,17 @@ def campaign_seed(flag: int | None) -> tuple[int, str] | None:
     Raises:
         SystemExit: ``$DYNACAMP_SEED`` is not an integer.
     """
-    env = os.environ.get("DYNACAMP_SEED", "").strip()
+    env = os.environ.get(ENV_SEED, "").strip()
     if env:
         try:
-            return int(env), "DYNACAMP_SEED"
+            return int(env), ENV_SEED
+
         except ValueError:
-            raise SystemExit(f"DYNACAMP_SEED must be an integer, not {env!r}") from None
+            raise SystemExit(f"{ENV_SEED} must be an integer, not {env!r}") from None
+
     if flag is not None:
         return flag, "--seed"
+
     return None
 
 
@@ -130,6 +143,7 @@ def apply_seed(state: CampaignState, flag: int | None, resumed: bool) -> None:
         if resumed:
             return  # the save's own random sequence goes on
         asked = int(time.time()), "the clock (repeat this campaign with --seed)"
+
     seed, source = asked
     state.seed = seed
     state.rng.seed(seed)
@@ -180,19 +194,25 @@ def serve_compression(flag: float | None, saved: float | None) -> float:
     """
     from .engine import MAX_COMPRESSION, MIN_COMPRESSION
 
-    env = os.environ.get("DYNACAMP_COMPRESSION", "").strip()
+    env = os.environ.get(ENV_COMPRESSION, "").strip()
     if flag is not None:
         value, source = flag, "--compression"
+
     elif env:
         try:
             value = float(env)
+
         except ValueError:
-            raise SystemExit(f"DYNACAMP_COMPRESSION must be a number, not {env!r}") from None
-        source = "DYNACAMP_COMPRESSION"
+            raise SystemExit(f"{ENV_COMPRESSION} must be a number, not {env!r}") from None
+
+        source = ENV_COMPRESSION
+
     else:
         return saved or 60.0
+
     if not MIN_COMPRESSION <= value <= MAX_COMPRESSION:
         raise SystemExit(f"{source} must be between {MIN_COMPRESSION:g} and {MAX_COMPRESSION:g}, not {value:g}")
+
     return value
 
 
@@ -235,27 +255,31 @@ def cmd_serve(args: argparse.Namespace) -> None:
     if args.api_port:
         from .api import ApiServer
 
-        token = args.api_token or os.environ.get("DYNACAMP_API_TOKEN") or secrets.token_urlsafe(18)
+        token = args.api_token or os.environ.get(ENV_API_TOKEN) or secrets.token_urlsafe(18)
         api = ApiServer(engine, args.api_host, args.api_port, web_dir=args.web_dir, token=token, saver=saver)
         api.start()
-        host = "localhost" if api.host in ("0.0.0.0", "::") else api.host
+        host = "localhost" if api.host in ANY_HOST else api.host
         print(f"API on http://{host}:{api.port}/api  (docs /docs)")
-        if args.api_token or os.environ.get("DYNACAMP_API_TOKEN"):
-            print("API token: the one given (--api-token / DYNACAMP_API_TOKEN)")
+
+        if args.api_token or os.environ.get(ENV_API_TOKEN):
+            print(f"API token: the one given (--api-token / {ENV_API_TOKEN})")
+
         else:
-            print(f"API token (new at every start; fix it with DYNACAMP_API_TOKEN): {token}")
+            print(f"API token (new at every start; fix it with {ENV_API_TOKEN}): {token}")
+
         if Path(args.web_dir).is_dir():
             # The UI takes the token from the fragment, which never reaches the server.
             print(f"Web UI on http://{host}:{api.port}/#token={token}", flush=True)
+
     last_report = [state.time]
     log = logging.getLogger(__name__)
 
-    def save_now(e: Engine, trigger: str) -> None:
+    def save_now(e: Engine, trigger: persistence.SaveTrigger) -> None:
         """Save to ``--save`` and log it.
 
         Args:
             e: The engine.
-            trigger: What asked for the save (``auto``, ``exit``...), recorded in the save.
+            trigger: What asked for the save, recorded in the save.
         """
         assert saver is not None
         record = saver.save(e, trigger)
@@ -272,7 +296,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
             print(_summary(e.state))
         if saver is not None and saver.due():
             try:
-                save_now(e, "auto")
+                save_now(e, persistence.SaveTrigger.AUTO)
             except OSError as exc:  # a full disk must not stop the campaign
                 log.error("autosave to %s failed: %s", saver.path, exc)
 
@@ -310,7 +334,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
             state.events.write_jsonl(Path(args.events))
 
         if saver is not None:
-            save_now(engine, "exit")
+            save_now(engine, persistence.SaveTrigger.EXIT)
             print(f"Campaign saved to {args.save}")
 
 

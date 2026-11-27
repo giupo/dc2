@@ -1,6 +1,7 @@
 """Saving and resuming a campaign."""
 
 import gzip
+import io
 import pickle
 
 import pytest
@@ -9,7 +10,9 @@ from dynacamp import persistence
 from dynacamp.cli import main
 from dynacamp.engine import Engine
 from dynacamp.events import EventKind
-from dynacamp.forces import Authority
+from dynacamp.air import TargetKind
+from dynacamp.forces import Authority, EntityKind
+from dynacamp.state import BattleKind
 from dynacamp.systems.ato import SeatState
 
 from .conftest import DEMO
@@ -122,7 +125,7 @@ def test_saver_autosave_interval(line, tmp_path):
     assert not saver.due()
     now[0] = 600
     assert saver.due()
-    record = saver.save(Engine(line), "auto")
+    record = saver.save(Engine(line), persistence.SaveTrigger.AUTO)
     assert saver.last == record and not saver.due() and saver.path.exists()
     assert not persistence.Saver(tmp_path / "x", autosave_s=0, clock=lambda: 1e9).due()
 
@@ -136,3 +139,23 @@ def test_saves_from_before_a_new_state_field_still_load(line, tmp_path):
         pickle.dump(envelope, fh)
     resumed, _ = persistence.load(path)
     assert resumed.archive == {}
+
+
+def test_saves_with_plain_strings_for_enums_still_load(demo, tmp_path):
+    Engine(demo).run_for(12 * 3600)
+    assert demo.battles and demo.flights
+    for b in demo.battles.values():
+        b.kind = str(b.kind)  # as written before the fields were enums
+    for ent in demo.entities():
+        ent.kind = str(ent.kind)
+    for f in demo.flights.values():
+        f.target_kind = str(f.target_kind)
+    resumed, _ = persistence.load(persistence.save(demo, tmp_path / "c.dcsave"))
+    assert all(type(b.kind) is BattleKind for b in resumed.battles.values())
+    assert all(type(e.kind) is EntityKind for e in resumed.entities())
+    assert all(type(f.target_kind) is TargetKind for f in resumed.flights.values())
+
+
+def test_renamed_classes_are_found_under_their_new_name():
+    found = persistence._Unpickler(io.BytesIO()).find_class("dynacamp.systems.intel", "ContactKind")
+    assert found is EntityKind

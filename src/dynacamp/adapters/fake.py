@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..air import Task
 from ..geo import Vec2
 from .base import (
     BriefingRequest,
@@ -28,6 +29,7 @@ from .base import (
     PlayerLeft,
     PlayerSeen,
     Report,
+    Side,
     UpdateRoute,
 )
 
@@ -104,7 +106,7 @@ class FakeGame(GameAdapter):
 
     # ------------------------------------------------------------ scripting
 
-    def player(self, pid: str, pos: Vec2, side: str = "blue", kind: PlayerKind = PlayerKind.AIR) -> None:
+    def player(self, pid: str, pos: Vec2, side: Side = Side.BLUE, kind: PlayerKind = PlayerKind.AIR) -> None:
         """Report a player at ``pos``.
 
         Args:
@@ -115,7 +117,7 @@ class FakeGame(GameAdapter):
         """
         self._reports.append(PlayerSeen(pid, pid, side, kind, pos))
 
-    def join(self, pid: str, flight_id: str, tasks: frozenset[str] | None = None) -> None:
+    def join(self, pid: str, flight_id: str, tasks: frozenset[Task] | None = None) -> None:
         """A player asks to join a flight.
 
         Args:

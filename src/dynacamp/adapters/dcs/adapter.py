@@ -15,7 +15,7 @@ from typing import Any
 
 from ..base import Command, GameAdapter, Report
 from . import protocol
-from .protocol import DcsTranslator
+from .protocol import DcsTranslator, Msg
 
 log = logging.getLogger(__name__)
 
@@ -181,5 +181,5 @@ class DcsAdapter(GameAdapter):
             except OSError:
                 pass
             self._conn = None
-            self._inbox.put({"msg": "_disconnected", "reason": reason})
+            self._inbox.put({"msg": Msg.DISCONNECTED, "reason": reason})
             log.info("DCS disconnected: %s", reason)

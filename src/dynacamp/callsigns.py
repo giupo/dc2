@@ -31,18 +31,22 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from . import catalog
+from .adapters.base import Side
 from .air import Task
 
 if TYPE_CHECKING:
     from .air import Flight, Squadron
     from .state import CampaignState
 
-#: Generic western flight callsigns, the stand-ins for names DCS cannot voice.
-GENERIC = ("Enfield", "Springfield", "Uzi", "Colt", "Dodge", "Ford", "Chevy", "Pontiac")
+#: The ``dcs`` tables of ``data/catalog/callsigns.toml``, by list name.
+_LISTS = catalog.dcs("callsigns")
+#: Generic western flight callsigns, the stand-ins for names DCS cannot voice
+#: (``data/catalog/callsigns.toml``, in DCS' order).
+GENERIC: tuple[str, ...] = tuple(_LISTS["generic"]["callsigns"])
 #: Callsigns DCS voices for AWACS flights.
-AWACS = ("Overlord", "Magic", "Wizard", "Focus", "Darkstar")
+AWACS: tuple[str, ...] = tuple(_LISTS["awacs"]["callsigns"])
 #: Callsigns DCS voices for tankers.
-TANKER = ("Texaco", "Arco", "Shell")
+TANKER: tuple[str, ...] = tuple(_LISTS["tanker"]["callsigns"])
 
 #: Type-specific callsigns DCS voices, by campaign aircraft id, numbered from ``len(GENERIC) + 1``
 #: (copied from pydcs ``callnames``).
@@ -51,7 +55,7 @@ TYPE_NAMES: dict[str, tuple[str, ...]] = {
 }
 
 #: The side with western callsigns (the missions put it in the USA country).
-WESTERN_SIDE = "blue"
+WESTERN_SIDE = Side.BLUE
 
 
 @dataclass(frozen=True)

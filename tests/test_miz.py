@@ -1,7 +1,6 @@
 """Generated DCS missions (needs the optional pydcs dependency)."""
 
 import json
-import shutil
 import subprocess
 import warnings
 import zipfile
@@ -15,10 +14,11 @@ with warnings.catch_warnings():
 from dynacamp import scenario
 from dynacamp.adapters.base import EntitySnapshot, Materialize
 from dynacamp.adapters.dcs import LUA_BRIDGE, DcsTranslator
-from dynacamp.adapters.dcs.miz import compose_loadout, _unit_type, write_mission
+from dynacamp.adapters.dcs.miz import Recipe, compose_loadout, _unit_type, write_mission
+from dynacamp.forces import EntityKind
 from dynacamp.geo import Vec2
 
-from .conftest import DEMO
+from .conftest import DEMO, LUA51
 
 SCENARIOS = sorted(DEMO.parent.glob("*.toml"))
 
@@ -55,14 +55,14 @@ def test_mission_has_bridge_templates_and_slots(path, tmp_path):
 
 
 def test_loadouts_use_real_weapons():
-    picks = compose_loadout(_unit_type("F-16C_50"), "SEAD")
+    picks = compose_loadout(_unit_type("F-16C_50"), Recipe.SEAD)
     names = " ".join(w["name"] for _, w in picks)
     assert "AGM-88C" in names and "AIM-120C" in names
-    rockets = " ".join(w["name"] for _, w in compose_loadout(_unit_type("Mi-24P"), "HELO"))
+    rockets = " ".join(w["name"] for _, w in compose_loadout(_unit_type("Mi-24P"), Recipe.HELO))
     assert "TsM" not in rockets  # no marker rockets
 
 
-@pytest.mark.skipif(shutil.which("lua5.1") is None, reason="lua5.1 not installed")
+@pytest.mark.skipif(LUA51 is None, reason="Lua 5.1 not installed")
 def test_bridge_applies_templates_from_generated_mission(tmp_path):
     state = scenario.load(SCENARIOS[0])
     out = tmp_path / "m.miz"
@@ -70,7 +70,7 @@ def test_bridge_applies_templates_from_generated_mission(tmp_path):
     with zipfile.ZipFile(out) as z:
         z.extract("mission", tmp_path)
     snap = EntitySnapshot(
-        id="fl9", kind="flight", name="X", faction="blue", side="blue", position=Vec2(640_000, -300_000),
+        id="fl9", kind=EntityKind.FLIGHT, name="X", faction="blue", side="blue", position=Vec2(640_000, -300_000),
         heading=1.0, elements={"aircraft": 2.0}, waypoints=(Vec2(650_000, -280_000),), speed_kmh=550, altitude=6000,
         attrs={"aircraft": "a10c", "task": "CAS", "target": Vec2(650_000, -280_000), "target_index": 0, "home": "Kobuleti"},
     )
@@ -92,7 +92,7 @@ local n = 0; for _ in pairs(u.payload.pylons) do n = n + 1 end
 assert(u.type == "A-10C_2" and n > 0, "template not applied")
 """
     )
-    res = subprocess.run(["lua5.1", str(script), str(tmp_path), str(LUA_BRIDGE)], capture_output=True, text=True)
+    res = subprocess.run([LUA51, str(script), str(tmp_path), str(LUA_BRIDGE)], capture_output=True, text=True)
     assert res.returncode == 0, res.stdout + res.stderr
 
 

@@ -24,17 +24,66 @@ default, or metric).
 from __future__ import annotations
 
 import math
+from enum import StrEnum
 from typing import Any
 
 from .. import bullseye, callsigns, loadouts
 from .. import units as U
-from ..units import UnitDomain, Units
-from ..air import Flight, Task, waypoint_altitudes
-from ..air_defense import SamRole
+from ..units import UnitDomain
+from ..air import Flight, FlightStatus, TargetKind, Task, waypoint_altitudes
+from ..air_defense import SamRole, SamStatus
 from ..events import clock
+from ..forces import EntityKind
 from ..geo import Vec2
 from ..projection import to_latlon
-from ..state import CampaignState
+from ..state import BattleKind, CampaignState
+
+
+class ThreatKind(StrEnum):
+    """Kind of threat listed in a briefing."""
+    #: A known SAM site near the route.
+    SAM = "sam"
+    #: Short-range air defence with the brigades at the target.
+    SHORAD = "shorad"
+    #: An enemy fighter squadron in reach of the target.
+    FIGHTERS = "fighters"
+
+
+class WaypointName(StrEnum):
+    """Name of a waypoint in the briefing and on the F10 map."""
+    #: The departure airbase.
+    TAKEOFF = "TAKEOFF"
+    #: A plain turn point.
+    WP = "WP"
+    #: Initial point: the run-in starts.
+    IP = "IP"
+    #: The target.
+    TARGET = "TARGET"
+    #: Off target, on the way out.
+    EGRESS = "EGRESS"
+    #: The airbase to land at.
+    LAND = "LAND"
+    #: Landing zone of a transport.
+    DELIVERY = "DELIVERY"
+    #: Last known position of a scramble's intruder.
+    INTERCEPT = "INTERCEPT"
+    #: The CAP orbit.
+    CAP_STATION = "CAP STATION"
+    #: The AWACS orbit.
+    AWACS_ORBIT = "AWACS ORBIT"
+    #: The tanker track.
+    TANKER_TRACK = "TANKER TRACK"
+
+
+class Severity(StrEnum):
+    """How dangerous a threat is, most dangerous first."""
+    #: A long-range SAM, a route deep inside an envelope, or first-rate fighters.
+    HIGH = "high"
+    #: Within reach, but at the edge of it or second-rate.
+    MEDIUM = "medium"
+    #: Light short-range defences at the target.
+    LOW = "low"
+
 
 #: Spacing of the route samples checked against threats.
 ROUTE_SAMPLE_M = 5_000.0
@@ -50,15 +99,16 @@ MISSION_TEXT = {
     Task.AWACS: "Airborne early warning: hold the orbit, build the air picture and control the fighters.",
     Task.TANKER: "Air refuelling: hold the track and refuel receivers on request.",
     Task.TRANSPORT: "Airlift: deliver the cargo to the landing zone and return.",
-    Task.SCRAMBLE: "Scramble: intercept the intruder and shoot it down. Ground control vectors you on its last known position; return home when it is gone.",
     Task.DEAD: "DEAD: destroy the SAM site. The package's SEAD flight goes in two minutes ahead to put its radars down; stay with its ECM cover."
 }
+#: Mission statement of a scramble (a CAP flight against a ``flight`` target).
+INTERCEPT_TEXT = "Scramble: intercept the intruder and shoot it down. Ground control vectors you on its last known position; return home when it is gone."
 
 #: Name of the target waypoint of orbiting tasks.
 STATION_NAME = {
-    Task.CAP: "CAP STATION",
-    Task.AWACS: "AWACS ORBIT",
-    Task.TANKER: "TANKER TRACK"
+    Task.CAP: WaypointName.CAP_STATION,
+    Task.AWACS: WaypointName.AWACS_ORBIT,
+    Task.TANKER: WaypointName.TANKER_TRACK,
 }
 
 
@@ -97,7 +147,7 @@ def ddm(ll: tuple[float, float] | None) -> str:
     return f"{part(lat, 'N', 'S', 2)} {part(lon, 'E', 'W', 3)}"
 
 
-def bearing_range(a: Vec2, b: Vec2, units: Units = UnitDomain.METRIC) -> str:
+def bearing_range(a: Vec2, b: Vec2, units: UnitDomain = UnitDomain.METRIC) -> str:
     """True bearing and range from ``a`` to ``b`` (``"087° 64 km"`` / ``"087° 35 NM"``).
 
     Args:
@@ -166,7 +216,7 @@ def frequencies(f: Flight, state: CampaignState | None = None) -> dict[str, str]
 # ---------------------------------------------------------------- waypoints
 
 
-def waypoint_names(f: Flight) -> list[str]:
+def waypoint_names(f: Flight) -> list[WaypointName]:
     """Names of a flight's waypoints.
 
     Args:
@@ -176,22 +226,22 @@ def waypoint_names(f: Flight) -> list[str]:
         One name per waypoint (``TAKEOFF``, ``IP``, ``TARGET``, ``EGRESS``, ``LAND``...).
     """
     n = len(f.waypoints)
-    names = ["WP"] * n
-    names[0], names[-1] = "TAKEOFF", "LAND"
+    names = [WaypointName.WP] * n
+    names[0], names[-1] = WaypointName.TAKEOFF, WaypointName.LAND
     if f.task.orbits:
-        names[f.target_index] = "INTERCEPT" if f.target_kind == "flight" else STATION_NAME[f.task]
+        names[f.target_index] = WaypointName.INTERCEPT if f.target_kind == TargetKind.FLIGHT else STATION_NAME[f.task]
     elif f.task is Task.TRANSPORT:
-        names[f.target_index] = "DELIVERY"
+        names[f.target_index] = WaypointName.DELIVERY
     else:
-        names[f.target_index] = "TARGET"
+        names[f.target_index] = WaypointName.TARGET
         if f.target_index >= 2:
-            names[f.target_index - 1] = "IP"
+            names[f.target_index - 1] = WaypointName.IP
         if f.target_index + 1 < n - 1:
-            names[f.target_index + 1] = "EGRESS"
+            names[f.target_index + 1] = WaypointName.EGRESS
     return names
 
 
-def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -> list[dict[str, Any]]:
+def waypoint_plan(state: CampaignState, f: Flight, units: UnitDomain | None = None) -> list[dict[str, Any]]:
     """Named waypoints with ETA (counted from the TOT), altitude and speed.
 
     Args:
@@ -231,28 +281,26 @@ def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -
             eta = f.tot + station_s + dist(ti, i) / speed
         name = names[i]
         # on the ground at takeoff, landing and (fixed-wing) delivery
-        on_ground = name in ("TAKEOFF", "LAND") or (name == "DELIVERY" and not ac.helo)
+        on_ground = name in (WaypointName.TAKEOFF, WaypointName.LAND) or (name is WaypointName.DELIVERY and not ac.helo)
         alt = 0.0 if on_ground else alts[i]
         note = {
-            "TAKEOFF": "start up, take off and join up",
-            "IP": "push: weapons hot, descend for the attack" if f.task in (Task.CAS, Task.BAI) else "push to target",
-            "TARGET": "time on target" if f.task is not Task.SEAD else "suppress emitting radars",
-            "EGRESS": "off target, check out",
-            "CAP STATION": f"hold until {clock(f.station_until)}",
-            "AWACS ORBIT": f"hold until {clock(f.station_until)}",
-            "TANKER TRACK": f"hold until {clock(f.station_until)}",
-            "DELIVERY": "land, unload, take off",
-            "LAND": "recover at home base",
+            WaypointName.TAKEOFF: "start up, take off and join up",
+            WaypointName.IP: "push: weapons hot, descend for the attack" if f.task in (Task.CAS, Task.BAI) else "push to target",
+            WaypointName.TARGET: "time on target" if f.task is not Task.SEAD else "suppress emitting radars",
+            WaypointName.EGRESS: "off target, check out",
+            **{station: f"hold until {clock(f.station_until)}" for station in STATION_NAME.values()},
+            WaypointName.DELIVERY: "land, unload, take off",
+            WaypointName.LAND: "recover at home base",
         }.get(name, "")
         plan.append(
             {
                 "index": i,
-                "name": name,
+                "name": name.value,
                 "pos": [round(p.x), round(p.y)],
                 "ll": _ll(state, p),
                 "eta": {"t": round(eta, 1), "label": clock(eta)},
                 "alt_m": round(alt),
-                "speed_kmh": round(ac.cruise_kmh * (0.9 if name in ("IP", "TARGET") and not ac.helo else 1.0)),
+                "speed_kmh": round(ac.cruise_kmh * (0.9 if name in (WaypointName.IP, WaypointName.TARGET) and not ac.helo else 1.0)),
                 "note": note,
                 "bulls": bullseye.label(state, f.faction, p, units or state.units),
             }
@@ -260,7 +308,7 @@ def waypoint_plan(state: CampaignState, f: Flight, units: Units | None = None) -
     return plan
 
 
-def waypoint_marks(state: CampaignState, f: Flight, units: Units | None = None) -> list[tuple[str, Vec2]]:
+def waypoint_marks(state: CampaignState, f: Flight, units: UnitDomain | None = None) -> list[tuple[str, Vec2]]:
     """Map marks for the game: ``(label, position)`` for every waypoint after takeoff
     (altitudes in ``units``, default the campaign's).
 
@@ -284,7 +332,7 @@ def waypoint_marks(state: CampaignState, f: Flight, units: Units | None = None) 
 # ---------------------------------------------------------------- target, threats
 
 
-def target_info(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -> dict[str, Any]:
+def target_info(state: CampaignState, f: Flight, units: UnitDomain = UnitDomain.METRIC) -> dict[str, Any]:
     """What the flight is sent against.
 
     Args:
@@ -311,50 +359,50 @@ def target_info(state: CampaignState, f: Flight, units: Units = UnitDomain.METRI
         "from_base": f"{bearing_range(base.position, point, units)} from {base.name}",
         "bulls": bullseye.label(state, f.faction, point, units),
     }
-    if f.target_kind == "battle" and f.target_id in state.battles:
+    if f.target_kind == TargetKind.BATTLE and f.target_id in state.battles:
         b = state.battles[f.target_id]
         enemy_ids = b.defenders if b.attacker_faction == f.faction else b.attackers
         enemies = [state.divisions[i] for i in enemy_ids if i in state.divisions]
         info["description"] = f"Battle for {t.provinces[b.province].name}: {len(enemies)} enemy brigade(s) in contact."
         info["composition"] = [f"{d.name} ({d.template.name}, {d.strength:.0%} strength)" for d in enemies]
-    elif f.target_kind == "division" and f.target_id in state.divisions:
+    elif f.target_kind == TargetKind.DIVISION and f.target_id in state.divisions:
         d = state.divisions[f.target_id]
         info["description"] = f"{d.name}, {d.template.name}, {d.strength:.0%} strength, " + (
             f"moving towards {t.provinces[d.movement.path[-1]].name}" if d.movement and d.movement.path else f"at {t.provinces[d.location].name}"
         )
         info["composition"] = [f"{k}: {round(n)}" for k, n in d.elements.items() if n >= 1]
-    elif f.target_kind == "convoy" and f.target_id in state.convoys:
+    elif f.target_kind == TargetKind.CONVOY and f.target_id in state.convoys:
         c = state.convoys[f.target_id]
         dest = c.home if c.returning else c.destination
         info["description"] = f"Supply convoy, {round(c.trucks)} trucks, heading to {t.provinces[dest].name}. Expect it to have moved: search along the road."
         info["composition"] = [f"trucks: {round(c.trucks)}", f"cargo: {round(c.cargo)} supply"]
-    elif f.target_kind == "depot" and f.target_id in t.provinces:
+    elif f.target_kind == TargetKind.DEPOT and f.target_id in t.provinces:
         p = t.provinces[f.target_id]
         info["description"] = f"Supply depot at {p.name}" + (f", {round(p.depot.stock)} supply in stock." if p.depot else ".")
-    elif f.target_kind == "sam" and f.target_id in state.air_defense:
+    elif f.target_kind == TargetKind.SAM and f.target_id in state.air_defense:
         u = state.air_defense[f.target_id]
         info["description"] = f"{u.system.name} site ({u.name}), {u.status.value.replace('_', ' ')}, range {U.distance(u.system.range_m, units)}."
         info["composition"] = [f"{k.replace('_', ' ')}: {round(n)}" for k, n in u.elements.items() if n >= 1]
-    elif f.target_kind == "airlift" and f.target_id in state.airbases:
+    elif f.target_kind == TargetKind.AIRLIFT and f.target_id in state.airbases:
         b = state.airbases[f.target_id]
         info["description"] = f"Airlift {round(f.cargo or f.aircraft_type.cargo * f.size)} supply to {b.name}."
-    elif f.target_kind == "resupply" and f.target_id in state.divisions:
+    elif f.target_kind == TargetKind.RESUPPLY and f.target_id in state.divisions:
         d = state.divisions[f.target_id]
         info["description"] = f"Resupply {d.name} ({d.supply_ratio:.0%} supply) in the field: land near the brigade."
     elif f.task in (Task.AWACS, Task.TANKER):
         info["description"] = f"{'Orbit' if f.task is Task.AWACS else 'Refuelling track'} behind the front, clear of known enemy SAMs."
-    elif f.target_kind == "flight":
+    elif f.target_kind == TargetKind.FLIGHT:
         from . import intel
 
         c = intel.knows(state, f.faction, f.target_id)
-        what = (c.detail.get("aircraft_name") if c else None) or "unidentified aircraft"
+        what = (c.detail.get("aircraft_name") if c else None) or intel.UNIDENTIFIED
         info["description"] = f"Intruder: {what}" + (f", heading {c.detail['heading_deg']:03d}." if c else ", contact lost.")
     elif f.task is Task.CAP:
         info["description"] = f"CAP station over {t.provinces[f.target_id].name if f.target_id in t.provinces else 'the front'}."
     return info
 
 
-def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -> list[dict[str, Any]]:
+def threats(state: CampaignState, f: Flight, units: UnitDomain = UnitDomain.METRIC) -> list[dict[str, Any]]:
     """Enemy air defences along the route and fighters able to reach the target.
 
     SAM sites are those the faction *knows about* (systems.intel), at their last
@@ -374,7 +422,7 @@ def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -
     route = f.waypoints
     samples = _route_samples(route)
     out: list[dict[str, Any]] = []
-    for c in intel.known(state, f.faction, "sam"):
+    for c in intel.known(state, f.faction, EntityKind.SAM):
         u = state.air_defense.get(c.entity_id)
         if u is None or not state.at_war(f.faction, u.faction) or not u.system.engages:
             continue
@@ -388,29 +436,29 @@ def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -
         near = t.nearest(pos).name
         out.append(
             {
-                "kind": "sam",
+                "kind": ThreatKind.SAM,
                 "name": u.system.name,
                 "detail": f"{u.name} near {near}: range {U.distance(reach, units)}, route passes {U.distance(closest, units)} from it"
                 + (", IADS-networked" if air_defense.network_node(state, u) else "")
-                + ("" if c.detail.get("status", "active") == "active" else f" ({c.detail['status'].replace('_', ' ')})")
+                + ("" if c.detail.get("status", SamStatus.ACTIVE) == SamStatus.ACTIVE else f" ({c.detail['status'].replace('_', ' ')})")
                 + (f", last located {c.age(state.time) / 3600:.0f} h ago" if c.stale(state.time) else ""),
                 "range_km": round(reach / 1000, 1),
                 "pos": [round(pos.x), round(pos.y)],
                 "ll": _ll(state, pos),
-                "severity": "high" if u.system.role is SamRole.LONG or closest < reach * 0.5 else "medium",
+                "severity": Severity.HIGH if u.system.role is SamRole.LONG or closest < reach * 0.5 else Severity.MEDIUM,
             }
         )
     shorad = air.air_defense(state, f.faction, f.target_point)
     if shorad >= 1:
         out.append(
             {
-                "kind": "shorad",
+                "kind": ThreatKind.SHORAD,
                 "name": "SHORAD / AAA at target",
                 "detail": f"{'heavy' if shorad >= ato.SEAD_THRESHOLD else 'light'} short-range air defence with the enemy brigades",
                 "range_km": 5.0,
                 "pos": [round(f.target_point.x), round(f.target_point.y)],
                 "ll": _ll(state, f.target_point),
-                "severity": "medium" if shorad >= ato.SEAD_THRESHOLD else "low",
+                "severity": Severity.MEDIUM if shorad >= ato.SEAD_THRESHOLD else Severity.LOW,
             }
         )
     for sq in state.squadrons.values():
@@ -423,25 +471,25 @@ def threats(state: CampaignState, f: Flight, units: Units = UnitDomain.METRIC) -
         if d <= sq.aircraft_type.radius_km * 1000:
             out.append(
                 {
-                    "kind": "fighters",
+                    "kind": ThreatKind.FIGHTERS,
                     "name": sq.aircraft_type.name,
                     "detail": f"{sq.name}, {sq.aircraft} x {sq.aircraft_type.name} at {base.name}, {U.distance(d, units)} from the target",
                     "range_km": round(sq.aircraft_type.radius_km, 0),
                     "pos": [round(base.position.x), round(base.position.y)],
                     "ll": _ll(state, base.position),
-                    "severity": "high" if sq.aircraft_type.a2a >= 1.0 else "medium",
+                    "severity": Severity.HIGH if sq.aircraft_type.a2a >= 1.0 else Severity.MEDIUM,
                 }
             )
-    order = {"high": 0, "medium": 1, "low": 2}
+    order = list(Severity)
     for x in out:
         x["bulls"] = bullseye.label(state, f.faction, Vec2(*x["pos"]), units)
-    return sorted(out, key=lambda x: (order[x["severity"]], x["kind"], x["name"]))
+    return sorted(out, key=lambda x: (order.index(x["severity"]), x["kind"], x["name"]))
 
 
 # ---------------------------------------------------------------- briefing
 
 
-def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dict[str, Any]:
+def briefing(state: CampaignState, f: Flight, units: UnitDomain | None = None) -> dict[str, Any]:
     """The complete mission package of a flight, as plain data.
 
     Args:
@@ -457,13 +505,13 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
     pkg = state.packages.get(f.package)
     sq = state.squadrons[f.squadron]
     base = state.airbases[sq.airbase]
-    stores = loadouts.summary(f.aircraft_type.id, f.task.value)
+    stores = loadouts.summary(f.aircraft_type.id, f.task)
     situation = []
     from .combat import battle_point
 
     near = [b for b in state.battles.values() if battle_point(state, b).distance_to(f.target_point) <= 40_000]
     for b in near:
-        if b.kind == "meeting":
+        if b.kind is BattleKind.MEETING:
             situation.append(f"Meeting engagement on the road near {t.provinces[b.province].name}: {len(b.attackers)} vs {len(b.defenders)} brigades.")
         else:
             situation.append(f"Battle in progress for {t.provinces[b.province].name}: {len(b.attackers)} attacking vs {len(b.defenders)} defending brigades.")
@@ -500,8 +548,8 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
         "takeoff": {"t": round(f.takeoff_time, 1), "label": clock(f.takeoff_time)},
         "tot": {"t": round(f.tot, 1), "label": clock(f.tot)},
         "mission": (
-            MISSION_TEXT[Task.DEAD] if f.task is Task.STRIKE and f.target_kind == "sam"
-            else MISSION_TEXT[Task.SCRAMBLE] if f.target_kind == "flight" else MISSION_TEXT.get(f.task, "")
+            MISSION_TEXT[Task.DEAD] if f.task is Task.STRIKE and f.target_kind == TargetKind.SAM
+            else INTERCEPT_TEXT if f.target_kind == TargetKind.FLIGHT else MISSION_TEXT.get(f.task, "")
         ).format(
             friendly_range=U.distance(3_000, units)
         ),
@@ -529,7 +577,7 @@ def briefing(state: CampaignState, f: Flight, units: Units | None = None) -> dic
     }
 
 
-def support(state: CampaignState, f: Flight, units: Units = "metric") -> list[dict[str, Any]]:
+def support(state: CampaignState, f: Flight, units: UnitDomain = UnitDomain.METRIC) -> list[dict[str, Any]]:
     """Friendly AWACS and tankers airborne or planned around the flight's time.
 
     Args:
@@ -544,7 +592,7 @@ def support(state: CampaignState, f: Flight, units: Units = "metric") -> list[di
     for o in state.flights.values():
         if o.faction != f.faction or o.id == f.id or o.task not in (Task.AWACS, Task.TANKER):
             continue
-        if o.status.value in ("done", "cancelled") or o.station_until < f.takeoff_time or o.tot > f.tot + 3600:
+        if o.status in (FlightStatus.DONE, FlightStatus.CANCELLED) or o.station_until < f.takeoff_time or o.tot > f.tot + 3600:
             continue
         p = o.target_point
         out.append(
@@ -574,7 +622,7 @@ def render(b: dict[str, Any], now: float | None = None) -> str:
     Returns:
         The briefing text.
     """
-    units: Units = b.get("units", U.DEFAULT_UNITS)
+    units: UnitDomain = b.get("units", U.DEFAULT_UNITS)
 
     def rel(t: float) -> str:
         """Relative time label, empty when ``now`` is not given.

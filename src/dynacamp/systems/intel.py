@@ -45,42 +45,63 @@ from typing import Any
 from .. import sensors as radar
 from ..air import ACTIVE_STATUSES, Flight, FlightStatus, Task
 from ..air_defense import AirDefenseUnit, SamRole, SamStatus
-from ..forces import Convoy, Division
+from ..adapters.base import PlayerKind
+from ..forces import Convoy, Division, EntityKind
 from ..geo import Vec2
-from ..state import CampaignState
+from ..state import CampaignState, Timer
 
 
-class ContactKind(StrEnum):
-    """Kind of contact"""
-    DIVISION = "division"
-    CONVOY = "convoy"
-    FLIGHT = "flight"
-    SAM = "sam"
+class SensorKind(StrEnum):
+    """Kind of air-search sensor."""
+    #: An AWACS on station: all round, does not identify.
+    AWACS = "awacs"
+    #: An aircraft's radar (a cone), or a player's (all round).
+    AIRCRAFT = "aircraft"
+    #: An air defence site's search radar.
+    GROUND_RADAR = "ground_radar"
 
 
+class SizeClass(StrEnum):
+    """How many aircraft a flight contact seems to be, when not identified."""
+    #: One aircraft.
+    SINGLE = "single"
+    #: Two aircraft.
+    PAIR = "pair"
+    #: Three or more.
+    GROUP = "group"
+
+
+#: Aircraft assumed in a flight contact of each size class.
+CLASS_SIZE = {SizeClass.SINGLE: 1, SizeClass.PAIR: 2, SizeClass.GROUP: 4}
+
+
+#: Source of the contacts every faction starts with.
+PREWAR_SOURCE = "pre-war intelligence"
+#: Name of a flight contact whose type is not known.
+UNIDENTIFIED = "unidentified aircraft"
 #: Seconds between two sweeps of a faction's sensors.
 SCAN_INTERVAL_S = 60.0
 #: Contacts are forgotten after this long without news, by kind.
 TTL_S = {
-    ContactKind.FLIGHT: 5 * 60.0,
-    ContactKind.DIVISION: 12 * 3600.0,
-    ContactKind.CONVOY: 6 * 3600.0,
-    ContactKind.SAM: 48 * 3600.0
+    EntityKind.FLIGHT: 5 * 60.0,
+    EntityKind.DIVISION: 12 * 3600.0,
+    EntityKind.CONVOY: 6 * 3600.0,
+    EntityKind.SAM: 48 * 3600.0
 }
 
 #: Contacts are shown as stale (dashed) after this long, by kind.
 STALE_S = {
-    ContactKind.FLIGHT: 90.0,
-    ContactKind.DIVISION: 3600.0,
-    ContactKind.CONVOY: 1800.0,
-    ContactKind.SAM: 6 * 3600.0
+    EntityKind.FLIGHT: 90.0,
+    EntityKind.DIVISION: 3600.0,
+    EntityKind.CONVOY: 1800.0,
+    EntityKind.SAM: 6 * 3600.0
 }
 
 #: Range of ground observation, by kind of target.
 RECON_M = {
-    ContactKind.DIVISION: 12_000.0,
-    ContactKind.CONVOY: 3_000.0,
-    ContactKind.SAM: 5_000.0
+    EntityKind.DIVISION: 12_000.0,
+    EntityKind.CONVOY: 3_000.0,
+    EntityKind.SAM: 5_000.0
 }
 
 #: Air-search range credited to a player's aircraft, all round (its heading is not known).
@@ -92,9 +113,9 @@ IDENT_RANGE_M = 40_000.0
 
 #: Range factor of each kind of air sensor against a target in the ground clutter.
 LOW_FACTOR = {
-    "ground_radar": 0.3,
-    "awacs": 0.6,
-    "aircraft": radar.LOOK_DOWN
+    SensorKind.GROUND_RADAR: 0.3,
+    SensorKind.AWACS: 0.6,
+    SensorKind.AIRCRAFT: radar.LOOK_DOWN
 }
 
 #: ELINT range of an AWACS on station: it locates emitting radars and jamming SEAD flights.
@@ -113,7 +134,7 @@ class Contact:
 
     Attributes:
         entity_id: Id of the enemy entity.
-        kind: ``division``, ``convoy``, ``flight`` or ``sam``.
+        kind: What the entity is.
         faction: The enemy entity's faction.
         position: Last known position.
         seen: Campaign time of the last detection.
@@ -124,7 +145,7 @@ class Contact:
     """
 
     entity_id: str
-    kind: ContactKind
+    kind: EntityKind
     faction: str
     position: Vec2 | None
     seen: float
@@ -172,7 +193,7 @@ def picture(state: CampaignState, fid: str) -> dict[str, Contact]:
     return state.intel.setdefault(fid, {})
 
 
-def known(state: CampaignState, fid: str, kind: ContactKind | None = None, max_age: float | None = None) -> list[Contact]:
+def known(state: CampaignState, fid: str, kind: EntityKind | None = None, max_age: float | None = None) -> list[Contact]:
     """Contacts of a faction, optionally of one kind and not older than ``max_age``.
 
     Args:
@@ -222,7 +243,7 @@ def known_divisions_in(state: CampaignState, fid: str, pid: str, max_age: float 
         The brigades last reported in the province.
     """
     out = []
-    for c in known(state, fid, ContactKind.DIVISION, max_age):
+    for c in known(state, fid, EntityKind.DIVISION, max_age):
         if c.detail.get("province") == pid and c.entity_id in state.divisions:
             out.append(state.divisions[c.entity_id])
     return out
@@ -268,7 +289,7 @@ def _describe(state: CampaignState, ent, identified: bool) -> dict[str, Any]:
     size = ent.size
     out = {
         "heading_deg": round((ent.heading(t) * 57.29578) % 360),
-        "size_class": "single" if size <= 1 else ("pair" if size == 2 else "group"),
+        "size_class": SizeClass.SINGLE if size <= 1 else (SizeClass.PAIR if size == 2 else SizeClass.GROUP),
         "helo": ent.aircraft_type.helo,
     }
 
@@ -282,7 +303,7 @@ def observe(
     state: CampaignState,
     fid: str,
     ent,
-    kind: ContactKind | str | None,
+    kind: EntityKind | None,
     source: str,
     identified: bool = True,
     pos: Vec2 | None = None
@@ -293,7 +314,7 @@ def observe(
         state: The campaign.
         fid: Observing faction.
         ent: The detected entity.
-        kind: Contact kind (None: from the entity).
+        kind: Contact kind (None: the entity's own).
         source: Which sensor made the detection, for the picture.
         identified: Whether the detection identifies the entity.
         pos: Where it was seen (None: its true position).
@@ -305,10 +326,10 @@ def observe(
     if pos is None:
         pos = ent.position(state.theater)
     c = pic.get(ent.id)
-    ident = identified or (c is not None and c.identified and c.kind == ContactKind.FLIGHT and c.age(state.time) < 600)
+    ident = identified or (c is not None and c.identified and c.kind == EntityKind.FLIGHT and c.age(state.time) < 600)
     detail = _describe(state, ent, ident)
     if c is None:
-        c = Contact(ent.id, kind, ent.faction, pos, state.time, state.time, source, ident, detail)
+        c = Contact(ent.id, kind or ent.kind, ent.faction, pos, state.time, state.time, source, ident, detail)
         pic[ent.id] = c
     else:
         c.position = pos
@@ -329,8 +350,7 @@ def reveal(state: CampaignState, fid: str, ent, source: str) -> None:
         ent: The entity.
         source: What gave it away.
     """
-    kind = {item.value: item.value for item in ContactKind}.get(ent.kind, ent.kind)    
-    observe(state, fid, ent, kind, source, identified=True)
+    observe(state, fid, ent, None, source, identified=True)
 
 
 def seed_prewar(state: CampaignState) -> None:
@@ -347,8 +367,8 @@ def seed_prewar(state: CampaignState) -> None:
                     state,
                     fid,
                     division,
-                    ContactKind.DIVISION,
-                    "pre-war intelligence"
+                    EntityKind.DIVISION,
+                    PREWAR_SOURCE
                 )
 
         for sam in state.air_defense.values():
@@ -357,8 +377,8 @@ def seed_prewar(state: CampaignState) -> None:
                     state,
                     fid,
                     sam,
-                    ContactKind.SAM,
-                    "pre-war intelligence"
+                    EntityKind.SAM,
+                    PREWAR_SOURCE
                 )
 
 
@@ -381,6 +401,7 @@ def _pos(state: CampaignState, ent) -> Vec2:
     return p
 
 
+#: Positions computed during the current scan, by entity id (cleared when a scan starts).
 _POS: dict[str, Vec2] = {}
 
 
@@ -391,14 +412,14 @@ def run(state: CampaignState, dt: float) -> None:
         state: The campaign.
         dt: Campaign seconds elapsed (unused: scans run on their own timer).
     """
-    if "intel_seeded" not in state.timers:
-        state.timers["intel_seeded"] = state.time
+    if Timer.INTEL_SEEDED not in state.timers:
+        state.timers[Timer.INTEL_SEEDED] = state.time
         seed_prewar(state)
 
-    if state.time < state.timers.get("intel", 0.0):
+    if state.time < state.timers.get(Timer.INTEL, 0.0):
         return
 
-    state.timers["intel"] = state.time + SCAN_INTERVAL_S
+    state.timers[Timer.INTEL] = state.time + SCAN_INTERVAL_S
     _POS.clear()
     for fid in state.factions:
         scan(state, fid)
@@ -418,7 +439,7 @@ def _expire(state: CampaignState, fid: str) -> None:
             del pic[eid]
 
 
-def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, str, bool, Flight | None]]:
+def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]]:
     """Friendly air-search sensors: (position, range, kind, name, can identify,
     the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`).
 
@@ -430,28 +451,28 @@ def air_sensors(state: CampaignState, fid: str) -> list[tuple[Vec2, float, str, 
         The sensors.
     """
     t = state.theater
-    out: list[tuple[Vec2, float, str, str, bool, Flight | None]] = []
+    out: list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]] = []
     for f in state.flights.values():
         if f.faction != fid or f.status not in ACTIVE_STATUSES or f.size <= 0:
             continue
         r = f.aircraft_type.air_radar_m
 
         if f.task is Task.AWACS and f.status is FlightStatus.ON_STATION:
-            out.append((_pos(state, f), r, "awacs", f"AWACS {f.callsign}", False, None))
+            out.append((_pos(state, f), r, SensorKind.AWACS, f"AWACS {f.callsign}", False, None))
 
         elif r > 0:
-            out.append((_pos(state, f), r, "aircraft", f.callsign, True, f))
+            out.append((_pos(state, f), r, SensorKind.AIRCRAFT, f.callsign, True, f))
 
     for u in state.air_defense.values():
         if u.faction != fid or not u.operational or u.status is not SamStatus.ACTIVE or not u.system.radar:
             continue
-        out.append((_pos(state, u), u.system.detection_m, "ground_radar", f"{u.system.name} radar", False, None))
+        out.append((_pos(state, u), u.system.detection_m, SensorKind.GROUND_RADAR, f"{u.system.name} radar", False, None))
 
     side = state.factions[fid].side
 
     for pid, (pside, pos, pkind) in state.player_positions.items():
-        if pside == side and pkind == "air":  # heading unknown: all round
-            out.append((pos, PLAYER_RADAR_M, "aircraft", f"player {pid}", True, None))
+        if pside == side and pkind is PlayerKind.AIR:  # heading unknown: all round
+            out.append((pos, PLAYER_RADAR_M, SensorKind.AIRCRAFT, f"player {pid}", True, None))
 
     return out
 
@@ -471,15 +492,15 @@ def ground_observers(state: CampaignState, fid: str) -> list[tuple[Vec2, float, 
 
     for d in state.divisions.values():
         if d.faction == fid:
-            out.append((_pos(state, d), RECON_M[ContactKind.DIVISION], f"recon {d.name}"))
+            out.append((_pos(state, d), RECON_M[EntityKind.DIVISION], f"recon {d.name}"))
 
     for c in state.convoys.values():
         if c.faction == fid:
-            out.append((_pos(state, c), RECON_M[ContactKind.CONVOY], f"convoy {c.id}"))
+            out.append((_pos(state, c), RECON_M[EntityKind.CONVOY], f"convoy {c.id}"))
 
     for u in state.air_defense.values():
         if u.faction == fid:
-            out.append((_pos(state, u), RECON_M[ContactKind.SAM], u.name))
+            out.append((_pos(state, u), RECON_M[EntityKind.SAM], u.name))
 
     for f in state.flights.values():
         if f.faction == fid and f.status in ACTIVE_STATUSES and f.aircraft_type.ground_sensor_m > 0:
@@ -524,24 +545,24 @@ def scan(state: CampaignState, fid: str) -> None:
                     identify, seen_by = True, name
                     break
         if seen_by:
-            observe(state, fid, f, ContactKind.FLIGHT, seen_by, identified=identify, pos=pos)
+            observe(state, fid, f, EntityKind.FLIGHT, seen_by, identified=identify, pos=pos)
 
     # -- ground picture
     observers = ground_observers(state, fid)
     targets = [
-        (ContactKind.DIVISION, d)
+        (EntityKind.DIVISION, d)
         for d in state.divisions.values()
         if state.at_war(fid, d.faction)
     ]
     
     targets += [
-        (ContactKind.CONVOY, c)
+        (EntityKind.CONVOY, c)
         for c in state.convoys.values()
         if state.at_war(fid, c.faction)
     ]
     
     targets += [
-        (ContactKind.SAM, u)
+        (EntityKind.SAM, u)
         for u in state.air_defense.values()
         if state.at_war(fid, u.faction)
     ]
@@ -557,7 +578,7 @@ def scan(state: CampaignState, fid: str) -> None:
             for i in b.attackers + b.defenders:
                 d = state.divisions.get(i)
                 if d is not None and state.at_war(fid, d.faction):
-                    observe(state, fid, d, ContactKind.DIVISION, f"contact at {t.provinces[b.province].name}")
+                    observe(state, fid, d, EntityKind.DIVISION, f"contact at {t.provinces[b.province].name}")
 
     # -- ELINT: emitting radars
     listeners: list[tuple[Vec2, float, str]] = []
@@ -582,7 +603,7 @@ def scan(state: CampaignState, fid: str) -> None:
         
         for lpos, rng, name in listeners:
             if lpos.distance_to(pos) <= rng:
-                observe(state, fid, u, ContactKind.SAM, name)
+                observe(state, fid, u, EntityKind.SAM, name)
                 break
     
     # Jammers are loud: ELINT finds a SEAD flight jamming, roughly (a strobe, not a track).
@@ -603,7 +624,7 @@ def scan(state: CampaignState, fid: str) -> None:
                     state,
                     fid,
                     f,
-                    ContactKind.FLIGHT,
+                    EntityKind.FLIGHT,
                     f"jamming strobe ({name})",
                     identified=False,
                     pos=_strobe(state, f, pos)
@@ -645,7 +666,7 @@ def known_covering(state: CampaignState, fid: str, point: Vec2, roles=(SamRole.L
         The contacts on those sites.
     """
     out = []
-    for c in known(state, fid, ContactKind.SAM):
+    for c in known(state, fid, EntityKind.SAM):
         u = state.air_defense.get(c.entity_id)
         if u is None or u.system.role not in roles:
             continue

@@ -1,5 +1,4 @@
 import json
-import shutil
 import socket
 import subprocess
 import time
@@ -18,15 +17,16 @@ from dynacamp.adapters.base import (
 )
 from dynacamp.adapters.dcs import LUA_BRIDGE, DcsAdapter, DcsTranslator
 from dynacamp.adapters.dcs.protocol import from_dcs, to_dcs
+from dynacamp.forces import EntityKind
 from dynacamp.geo import Vec2
 
-from .conftest import ROOT
+from .conftest import LUA51, ROOT
 
 
 def snapshot(**kw):
     base = dict(
         id="b1",
-        kind="division",
+        kind=EntityKind.DIVISION,
         name="Tank Bde",
         faction="blue",
         side="blue",
@@ -57,7 +57,8 @@ def test_spawn_scales_elements_and_builds_groups():
     assert types.count("M-2 Bradley") == 5  # 40 / 8
     assert "M 818" not in types  # division trucks are not spawned
     assert all(len(g["data"]["units"]) <= 20 for g in msg["groups"])
-    assert msg["groups"][0]["country"] == 2
+    assert msg["groups"][0]["country"] == {"enum": "country.id.USA"}
+    assert msg["groups"][0]["category"] == {"enum": "Group.Category.GROUND"}
     route = msg["groups"][0]["data"]["route"]["points"]
     assert route[-1]["action"] == "On Road" and route[-1]["speed"] == pytest.approx(10.0)
 
@@ -80,7 +81,7 @@ def test_state_converts_alive_units_back_to_campaign_elements():
 
 def test_players_diff():
     tr = DcsTranslator()
-    reps = tr.decode({"msg": "players", "players": [{"id": "Pilot", "coalition": 2, "category": 1, "x": 1, "z": 2}]})
+    reps = tr.decode({"msg": "players", "players": [{"id": "Pilot", "coalition": "BLUE", "category": "HELICOPTER", "x": 1, "z": 2}]})
     assert isinstance(reps[0], PlayerSeen) and reps[0].kind is PlayerKind.HELO and reps[0].side == "blue"
     reps = tr.decode({"msg": "players", "players": []})
     assert reps == [PlayerLeft("Pilot")]
@@ -91,7 +92,7 @@ def test_adapter_over_tcp():
     adapter.start()
     try:
         client = socket.create_connection(("127.0.0.1", adapter.port), timeout=2)
-        client.sendall(b'{"msg":"hello"}\n{"msg":"players","players":[{"id":"P","coalition":1,"category":0,"x":0,"z":0}]}\n')
+        client.sendall(b'{"msg":"hello"}\n{"msg":"players","players":[{"id":"P","coalition":"RED","category":"AIRPLANE","x":0,"z":0}]}\n')
         reports = []
         deadline = time.monotonic() + 2
         while not reports and time.monotonic() < deadline:
@@ -116,10 +117,10 @@ def test_adapter_over_tcp():
         adapter.close()
 
 
-@pytest.mark.skipif(shutil.which("lua5.1") is None, reason="lua5.1 not installed")
+@pytest.mark.skipif(LUA51 is None, reason="Lua 5.1 not installed")
 def test_lua_bridge():
     res = subprocess.run(
-        ["lua5.1", str(ROOT / "tests" / "lua" / "test_bridge.lua"), str(LUA_BRIDGE)],
+        [LUA51, str(ROOT / "tests" / "lua" / "test_bridge.lua"), str(LUA_BRIDGE)],
         capture_output=True,
         text=True,
     )
@@ -129,7 +130,7 @@ def test_lua_bridge():
 def flight_snapshot():
     return snapshot(
         id="fl7",
-        kind="flight",
+        kind=EntityKind.FLIGHT,
         name="Viper 1",
         elements={"aircraft": 2.0},
         waypoints=(Vec2(660_000, -285_000), Vec2(683_980, -284_988)),
@@ -146,7 +147,7 @@ def test_flight_spawn_uses_templates_and_tasks():
     tr = DcsTranslator()
     msg = tr.encode(Materialize(flight_snapshot()))
     (g,) = msg["groups"]
-    assert g["category"] == "airplane" and g["land_at"] == "Kutaisi"
+    assert g["category"] == {"enum": "Group.Category.AIRPLANE"} and g["land_at"] == "Kutaisi"
     assert g["templates"] == ["DC_TPL_f16c_CAS", "DC_TPL_f16c"]
     assert [u["type"] for u in g["data"]["units"]] == ["F-16C_50", "F-16C_50"]
     target_wp = g["data"]["route"]["points"][1]
@@ -154,17 +155,17 @@ def test_flight_spawn_uses_templates_and_tasks():
     assert target_wp["alt"] == 6000.0
 
     board = tr.encode(PublishAto("blue", ({"id": "pk1", "label": "x", "flights": []},)))
-    assert board["cmd"] == "ato" and board["coalition"] == 2 and board["version"] == 1
+    assert board["cmd"] == "ato" and board["coalition"] == "BLUE" and board["version"] == 1
 
 
 def test_join_carries_player_capabilities():
     from dynacamp.adapters.base import JoinRequest
 
     tr = DcsTranslator()
-    tr.decode({"msg": "players", "players": [{"id": "Hog", "coalition": 2, "category": 0, "type": "A-10C_2", "x": 0, "z": 0}]})
+    tr.decode({"msg": "players", "players": [{"id": "Hog", "coalition": "BLUE", "category": "AIRPLANE", "type": "A-10C_2", "x": 0, "z": 0}]})
     (req,) = tr.decode({"msg": "join", "player": "Hog", "flight": "fl7"})
     assert isinstance(req, JoinRequest) and req.capable_tasks == frozenset({"CAS", "BAI"})
-    tr.decode({"msg": "players", "players": [{"id": "X", "coalition": 2, "category": 0, "type": "Unknown-Jet", "x": 0, "z": 0}]})
+    tr.decode({"msg": "players", "players": [{"id": "X", "coalition": "BLUE", "category": "AIRPLANE", "type": "Unknown-Jet", "x": 0, "z": 0}]})
     (req,) = tr.decode({"msg": "join", "player": "X", "flight": "fl7"})
     assert req.capable_tasks is None
 

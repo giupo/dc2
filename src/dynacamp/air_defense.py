@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 from . import catalog
-from .forces import Authority, MobileEntity
+from .forces import Authority, EntityKind, MobileEntity
 from .geo import Vec2
 from .world import Theater
 
@@ -35,9 +35,13 @@ SITE_SPACING_M = 3_000.0
 
 class SamRole(StrEnum):
     """Class of air defence system."""
+    #: Long range (SA-10, Patriot): it shapes the routes.
     LONG = "long"
+    #: Medium range (SA-6, SA-11, Hawk, NASAMS).
     MEDIUM = "medium"
+    #: Short range (SA-8, SA-15, Avenger): a threat near the target.
     SHORT = "short"
+    #: Early-warning radar: sees, does not shoot.
     EWR = "ewr"
 
 
@@ -87,13 +91,19 @@ SYSTEMS: dict[str, SamSystem] = catalog.build(
 
 #: Elements of a site that are radars (what anti-radiation missiles hit).
 RADAR_ELEMENTS = ("radar", "search_radar")
+#: Element of a site that fires the missiles.
+LAUNCHER = "launcher"
 
 
 class SamStatus(StrEnum):
     """Operational state of a site."""
+    #: Deployed, radars on.
     ACTIVE = "active"
+    #: Arrived, deploying: cannot fire yet.
     SETTING_UP = "setting_up"
+    #: On the road: cannot fire.
     MOVING = "moving"
+    #: Radars off after an attack, for a while.
     SUPPRESSED = "suppressed"
 
 
@@ -123,7 +133,7 @@ class AirDefenseUnit(MobileEntity):
     engage_ready: float = 0.0  # next time it can fire a salvo
     scoot: bool = False  # was targeted: relocate at the next chance ("shoot and scoot")
     site: tuple[str, str, float] | None = None  # emplacement at rest (see place_sites)
-    kind: str = "sam"
+    kind: EntityKind = EntityKind.SAM
 
     def __post_init__(self) -> None:
         """Fill components and missiles from the system on creation."""
@@ -145,7 +155,7 @@ class AirDefenseUnit(MobileEntity):
         )
         if self.system.role is SamRole.EWR:
             return has_radar
-        launchers = self.elements.get("launcher", 0) >= 1
+        launchers = self.elements.get(LAUNCHER, 0) >= 1
         return has_radar and launchers
 
     @property

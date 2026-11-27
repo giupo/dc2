@@ -24,6 +24,7 @@ import math
 from dataclasses import dataclass
 
 from ..air_defense import SamRole
+from ..forces import EntityKind
 from ..geo import Vec2
 from ..state import CampaignState
 
@@ -139,7 +140,7 @@ def threats(state: CampaignState, fid: str, altitude: float = DEFAULT_ALTITUDE_M
     from . import intel
 
     out = []
-    for c in intel.known(state, fid, "sam"):
+    for c in intel.known(state, fid, EntityKind.SAM):
         u = state.air_defense.get(c.entity_id)
         if u is None or not state.at_war(fid, u.faction) or u.system.role is SamRole.EWR or not u.system.engages:
             continue
