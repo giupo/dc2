@@ -444,7 +444,9 @@ def _expire(state: CampaignState, fid: str) -> None:
 
 
 def air_sensors(
-    state: CampaignState, fid: str, cache: Positions | None = None
+    state: CampaignState,
+    fid: str,
+    cache: Positions | None = None
 ) -> list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]]:
     """Friendly air-search sensors: (position, range, kind, name, can identify,
     the aircraft carrying it: its radar looks along a cone, see :mod:`dynacamp.sensors`).
@@ -457,17 +459,26 @@ def air_sensors(
     Returns:
         The sensors.
     """
-    t = state.theater
     out: list[tuple[Vec2, float, SensorKind, str, bool, Flight | None]] = []
     for f in state.flights.values():
-        if f.faction != fid or f.status not in ACTIVE_STATUSES or f.size <= 0:
+        if not f.same_faction(fid) or not f.has_active_status or f.empty:
             continue
+
         r = f.aircraft_type.air_radar_m
 
-        if f.task is Task.AWACS and f.status is FlightStatus.ON_STATION:
-            out.append((_pos(state, f, cache), r, SensorKind.AWACS, f"AWACS {f.callsign}", False, None))
+        if f.is_awacs and f.on_station:
+            out.append(
+                (
+                    _pos(state, f, cache),
+                    r,
+                    SensorKind.AWACS,
+                    f"AWACS {f.callsign}",
+                    False,
+                    None
+                 )
+            )
 
-        elif r > 0:
+        elif f.aircraft_type.has_aa_radar:
             out.append((_pos(state, f, cache), r, SensorKind.AIRCRAFT, f.callsign, True, f))
 
     for u in state.air_defense.values():
@@ -495,7 +506,6 @@ def ground_observers(state: CampaignState, fid: str, cache: Positions | None = N
     Returns:
         The observers.
     """
-    t = state.theater
     out: list[tuple[Vec2, float, str]] = []
 
     for d in state.divisions.values():
@@ -530,7 +540,6 @@ def scan(state: CampaignState, fid: str, cache: Positions | None = None) -> None
         fid: Faction id.
         cache: Positions of the current scan round (None: a round of its own).
     """
-    from . import air_defense
 
     cache = {} if cache is None else cache
     t = state.theater
@@ -564,19 +573,19 @@ def scan(state: CampaignState, fid: str, cache: Positions | None = None) -> None
         for d in state.divisions.values()
         if state.at_war(fid, d.faction)
     ]
-    
+
     targets += [
         (EntityKind.CONVOY, c)
         for c in state.convoys.values()
         if state.at_war(fid, c.faction)
     ]
-    
+
     targets += [
         (EntityKind.SAM, u)
         for u in state.air_defense.values()
         if state.at_war(fid, u.faction)
     ]
-    
+
     for kind, ent in targets:
         pos = _pos(state, ent, cache)
         for opos, rng, name in observers:
@@ -610,17 +619,17 @@ def scan(state: CampaignState, fid: str, cache: Positions | None = None) -> None
         if not state.at_war(fid, u.faction) or not (u.emitting or (u.system.role is SamRole.EWR and u.operational)):
             continue
         pos = _pos(state, u, cache)
-        
+
         for lpos, rng, name in listeners:
             if lpos.distance_to(pos) <= rng:
                 observe(state, fid, u, EntityKind.SAM, name)
                 break
-    
+
     # Jammers are loud: ELINT finds a SEAD flight jamming, roughly (a strobe, not a track).
     for f in state.flights.values():
         if not state.at_war(fid, f.faction) or f.task is not Task.SEAD or f.status not in ACTIVE_STATUSES or f.ai_count <= 0:
             continue
-        
+
         c = picture(state, fid).get(f.id)
 
         if c is not None and c.seen == state.time:

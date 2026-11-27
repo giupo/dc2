@@ -179,7 +179,6 @@ def player_tasks(dcs_type: str, kind: PlayerKind) -> frozenset[Task] | None:
 # ---------------------------------------------------------------- air defence
 
 
-
 # ---------------------------------------------------------------- data files
 
 

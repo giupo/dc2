@@ -147,6 +147,7 @@ class AircraftType:
         """Cruise altitude: the type's own, else 150 m for helicopters and 6000 m for jets."""
         if self.alt_m:
             return self.alt_m
+
         return 150.0 if self.helo else 6000.0
 
     @property
@@ -154,17 +155,26 @@ class AircraftType:
         """Air-search radar range in metres (fighters see far, strikers little)."""
         if self.radar_km >= 0:
             return self.radar_km * 1000
+
         if self.helo:
             return 0.0
+
         return 100_000.0 if self.a2a >= 0.9 else (60_000.0 if self.a2a > 0 else 30_000.0)
+
+    @property
+    def has_aa_radar(self) -> bool:
+        """True if the type has an air-search radar."""
+        return self.air_radar_m > 0
 
     @property
     def ground_sensor_m(self) -> float:
         """Range at which it finds ground units (targeting pod, eyes)."""
         if self.ground_km >= 0:
             return self.ground_km * 1000
+
         if self.helo:
             return 8_000.0
+
         return 20_000.0 if self.a2g >= 1.0 else 10_000.0
 
 
@@ -480,29 +490,32 @@ class Flight(MobileEntity):
             return self.pos.heading_to(self.waypoints[self.wp_index])
         return 0.0
 
-    def same_faction(self, faction: str) -> bool:
-        """
-        Return true if this Division has the same faction passed by arg
-
-        Args:
-            faction: str with faction id
-
-        Returns:
-            `True` if this Division is the same faction passed as arg
-        """
-        return self.faction == faction
-
     @property
     def is_awacs(self) -> bool:
+        """True if the flight is an AWACS."""
         return self.task is Task.AWACS
 
     @property
     def is_tanker(self) -> bool:
+        """True if the flight is a tanker."""
         return self.task is Task.TANKER
 
     @property
     def on_station(self) -> bool:
+        """True if the flight is holding its station."""
         return self.status is FlightStatus.ON_STATION
+
+    @property
+    def has_active_status(self) -> bool:
+        """True if the flight is in one of the ``ACTIVE_STATUSES``."""
+        return self.status in ACTIVE_STATUSES
+
+    @property
+    def empty(self) -> bool:
+        """True if the flight has no aircraft left."""
+        return self.size <= 0
+
+
 # ---------------------------------------------------------------- altitude profile
 #
 # One profile per flight, used by everyone: the players' briefing, the AI's
@@ -565,7 +578,6 @@ def flight_altitude(f: Flight) -> float:
     return alts[min(f.wp_index, len(alts) - 1)]
 
 
-
 def package_number(package_id: str) -> str:
     """Four-digit package number (1000-9999) from a package id.
 
@@ -580,6 +592,7 @@ def package_number(package_id: str) -> str:
     """
     n = int("".join(c for c in package_id if c.isdigit()) or 0)
     return str((n * 7919) % 9000 + 1000)
+
 
 @dataclass
 class Package:

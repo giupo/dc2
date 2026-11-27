@@ -241,6 +241,17 @@ class MobileEntity:
         h = theater.heading_on_link(self.location, self.movement.path[0], self.movement.progress)
         return (h + math.pi) % (2 * math.pi) if self.movement.back else h
 
+    def same_faction(self, faction: str) -> bool:
+        """Whether this entity belongs to ``faction``.
+
+        Args:
+            faction: Faction id.
+
+        Returns:
+            True if the entity is of that faction.
+        """
+        return self.faction == faction
+
 
 @dataclass(eq=False, kw_only=True)
 class Division(MobileEntity):
@@ -373,21 +384,18 @@ class Division(MobileEntity):
         for k in self.elements:
             self.elements[k] *= 1.0 - fraction
 
-            
     def in_range(self, point: Vec2, radius: float, t: Theater) -> bool:
-        """
-        Returns true if point is in range.
+        """Whether the division is within ``radius`` of ``point``.
 
         Args:
-             point: Vec2 rappresenting a point in space to check against
-             radius: distance to check
-             t: Theather to use for distance
+            point: The point to measure from.
+            radius: Distance in metres.
+            t: The theater, for the division's position.
 
         Returns:
-             `true` if this Division and point area in range
+            True if the division is within ``radius`` of ``point``.
         """
         return self.position(t).distance_to(point) <= radius
-         
 
 
 @dataclass(eq=False, kw_only=True)

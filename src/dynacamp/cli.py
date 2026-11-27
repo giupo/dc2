@@ -114,7 +114,7 @@ def _load_campaign(path: str) -> tuple[CampaignState, persistence.SaveInfo | Non
         print(f"Resumed '{info.name}' at {_clock(info.campaign_time)} from {path} "
               f"(saved {time.strftime('%Y-%m-%d %H:%M', time.localtime(info.saved_at))} by {info.version})", flush=True)
         return state, info
-    
+
     return scenario.load(path), None
 
 

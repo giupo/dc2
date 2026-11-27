@@ -309,31 +309,40 @@ def support_station(state: CampaignState, fid: str, setback: float) -> Vec2 | No
     Returns:
         The orbit point, or None without front or airbases (or if no clear point is found).
     """
-    from . import air_defense
-
     t = state.theater
+
     fronts = [t.provinces[p].center for p in state.front_provinces(fid)] or [
         p.center for p in t.provinces.values() if p.controller == fid
     ]
+
     bases = [b.position for b in state.airbases.values() if b.owner(t) == fid]
+
     if not fronts or not bases:
         return None
+
     front = Vec2(sum(p.x for p in fronts) / len(fronts), sum(p.y for p in fronts) / len(fronts))
     home = Vec2(sum(p.x for p in bases) / len(bases), sum(p.y for p in bases) / len(bases))
     leg = home - front
+
     if leg.length() < 1.0:
         return home
+
     unit = leg * (1.0 / leg.length())
     point = front + unit * setback
     for _ in range(12):
         if orbit_clear(state, fid, point, air.SUPPORT_ORBIT_RADIUS_M):
             return point
         point = point + unit * 10_000.0
+
     return None
 
 
 def orbit_clear(
-    state: CampaignState, fid: str, point: Vec2, orbit_radius: float, altitude: float = routing.DEFAULT_ALTITUDE_M
+    state: CampaignState,
+    fid: str,
+    point: Vec2,
+    orbit_radius: float,
+    altitude: float = routing.DEFAULT_ALTITUDE_M
 ) -> bool:
     """True if a whole orbit of ``orbit_radius`` around ``point``, flown at
     ``altitude``, stays out of every known enemy SAM umbrella (with the routing margin).
@@ -520,7 +529,6 @@ def needs_sead(state: CampaignState, fid: str, point: Vec2) -> bool:
     Returns:
         Whether SEAD is needed at the target.
     """
-    from . import air_defense
 
     return air.air_defense(state, fid, point) >= SEAD_THRESHOLD or bool(intel.known_covering(state, fid, point))
 
@@ -575,8 +583,10 @@ def route_exposed(state: CampaignState, fid: str, r: Request, home: Vec2 | None 
         Whether the route is exposed (False if the faction has no base for the task).
     """
     home = home or _likely_home(state, fid, r.task, r.point)
+
     if home is None:
         return False
+
     waypoints, _ = plan_route(state, fid, r.task, home, r.point)
     return bool(routing.exposure(waypoints, routing.threats(state, fid)))
 
@@ -639,7 +649,12 @@ def plan(state: CampaignState, faction: Faction) -> None:
 
 
 def _allocate(
-    state: CampaignState, fid: str, task: Task, point: Vec2, size: int, exclude: set[str] = frozenset(),
+    state: CampaignState,
+    fid: str,
+    task: Task,
+    point: Vec2,
+    size: int,
+    exclude: set[str] = frozenset(),
     require=None,
 ) -> tuple[Squadron, float] | None:
     """Best squadron for a task in range of a point.
@@ -664,21 +679,31 @@ def _allocate(
     for sq in state.squadrons.values():
         if sq.faction != fid or sq.id in exclude or task not in sq.tasks or sq.available_at(state.time) < size:
             continue
+
         if require is not None and not require(sq):
             continue
+
         base = state.airbases[sq.airbase]
+
         if base.owner(state.theater) != fid or structures.airbase_factor(state, sq.airbase) <= 0:
             continue  # lost, or its facilities in ruins
+
         dist = base.position.distance_to(point)
+
         if dist > sq.aircraft_type.radius_km * 1000 * (1.0 if sq.aircraft_type.helo else stretch):
             continue
+
         if task.support:
             quality = 1.0 + sq.aircraft_type.cargo / 100.0
+
         else:
             quality = sq.aircraft_type.a2a if task.air_to_air else sq.aircraft_type.a2g
+
         score = quality / (1.0 + dist / 200_000.0)
+
         if best is None or score > best[0]:
             best = (score, sq, dist)
+
     return None if best is None else (best[1], best[2])
 
 
@@ -703,7 +728,11 @@ def enemy_air_threat(state: CampaignState, fid: str, point: Vec2) -> bool:
 
 
 def build_package(
-    state: CampaignState, faction: Faction, r: Request, squadron: str | None = None, tot: float | None = None
+    state: CampaignState,
+    faction: Faction,
+    r: Request,
+    squadron: str | None = None,
+    tot: float | None = None
 ) -> Package | None:
     """Build a package for a request: main flight plus SEAD and escort as needed.
 
@@ -720,30 +749,41 @@ def build_package(
         and missing, or ``tot`` is too early).
     """
     fid = faction.id
+
     if r.task is Task.DEAD:
         return _build_dead(state, faction, r, squadron, tot)
+
     size = 4 if r.task is Task.STRIKE else (1 if r.task in (Task.AWACS, Task.TANKER) else 2)
     require = _target_requirement(state, r)
+
     if squadron is not None:
         base_require = require
         require = lambda sq: sq.id == squadron and (base_require is None or base_require(sq))  # noqa: E731
+
     main = _allocate(state, fid, r.task, r.point, size, require=require)
+
     if main is None:
         return None
-    sq, dist = main
+
+    sq, _ = main
+
     # Route first: around the umbrellas it can avoid. What is left (the target's
     # own cover, or a detour too long) calls for SEAD, without which strikers stay home.
     main_route = plan_route(state, fid, r.task, state.airbases[sq.airbase].position, r.point, sq)
     sead = None
     if r.task in (Task.CAS, Task.BAI, Task.STRIKE) and sead_required(state, fid, r, state.airbases[sq.airbase].position):
         sead = _allocate(state, fid, Task.SEAD, r.point, 2, {sq.id})
+
         if sead is None and routing.exposure(main_route[0], routing.threats(state, fid)):
             return None
+
     earliest = earliest_tot(sq, routing.length(main_route[0][: main_route[1] + 1]), state.time)
     if sead is not None:
         earliest = max(earliest, earliest_tot(sead[0], sead[1], state.time) + 120)
+
     if tot is None:
         tot = math.ceil(earliest / 300.0) * 300.0  # round to 5 minutes
+
     elif tot < earliest:
         return None
 
@@ -755,8 +795,11 @@ def build_package(
         if sead is not None:
             used.add(sead[0].id)
             _add_flight(state, pkg, sead[0], Task.SEAD, 2, tot - 120, r)
+
         _add_escort(state, pkg, lead, r, used)
+
     _announce(state, pkg)
+
     return pkg
 
 

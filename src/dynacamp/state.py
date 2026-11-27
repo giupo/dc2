@@ -18,6 +18,7 @@ from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
 from .units import UnitDomain
 
+
 @dataclass(slots=True)
 class Objective:
     """A province a faction wants to hold.

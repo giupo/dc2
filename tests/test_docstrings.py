@@ -1,6 +1,6 @@
 """Every function of the package documents its arguments and what it returns.
 
-Google style (Sphinx napoleon): each parameter but ``self``/``cls`` has an
+Every function, method (properties included) and class has a docstring. Google style (Sphinx napoleon): each parameter but ``self``/``cls`` has an
 entry in ``Args:``, and a function that returns (or yields) a value has a
 ``Returns:`` (``Yields:``) section. Properties, dunder methods and functions
 annotated ``-> None`` need no ``Returns:``.
@@ -81,6 +81,15 @@ def _returns_value(fn: Function) -> bool:
         and not (isinstance(n.value, ast.Constant) and n.value.value is None)
         for n in _own_nodes(fn)
     )
+
+
+def test_every_function_and_class_has_a_docstring():
+    missing = []
+    for path in sorted(SRC.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and not ast.get_docstring(node):
+                missing.append(f"{path.relative_to(SRC.parent)}:{node.lineno} {node.name}")
+    assert not missing, "missing docstrings:\n" + "\n".join(missing)
 
 
 def test_every_argument_is_documented():

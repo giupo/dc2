@@ -472,6 +472,7 @@ def plan(state: CampaignState, faction: Faction) -> None:
         candidates = [d for d in candidates if _may_leave(state, d, target, committed)]
         if not candidates:
             continue
+
         def assault(d: Division) -> float:
             """One candidate's assault power on ``target``, across a river if its road crosses one.
 

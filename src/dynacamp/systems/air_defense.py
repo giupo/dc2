@@ -574,6 +574,7 @@ def plan(state: CampaignState, fid: str) -> None:
         (u for u in units(state, fid) if u.system.role is not SamRole.EWR and u.authority in (Authority.CAMPAIGN, Authority.DELEGATED)),
         key=lambda u: (order[u.system.role], u.id),
     )
+
     def relocating(role: SamRole) -> bool:
         """True if a site of that role is already on the road.
 

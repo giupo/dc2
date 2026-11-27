@@ -195,9 +195,9 @@ def air_defense(state: CampaignState, fid: str, point: Vec2, radius: float = AD_
 
         if not d.in_range(point, radius, t):
             continue
-        
+
         total += d.elements.get(SAM_SHORT, 0.0) + 0.5 * d.elements.get(AAA, 0.0)
-            
+
     return total
 
 
@@ -357,7 +357,7 @@ def go_home(state: CampaignState, f: Flight, reason: FlightReason) -> None:
     """
     if f.status is FlightStatus.RTB:
         return
-    
+
     f.status = FlightStatus.RTB
     f.wp_index = len(f.waypoints) - 1
     f.engaging = ""
@@ -561,7 +561,7 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
         f.size,
         state.time + TURNAROUND_S / max(airbase_factor(state, sq.airbase), MIN_TURNAROUND_FACTOR)
     )
-    
+
     state.emit(
         EventKind.FLIGHT_COMPLETE,
         flight=f.id,
@@ -599,7 +599,7 @@ def deliver(state: CampaignState, f: Flight) -> None:
             d for d in state.divisions.values()
             if d.faction == f.faction and d.position(t).distance_to(f.target_point) <= 15_000
         ]
-        
+
         needs = {
             d.id: d.template.supply_capacity - d.supply
             for d in divs
@@ -612,7 +612,7 @@ def deliver(state: CampaignState, f: Flight) -> None:
             for d in divs:
                 d.supply += needs[d.id] * share
             delivered = min(cargo, total)
-            
+
     state.emit(
         EventKind.AIRLIFT_DELIVERED,
         flight=f.id, callsign=f.callsign,
@@ -661,7 +661,7 @@ def tanker_on_station(state: CampaignState, faction: str) -> Flight | None:
     for f in state.flights.values():
         if f.same_faction(faction) and f.is_tanker and f.on_station:
             return f
-        
+
     return None
 
 
@@ -687,7 +687,7 @@ def attack(state: CampaignState, f: Flight) -> None:
         o.task is Task.SEAD and o.attacked and o.ai_count > 0
         for o in (state.flights[i] for i in pkg.flights if i in state.flights and i != f.id)
     )
-    
+
     ad = air_defense(state, f.faction, point)
     p_loss = (0.01 + ad * 0.004) * (0.4 if sead_cover else 1.0) * (1.5 if f.aircraft_type.helo else 1.0)
 
@@ -725,7 +725,7 @@ def attack(state: CampaignState, f: Flight) -> None:
                 u for u in state.air_defense.values()
                 if state.at_war(f.faction, u.faction) and u.position(t).distance_to(point) <= TARGET_SEARCH_M
             ]
-            
+
             site = min(near, key=lambda u: u.position(t).distance_to(point)) if near else None
 
         if site is not None and site.authority is Authority.CAMPAIGN:

@@ -1124,7 +1124,6 @@ def intel_view(state: CampaignState, viewer: str) -> dict[str, Any]:
     """
     from collections import Counter
 
-
     contacts = [
         {
             "id": c.entity_id,

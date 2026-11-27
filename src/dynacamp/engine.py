@@ -43,7 +43,6 @@ from .state import CampaignState
 from .systems import PIPELINE, air, ato, combat, movement, sitrep, structures
 
 
-
 #: Slowest time compression (real time).
 MIN_COMPRESSION = 1.0
 #: Fastest time compression (two hours per second).
@@ -197,7 +196,7 @@ class Engine:
             p.id: (p.coalition, p.position, PlayerKind.GROUND if p.kind is PlayerKind.GROUND else PlayerKind.AIR)
             for p in self.bubbles.players.values()
         }
-        
+
         remaining = dt
         while remaining > 0:
             sub = min(remaining, self.config.max_substep_s)
@@ -229,7 +228,7 @@ class Engine:
         wanted = self.bubbles.desired_delegation(state)
         for ent in list(state.entities()):
             a = ent.authority
-            
+
             if a is Authority.CAMPAIGN and ent.id in wanted:
                 ent.authority = Authority.MATERIALIZING
                 ent.handoff_started = state.time
@@ -461,15 +460,15 @@ class Engine:
             reached = f.wp_index
             if reached == f.target_index:
                 f.attacked = True  # the game flew the attack
-                
+
                 if f.task.orbits:
                     f.status = FlightStatus.ON_STATION
                     return
-                
+
                 f.status = FlightStatus.RTB
-                
+
             f.wp_index += 1
-            
+
             if f.wp_index >= len(f.waypoints):
                 f.ai_done = True
 
