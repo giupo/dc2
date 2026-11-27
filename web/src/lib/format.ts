@@ -84,6 +84,8 @@ const EVENT_CATEGORY: Record<EventKind, EventCategory> = {
   sam_relocating: "air",
   sam_replaced: "air",
   sam_struck: "air",
+  structure_hit: "air",
+  structure_repaired: "logistics",
   game_disconnected: "system",
   game_losses: "system",
   handoff: "system",
@@ -198,8 +200,12 @@ export function describeEvent(e: CampaignEvent, campaign?: Campaign, map?: MapDa
       return `${d.callsign} mission complete (${d.survivors} aircraft back)`;
     case "air_engagement":
       return `Air combat ${(d.callsigns as string[]).join(" vs ")}${d.phase ? ` (${d.phase})` : ""} — losses ${(d.losses as number[]).join(":")}`;
+    case "structure_hit":
+      return `${d.name}: ${d.destroyed} building${d.destroyed === 1 ? "" : "s"} destroyed by ${d.by} — ${Math.round((d.health as number) * 100)}% standing`;
+    case "structure_repaired":
+      return `${d.name} rebuilt to ${Math.round((d.health as number) * 100)}%`;
     case "air_strike": {
-      const hits = d.divisions ? `on ${(d.divisions as string[]).join(", ") || "nothing"}` : d.convoy ? `on convoy ${d.convoy}` : d.depot ? `on depot ${prov(d.depot)}` : "";
+      const hits = d.divisions ? `on ${(d.divisions as string[]).join(", ") || "nothing"}` : d.convoy ? `on convoy ${d.convoy}` : d.structure ? `on ${d.structure}` : d.depot ? `on depot ${prov(d.depot)}` : "";
       return `${d.task} strike ${hits}${d.lost ? `, ${d.lost} lost to air defence` : ""}`;
     }
     case "aircraft_lost":

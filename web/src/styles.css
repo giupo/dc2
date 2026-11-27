@@ -391,6 +391,10 @@ canvas.picking, .maplibregl-canvas.picking { cursor: crosshair !important; }
 }
 .bulls-readout:empty { display: none; }
 
+/* Structures: depots, airbase facilities, command posts (faded as they are destroyed) */
+.mk.structure { font-size: 16px; text-shadow: 0 0 3px #000, 0 0 2px #000; cursor: default; }
+.mk.structure.damaged span { text-decoration: line-through; }
+
 /* Squadron insignia (files and credits in public/insignia/) */
 .briefing-insignia { width: 72px; height: 72px; object-fit: contain; flex: none; margin-right: 14px; }
 .briefing-head .briefing-title { flex: 1; }

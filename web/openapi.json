@@ -750,6 +750,28 @@
         }
       }
     },
+    "/api/structures": {
+      "get": {
+        "tags": [
+          "air"
+        ],
+        "summary": "Get Structures",
+        "description": "Structures that can be struck (depots, airbase facilities, command\nposts) and their health. They are fixed, so every faction knows them.",
+        "operationId": "get_structures_api_structures_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructuresView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/airdefense": {
       "get": {
         "tags": [
@@ -2981,6 +3003,8 @@
           "sam_relocating",
           "sam_replaced",
           "sam_struck",
+          "structure_hit",
+          "structure_repaired",
           "game_disconnected",
           "game_losses",
           "handoff",
@@ -5038,6 +5062,130 @@
         "title": "SquadronView",
         "description": "A squadron and its availability."
       },
+      "StructureKind": {
+        "type": "string",
+        "enum": [
+          "depot",
+          "airbase",
+          "command"
+        ],
+        "title": "StructureKind",
+        "description": "Kind of structure (an entry of ``structures.toml``)."
+      },
+      "StructureView": {
+        "properties": {
+          "pos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pos",
+            "description": "[east, north] metres on the theater plane"
+          },
+          "ll": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ll",
+            "description": "[lat, lon] WGS84, null without projection"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/StructureKind"
+          },
+          "faction": {
+            "type": "string",
+            "title": "Faction",
+            "description": "owner: the province's controller, or the airbase's owner"
+          },
+          "province": {
+            "type": "string",
+            "title": "Province"
+          },
+          "airbase": {
+            "type": "string",
+            "title": "Airbase",
+            "description": "airbase served (airbase facilities), else empty"
+          },
+          "health": {
+            "type": "number",
+            "title": "Health",
+            "description": "share of its buildings standing, 0-1"
+          },
+          "buildings": {
+            "type": "integer",
+            "title": "Buildings",
+            "description": "buildings it is made of"
+          },
+          "standing": {
+            "type": "integer",
+            "title": "Standing",
+            "description": "buildings standing"
+          },
+          "repaired_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "when the next destroyed building is rebuilt (null: none destroyed)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pos",
+          "ll",
+          "id",
+          "name",
+          "kind",
+          "faction",
+          "province",
+          "airbase",
+          "health",
+          "buildings",
+          "standing",
+          "repaired_at"
+        ],
+        "title": "StructureView",
+        "description": "A fixed installation: depot, airbase facilities, command post."
+      },
+      "StructuresView": {
+        "properties": {
+          "structures": {
+            "items": {
+              "$ref": "#/components/schemas/StructureView"
+            },
+            "type": "array",
+            "title": "Structures"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "structures"
+        ],
+        "title": "StructuresView",
+        "description": "The structures that can be struck (fixed, so every faction knows them)."
+      },
       "TargetIn": {
         "properties": {
           "kind": {
@@ -5046,7 +5194,7 @@
           "id": {
             "type": "string",
             "title": "Id",
-            "description": "battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)",
+            "description": "battle, brigade, convoy, structure, SAM site, airbase (airlift) or own brigade (resupply)",
             "default": ""
           },
           "point": {
@@ -5076,6 +5224,7 @@
           "division",
           "convoy",
           "depot",
+          "structure",
           "sam",
           "point",
           "airlift",

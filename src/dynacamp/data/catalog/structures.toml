@@ -1,0 +1,49 @@
+# Structures catalogue: fixed installations that can be struck (STRIKE, OCA).
+#
+# One table per kind of structure (`kind` in [[structures]] of a scenario; the
+# depots and airbases of a scenario get theirs automatically).
+#
+#   name        display name
+#   elements    buildings it is made of: its health is the share still standing
+#   repair_h    hours to rebuild a destroyed building (while the owner holds it)
+#
+# [<kind>.dcs] is read only by the DCS adapter:
+#   statics     DCS static objects standing for the buildings, cycled
+#               ({ type, category } as in the Mission Editor / pydcs)
+
+[depot]
+name = "Supply depot"
+elements = 6
+repair_h = 24
+
+[depot.dcs]
+statics = [
+  { type = "Tank", category = "Warehouses" },
+  { type = "Warehouse", category = "Warehouses" },
+  { type = ".Ammunition depot", category = "Warehouses" },
+]
+
+[airbase]
+name = "Airbase facilities"
+elements = 6
+repair_h = 12
+
+[airbase.dcs]
+statics = [
+  { type = "Hangar A", category = "Fortifications" },
+  { type = "Fuel tank", category = "Fortifications" },
+  { type = "Shelter", category = "Fortifications" },
+  { type = "Tech hangar A", category = "Fortifications" },
+]
+
+[command]
+name = "Command post"
+elements = 3
+repair_h = 48
+
+[command.dcs]
+statics = [
+  { type = ".Command Center", category = "Fortifications" },
+  { type = "Comms tower M", category = "Fortifications" },
+  { type = "FARP CP Blindage", category = "Fortifications" },
+]

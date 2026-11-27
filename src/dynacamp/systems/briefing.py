@@ -376,6 +376,14 @@ def target_info(state: CampaignState, f: Flight, units: UnitDomain = UnitDomain.
         dest = c.home if c.returning else c.destination
         info["description"] = f"Supply convoy, {round(c.trucks)} trucks, heading to {t.provinces[dest].name}. Expect it to have moved: search along the road."
         info["composition"] = [f"trucks: {round(c.trucks)}", f"cargo: {round(c.cargo)} supply"]
+    elif f.target_kind == TargetKind.STRUCTURE and f.target_id in state.structures:
+        s = state.structures[f.target_id]
+        standing = s.standing()
+        info["description"] = (
+            f"{s.name}: {len(standing)} of {s.type.elements} buildings standing. "
+            "Destroy the buildings: every one down cuts what it gives the enemy."
+        )
+        info["composition"] = [f"building {i + 1}" for i in standing]
     elif f.target_kind == TargetKind.DEPOT and f.target_id in t.provinces:
         p = t.provinces[f.target_id]
         info["description"] = f"Supply depot at {p.name}" + (f", {round(p.depot.stock)} supply in stock." if p.depot else ".")

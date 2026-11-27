@@ -57,6 +57,8 @@ LATE_JOIN_S = 10 * 60.0
 PLAYER_FLIGHT_TIMEOUT_S = 3 * 3600.0
 #: Servicing time of aircraft back from a mission before they are ready again.
 TURNAROUND_S = 3 * 3600.0
+#: The turnaround is at most this many times slower (airbase facilities in ruins: 1 / 0.2 = 5).
+MIN_TURNAROUND_FACTOR = 0.2
 #: One new airframe per understrength squadron this often, up to its establishment.
 REPLACEMENT_INTERVAL_S = 8 * 3600.0
 #: Completed packages kept in :attr:`~dynacamp.state.CampaignState.archive`
@@ -512,7 +514,11 @@ def _check_complete(state: CampaignState, f: Flight) -> None:
     if not f.ai_done or f.active_seats or not f.simulated_by_campaign:
         return
     f.status = FlightStatus.DONE
-    state.squadrons[f.squadron].release(f.size, state.time + TURNAROUND_S)
+    sq = state.squadrons[f.squadron]
+    from .structures import airbase_factor
+
+    # damaged hangars, fuel and shelters turn the aircraft around slower
+    sq.release(f.size, state.time + TURNAROUND_S / max(airbase_factor(state, sq.airbase), MIN_TURNAROUND_FACTOR))
     state.emit(EventKind.FLIGHT_COMPLETE, flight=f.id, callsign=f.callsign, faction=f.faction, survivors=f.size)
 
 
@@ -658,6 +664,13 @@ def attack(state: CampaignState, f: Flight) -> None:
                         d.elements[k] *= 1.0 - min(0.8, 0.15 * eff)
                 hit += 1
         result["suppressed"] = hit
+    elif f.target_kind == TargetKind.STRUCTURE:
+        from . import structures
+
+        s = state.structures.get(f.target_id)
+        if s is not None and state.at_war(f.faction, s.owner(state)) and s.position.distance_to(point) <= TARGET_SEARCH_M:
+            result["structure"] = s.id
+            result["buildings_destroyed"] = structures.strike(state, s, eff, by=f.callsign)
     elif f.target_kind == TargetKind.DEPOT:
         p = t.provinces.get(f.target_id)
         if p is not None and p.depot is not None and state.at_war(f.faction, p.controller):

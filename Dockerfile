@@ -49,7 +49,8 @@ COPY --from=app /app/.venv /app/.venv
 COPY --from=web /web/dist /app/web/dist
 COPY scenarios/ /app/scenarios/
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    DYNACAMP_SCENARIO=scenarios/syria_m5.toml
 USER dynacamp
 
 EXPOSE 8080 50555
@@ -60,5 +61,7 @@ STOPSIGNAL SIGINT
 
 ENTRYPOINT ["dynacamp", "serve", "--host", "0.0.0.0", "--api-host", "0.0.0.0", "--web-dir", "/app/web/dist"]
 # The campaign is saved in /data (mount a volume there) and resumed on restart.
+# The scenario comes from $DYNACAMP_SCENARIO (-e DYNACAMP_SCENARIO=scenarios/golan_1973.toml),
+# or from the command line, which wins.
 VOLUME /data
-CMD ["scenarios/syria_m5.toml", "--save", "/data/campaign.dcsave"]
+CMD ["--save", "/data/campaign.dcsave"]

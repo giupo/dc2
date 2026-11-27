@@ -16,7 +16,7 @@ env = { info = function() end, mission = { theatre = "Caucasus", coalition = {
     { name = "Some other group", units = { { type = "F-16C_50" } } },
   } } } } } } } }
 
-world = { event = { S_EVENT_TAKEOFF = 3, S_EVENT_LAND = 4, S_EVENT_CRASH = 5, S_EVENT_EJECTION = 6, S_EVENT_PILOT_DEAD = 9 },
+world = { event = { S_EVENT_TAKEOFF = 3, S_EVENT_LAND = 4, S_EVENT_CRASH = 5, S_EVENT_EJECTION = 6, S_EVENT_DEAD = 8, S_EVENT_PILOT_DEAD = 9 },
           addEventHandler = function() end }
 Airbase = { getByName = function(name) if name == "Kutaisi" then return { getID = function() return 26 end } end end }
 
@@ -77,6 +77,17 @@ function coalition.addGroup(country, category, data)
   return g
 end
 function coalition.getPlayers(side) return players_by_side[side] end
+local statics = {}
+function coalition.addStaticObject(cty, data)
+  if data.type == "BOOM" then error("unknown static type") end
+  local o = { name = data.name, country = cty, data = data, alive = true }
+  function o:isExist() return self.alive end
+  function o:destroy() self.alive = false; statics[self.name] = nil end
+  function o:getName() return self.name end
+  statics[data.name] = o
+  return o
+end
+StaticObject = { getByName = function(name) return statics[name] end }
 
 ---------------------------------------------------------------- socket mock
 local sent, inbound = {}, {}
@@ -276,6 +287,23 @@ local c1, c2 = g3.data.units[1].callsign, g3.data.units[2].callsign
 check(c1[1] == 11 and c1[2] == 3 and c1[3] == 1 and c1.name == "Lobo31" and c1.index == nil, "applies the ATO callsign")
 check(c2[1] == 1 and c2.name == "Enfield11", "template callsign when none given")
 DC.templates = nil
+
+-- structures: statics placed (country by enum name) and removed; one destroyed is reported once
+DC.handle({ cmd = "statics", remove = {}, add = {
+  { country = { enum = "country.id.RUSSIA" }, data = { name = "DC_ST.dep_d.0", type = "Tank", category = "Warehouses", x = 1, y = 2 } },
+  { country = { enum = "country.id.RUSSIA" }, data = { name = "DC_ST.dep_d.1", type = "Warehouse", category = "Warehouses", x = 3, y = 4 } },
+  { country = { enum = "country.id.RUSSIA" }, data = { name = "DC_ST.dep_d.2", type = "BOOM", category = "Warehouses", x = 5, y = 6 } },
+} })
+check(statics["DC_ST.dep_d.0"] and statics["DC_ST.dep_d.0"].country == 0 and statics["DC_ST.dep_d.1"], "places statics")
+DC.handle({ cmd = "statics", add = {}, remove = { "DC_ST.dep_d.1" } })
+check(statics["DC_ST.dep_d.1"] == nil, "removes statics")
+local before = #sent
+DC.event_handler:onEvent({ id = 8, initiator = statics["DC_ST.dep_d.0"] })
+check(#sent == before + 1 and last_sent().msg == "static_dead" and last_sent().name == "DC_ST.dep_d.0", "reports a static destroyed")
+DC.event_handler:onEvent({ id = 8, initiator = statics["DC_ST.dep_d.0"] })
+check(#sent == before + 1, "reports it once")
+DC.event_handler:onEvent({ id = 8, initiator = make_unit("someone else's", 0, 0) })
+check(#sent == before + 1, "ignores other objects")
 
 if failures > 0 then print(failures .. " failure(s)"); os.exit(1) end
 print("all bridge tests passed")

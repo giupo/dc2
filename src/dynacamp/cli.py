@@ -33,8 +33,29 @@ ENV_SEED = "DYNACAMP_SEED"
 ENV_COMPRESSION = "DYNACAMP_COMPRESSION"
 #: Variable with the bearer token of the API commands (``--api-token`` wins).
 ENV_API_TOKEN = "DYNACAMP_API_TOKEN"
+#: Variable with the scenario (or save) to run when the command line names none.
+ENV_SCENARIO = "DYNACAMP_SCENARIO"
 #: Listen addresses meaning "every interface": the link printed uses localhost.
 ANY_HOST = ("0.0.0.0", "::")
+
+
+def scenario_source(arg: str | None) -> str:
+    """The scenario (or save) to run: the command line's, else ``$DYNACAMP_SCENARIO``.
+
+    Args:
+        arg: The positional argument (None: not given).
+
+    Returns:
+        The path.
+
+    Raises:
+        SystemExit: Neither is given.
+    """
+    source = arg or os.environ.get(ENV_SCENARIO, "").strip()
+    if not source:
+        raise SystemExit(f"no scenario: give one on the command line or set ${ENV_SCENARIO}")
+
+    return source
 
 
 def _summary(state: CampaignState) -> str:
@@ -157,7 +178,7 @@ def cmd_simulate(args: argparse.Namespace) -> None:
     Args:
         args: Parsed command line of ``simulate``.
     """
-    state, info = _load_campaign(args.scenario)
+    state, info = _load_campaign(scenario_source(args.scenario))
     apply_seed(state, args.seed, resumed=info is not None)
 
     if not args.quiet:
@@ -226,7 +247,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
     from .runtime import run_realtime
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    source = args.scenario
+    source = scenario_source(args.scenario)
 
     if args.save and not args.new and Path(args.save).exists() and not persistence.is_save(source):
         # Never overwrite a running campaign with a fresh one by accident.
@@ -429,7 +450,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = p.add_subparsers(dest="command", required=True)
 
     s = sub.add_parser("simulate", help="run a campaign headless, as fast as possible")
-    s.add_argument("scenario", help="scenario (.toml) or save file to resume")
+    s.add_argument("scenario", nargs="?", help="scenario (.toml) or save file to resume (default: $DYNACAMP_SCENARIO)")
     s.add_argument("--days", type=float, default=5)
     s.add_argument("--report-hours", type=float, default=24)
     s.add_argument("--seed", type=int,
@@ -441,7 +462,7 @@ def main(argv: list[str] | None = None) -> None:
     s.set_defaults(func=cmd_simulate)
 
     v = sub.add_parser("serve", help="run in real time with the DCS adapter")
-    v.add_argument("scenario", help="scenario (.toml) or save file to resume")
+    v.add_argument("scenario", nargs="?", help="scenario (.toml) or save file to resume (default: $DYNACAMP_SCENARIO)")
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=50555)
     v.add_argument("--compression", type=float,

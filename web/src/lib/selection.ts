@@ -11,6 +11,7 @@ export interface Layers {
   logistics: boolean;
   air: boolean;
   airDefense: boolean;
+  structures: boolean;
   labels: boolean;
 }
 
@@ -23,5 +24,6 @@ export const DEFAULT_LAYERS: Layers = {
   logistics: true,
   air: true,
   airDefense: true,
+  structures: true,
   labels: true,
 };

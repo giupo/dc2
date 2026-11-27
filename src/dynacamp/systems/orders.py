@@ -39,7 +39,7 @@ LANDING_TOLERANCE_M = 1_000.0
 TARGET_KINDS: dict[Task, tuple[TargetKind, ...]] = {
     Task.CAS: (TargetKind.BATTLE,),
     Task.BAI: (TargetKind.DIVISION, TargetKind.CONVOY),
-    Task.STRIKE: (TargetKind.DEPOT,),
+    Task.STRIKE: (TargetKind.STRUCTURE,),
     Task.SEAD: (TargetKind.SAM,),
     Task.DEAD: (TargetKind.SAM,),
     Task.CAP: (TargetKind.POINT,),
@@ -74,7 +74,7 @@ class Target:
 
     Attributes:
         kind: What it is (every kind but ``flight``, reserved to scrambles).
-        id: Battle, division, convoy, province (depot), SAM site, airbase
+        id: Battle, division, convoy, structure, SAM site, airbase
             (airlift) or own brigade (resupply) id; unused for ``point``.
         point: Position, for ``point`` targets only.
     """
@@ -391,11 +391,13 @@ def _request(state: CampaignState, fid: str, task: Task, target: Target) -> ato.
             raise OrderError(f"no battle {tid} involving our forces")
         prov = t.provinces[b.province]
         return ato.Request(task, 0, f"enemy forces at {prov.name}", prov.center, TargetKind.BATTLE, tid)
-    if kind is TargetKind.DEPOT:
-        prov = t.provinces.get(tid)
-        if prov is None or prov.depot is None or not state.at_war(fid, prov.controller):
-            raise OrderError(f"no enemy supply depot in {tid}")
-        return ato.Request(task, 0, f"supply depot {prov.name}", prov.center, TargetKind.DEPOT, tid)
+    if kind is TargetKind.STRUCTURE:
+        s = state.structures.get(tid)
+        if s is None or not state.at_war(fid, s.owner(state)):
+            raise OrderError(f"no enemy structure {tid}")
+        if s.health <= 0:
+            raise OrderError(f"{s.name} is already in ruins")
+        return ato.Request(task, 0, s.name, s.position, TargetKind.STRUCTURE, tid)
     if kind in (TargetKind.DIVISION, TargetKind.CONVOY, TargetKind.SAM):
         c = intel.knows(state, fid, tid)
         if c is None or c.kind != kind:

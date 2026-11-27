@@ -10,6 +10,7 @@
 [campaign]
 name = "Syria - M5 Corridor"
 theater = "syria"
+date = 2024-06-01  # day 1 of the campaign: the DCS missions start on it
 units = "imperial"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
 [[factions]]

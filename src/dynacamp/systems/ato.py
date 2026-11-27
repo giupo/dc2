@@ -26,7 +26,8 @@ from ..events import clock
 from ..geo import Vec2
 from ..state import BattleKind, CampaignState, Faction, IdPrefix, Timer
 from .. import radio
-from . import air, intel, routing
+from . import air, intel, routing, structures
+from ..structures import StructureKind
 from ..events import EventKind, LossReason
 
 # -- Planning cycle --------------------------------------------------------
@@ -226,9 +227,20 @@ def requests(state: CampaignState, faction: Faction) -> list[Request]:
             prio = 6 if on_the_move else 4
             out.append(Request(Task.BAI, prio, f"{d.name} near {t.provinces[d.location].name}", pos, TargetKind.DIVISION, d.id))
 
-    for pid, p in t.provinces.items():
-        if p.depot is not None and state.at_war(fid, p.controller):
-            out.append(Request(Task.STRIKE, 3 + p.depot.stock / 5000, f"supply depot {p.name}", p.center, TargetKind.DEPOT, pid))
+    # STRIKE on the enemy's structures (fixed and known): depots by their stock,
+    # airbases by the squadrons they keep flying, command posts first.
+    for s in state.structures.values():
+        owner = s.owner(state)
+        if not state.at_war(fid, owner) or s.health <= 0:
+            continue
+        if s.kind is StructureKind.DEPOT:
+            depot = t.provinces[s.province].depot
+            prio = 3 + (depot.stock / 5000 if depot is not None else 0)
+        elif s.kind is StructureKind.AIRBASE:
+            prio = 3 + 0.5 * sum(1 for q in state.squadrons.values() if q.airbase == s.airbase and q.faction == owner)
+        else:
+            prio = 5.0
+        out.append(Request(Task.STRIKE, prio * s.health, s.name, s.position, TargetKind.STRUCTURE, s.id))
 
     # DEAD on enemy SAM sites that cover the front: strikers on the site under
     # SEAD cover (see build_package; SEAD alone if nobody can strike it).
@@ -597,14 +609,15 @@ def plan(state: CampaignState, faction: Faction) -> None:
         faction: The planning faction.
     """
     made = made_support = 0
+    max_new = structures.packages_per_cycle(state, faction.id, MAX_NEW_PACKAGES)  # command posts hit: fewer
     active = sum(
         1 for p in state.packages.values()
         if p.faction == faction.id and not p.done and p.task is not Task.CAP and not p.task.support
     )
     for r in requests(state, faction):
-        if made >= MAX_NEW_PACKAGES and made_support >= MAX_NEW_SUPPORT:
+        if made >= max_new and made_support >= MAX_NEW_SUPPORT:
             break
-        if (made_support if r.task.support else made) >= (MAX_NEW_SUPPORT if r.task.support else MAX_NEW_PACKAGES):
+        if (made_support if r.task.support else made) >= (MAX_NEW_SUPPORT if r.task.support else max_new):
             continue
         if r.task is not Task.CAP and not r.task.support and active >= MAX_ACTIVE_PACKAGES:
             continue
@@ -650,8 +663,8 @@ def _allocate(
         if require is not None and not require(sq):
             continue
         base = state.airbases[sq.airbase]
-        if base.owner(state.theater) != fid:
-            continue
+        if base.owner(state.theater) != fid or structures.airbase_factor(state, sq.airbase) <= 0:
+            continue  # lost, or its facilities in ruins
         dist = base.position.distance_to(point)
         if dist > sq.aircraft_type.radius_km * 1000 * (1.0 if sq.aircraft_type.helo else stretch):
             continue

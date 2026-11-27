@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import tomllib
 from pathlib import Path
@@ -12,7 +13,8 @@ from .air_defense import SYSTEMS, AirDefenseUnit, place_sites
 from .forces import DEFAULT_TEMPLATES, Division, DivisionTemplate
 from .geo import Vec2
 from .projection import from_latlon
-from .state import ARMIES, CampaignState, Faction, Objective
+from .state import ARMIES, DEFAULT_START_DATE, CampaignState, Faction, Objective
+from .structures import AIRBASE_OFFSET, AIRBASE_PREFIX, DEPOT_OFFSET, DEPOT_PREFIX, TYPES, Structure, StructureKind
 from .world import Depot, LinkKind, Province, Terrain, Theater
 from . import bullseye, units
 
@@ -99,6 +101,29 @@ def point(spec: dict[str, Any], theater: str, what: str) -> Vec2:
         return Vec2(*pair("pos"))
 
     raise ScenarioError(f"{what}: no position (ll = [lat, lon])")
+
+
+def _date(value: Any) -> dt.date:
+    """The calendar date of day 1: a TOML date (``date = 1973-10-06``) or the
+    same as a string.
+
+    Args:
+        value: The ``date`` of ``[campaign]``.
+
+    Returns:
+        The date.
+
+    Raises:
+        ScenarioError: If it is not a date.
+    """
+    if isinstance(value, dt.datetime):
+        return value.date()
+    if isinstance(value, dt.date):
+        return value
+    try:
+        return dt.date.fromisoformat(str(value))
+    except ValueError as exc:
+        raise ScenarioError(f"campaign date {value!r} is not YYYY-MM-DD") from exc
 
 
 def _faction(spec: dict[str, Any]) -> Faction:
@@ -281,6 +306,7 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
         factions=factions,
         seed=meta.get("seed", 0),
         time=float(meta.get("start_hour", 6)) * 3600.0,
+        start_date=_date(meta.get("date", DEFAULT_START_DATE)),
         units=units.check(meta.get("units", units.DEFAULT_UNITS)),
     )
     for d in data.get("divisions", []):
@@ -344,4 +370,54 @@ def from_dict(data: dict[str, Any], roads: dict[str, list[Vec2]] | None = None) 
             system=system,
         )
     place_sites(state.air_defense.values(), theater)
+    _structures(data.get("structures", []), state)
     return state
+
+
+def _structures(specs: list[dict[str, Any]], state: CampaignState) -> None:
+    """The scenario's structures (see :mod:`dynacamp.structures`).
+
+    Every depot and every airbase on the map gets one automatically
+    (``dep_<province>``, ``ab_<airbase>``), next to the province centre or the
+    airfield. A ``[[structures]]`` table adds one (``kind = "command"``...) or,
+    with the id of an automatic one, moves or renames it: ``id``, ``kind``,
+    ``province``, optional ``name``, ``ll`` (``pos`` without projection) and
+    ``airbase`` (airbase facilities).
+
+    Args:
+        specs: The ``[[structures]]`` tables.
+        state: The campaign being built, updated in place.
+
+    Raises:
+        ScenarioError: On an unknown kind, province or airbase.
+    """
+    t = state.theater
+    for pid, p in t.provinces.items():
+        if p.depot is not None:
+            sid = f"{DEPOT_PREFIX}{pid}"
+            state.structures[sid] = Structure(sid, f"{p.name} supply depot", StructureKind.DEPOT, pid, p.center + DEPOT_OFFSET)
+    for b in state.airbases.values():
+        if b.province:
+            sid = f"{AIRBASE_PREFIX}{b.id}"
+            state.structures[sid] = Structure(
+                sid, f"{b.name} airbase", StructureKind.AIRBASE, b.province, b.position + AIRBASE_OFFSET, airbase=b.id
+            )
+    for spec in specs:
+        sid = spec["id"]
+        old = state.structures.get(sid)
+        try:
+            kind = StructureKind(spec.get("kind", old.kind if old else ""))
+        except ValueError as exc:
+            raise ScenarioError(f"structure {sid}: kind must be one of {', '.join(StructureKind)}") from exc
+        pid = spec.get("province", old.province if old else "")
+        if pid not in t.provinces:
+            raise ScenarioError(f"structure {sid}: unknown province {pid!r}")
+        airbase = spec.get("airbase", old.airbase if old else "")
+        if airbase and airbase not in state.airbases:
+            raise ScenarioError(f"structure {sid}: unknown airbase {airbase!r}")
+        if "ll" in spec or "pos" in spec:
+            where = point(spec, t.name, f"structure {sid}")
+        else:
+            where = old.position if old else t.provinces[pid].center
+        name = spec.get("name", old.name if old else f"{t.provinces[pid].name} {TYPES[kind].name.lower()}")
+        state.structures[sid] = Structure(sid, name, kind, pid, where, airbase=airbase)

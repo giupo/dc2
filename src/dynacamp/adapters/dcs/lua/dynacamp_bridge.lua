@@ -404,6 +404,22 @@ function handlers.spawn(msg)
   end
 end
 
+DC.statics = DC.statics or {} -- names of the structures' static objects we placed
+
+-- cmd statics: remove, then place, the static objects of the structures (enums resolved).
+function handlers.statics(msg)
+  for _, name in ipairs(msg.remove or {}) do
+    local obj = StaticObject.getByName(name)
+    if obj and obj:isExist() then obj:destroy() end
+    DC.statics[name] = nil
+  end
+  DC.resolve(msg.add or {})
+  for _, s in ipairs(msg.add or {}) do
+    local ok, err = pcall(coalition.addStaticObject, s.country, s.data)
+    if ok then DC.statics[s.data.name] = true else DC.log("static " .. tostring(s.data.name) .. ": " .. tostring(err)) end
+  end
+end
+
 -- cmd despawn: remove the entity and report its units at that moment.
 function handlers.despawn(msg)
   local units = DC.collect_units(msg.id)
@@ -506,8 +522,19 @@ DC.PLAYER_EVENTS = PLAYER_EVENTS
 DC.lost_reported = DC.lost_reported or {}
 
 DC.event_handler = {}
+
+-- A structure's static object destroyed: report it (once) and forget it.
+function DC.static_dead(e)
+  if not (world.event and e.id == world.event.S_EVENT_DEAD and e.initiator) then return false end
+  local ok, name = pcall(function() return e.initiator:getName() end)
+  if not ok or not name or not DC.statics[name] then return false end
+  DC.statics[name] = nil
+  DC.send({ msg = "static_dead", name = name })
+  return true
+end
 -- DCS event handler: report takeoff, landing and loss of player aircraft (a loss once).
 function DC.event_handler:onEvent(e)
+  if DC.static_dead(e) then return end
   local kind = PLAYER_EVENTS[e.id]
   if not kind or not e.initiator then return end
   local ok, player = pcall(function() return e.initiator:getPlayerName() end)

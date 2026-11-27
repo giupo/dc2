@@ -121,6 +121,12 @@ class EventKind(StrEnum):
     #: Bombs on a SAM site (see :class:`StrikeResult`).
     SAM_STRUCK = "sam_struck"
 
+    # structures (see dynacamp.structures)
+    #: Buildings of a structure destroyed (strike, or reported by the game).
+    STRUCTURE_HIT = "structure_hit"
+    #: Destroyed buildings of a structure were rebuilt.
+    STRUCTURE_REPAIRED = "structure_repaired"
+
     # players and the live game
     #: The game went away: what it held is back to the campaign.
     GAME_DISCONNECTED = "game_disconnected"
@@ -170,6 +176,7 @@ NOTABLE: frozenset[EventKind] = frozenset({
     EventKind.GAME_DISCONNECTED,
     EventKind.PACKAGE_PLANNED,
     EventKind.AIR_STRIKE,
+    EventKind.STRUCTURE_HIT,
     EventKind.AIR_ENGAGEMENT,
     EventKind.AIRCRAFT_LOST,
     EventKind.FLIGHT_ABORTED,
@@ -188,6 +195,7 @@ PUBLIC: frozenset[EventKind] = frozenset({
     EventKind.PROVINCE_CAPTURED,
     EventKind.AIR_ENGAGEMENT,
     EventKind.SAM_ENGAGEMENT,
+    EventKind.STRUCTURE_HIT,
     EventKind.AIRCRAFT_LOST,
     EventKind.PLAYER_JOINED,
     EventKind.PLAYER_LEFT,

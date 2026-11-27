@@ -37,6 +37,8 @@ const FALLBACK_STYLE: StyleSpecification = {
 const STYLE_TIMEOUT_MS = 10_000;
 /** Our own layers that draw text: dropped when the fonts cannot be loaded. */
 const LABEL_LAYERS = ["wp-label", "province-label"];
+/** Map mark of each kind of structure. */
+const STRUCTURE_ICON: Record<string, string> = { depot: "⛁", airbase: "⌂", command: "✪" };
 
 /** Something wrong with the map rendering, shown as a notice over it.
  *
@@ -445,6 +447,19 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
     });
   }, [data.airDefense, campaign, selected, layers.airDefense, viewpoint]);
 
+  // Structures: one mark per depot, airbase facilities and command post, faded as they are destroyed.
+  const structureMarkers = useMemo<MarkerSpec[]>(() => {
+    if (!layers.structures) return [];
+    return (data.structures?.structures ?? []).flatMap((s) => {
+      const at = lngLat(s.ll);
+      if (!at) return [];
+      const icon = STRUCTURE_ICON[s.kind] ?? "■";
+      const html = `<span style="color:${factionColor(campaign, s.faction)};opacity:${0.35 + 0.65 * s.health}">${icon}</span>`;
+      const title = `${s.name}: ${s.standing}/${s.buildings} buildings standing${s.repaired_at ? ` (next rebuilt ${s.repaired_at.label})` : ""}`;
+      return [{ id: `st-${s.id}`, at, html, cls: `structure ${s.health < 1 ? "damaged" : ""}`, title }];
+    });
+  }, [data.structures, campaign, layers.structures]);
+
   // ---- ATO planning: route editor, and clicks that pick a point for an order
   const planner = useContext(PlannerContext);
   const noDraft = useRef(() => undefined).current;
@@ -493,6 +508,7 @@ export function MapView({ data, layers, selected, onSelect, focus, viewpoint, br
   const feed = useLiveFeed(data.faction);
   useHtmlMarkers(map, logisticsMarkers, onSelect, feed);
   useHtmlMarkers(map, samMarkers, onSelect, feed);
+  useHtmlMarkers(map, structureMarkers, onSelect);
   useHtmlMarkers(map, divisionMarkers, onSelect, feed);
   useHtmlMarkers(map, battleMarkers, onSelect);
   useHtmlMarkers(map, airMarkers, onSelect, feed);

@@ -200,11 +200,11 @@ def test_order_package_checks_task_target_squadron_and_tot():
     state = air_line()
     Engine(state).step(1)
     with pytest.raises(OrderError, match="flown against"):
-        orders.order_package(state, "blue", Task.CAS, Target("depot", "e"))
+        orders.order_package(state, "blue", Task.CAS, Target("structure", "dep_e"))
     with pytest.raises(OrderError, match="does not fly"):
         orders.order_package(state, "blue", Task.CAP, Target("point", point=Vec2(30_000, 0)), squadron="hawg")
     with pytest.raises(OrderError, match="earliest TOT"):
-        orders.order_package(state, "blue", Task.STRIKE, Target("depot", "e"), tot=state.time + 600)
+        orders.order_package(state, "blue", Task.STRIKE, Target("structure", "dep_e"), tot=state.time + 600)
     pkg = orders.order_package(state, "blue", Task.CAP, Target("point", point=Vec2(30_000, -5_000)))
     assert state.flights[pkg.flights[0]].target_point == Vec2(30_000, -5_000)
 

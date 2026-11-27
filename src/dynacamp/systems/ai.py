@@ -67,7 +67,7 @@ GARRISON_MIN_STRENGTH = 0.3
 WATCH_M = 12_000.0
 
 
-def run(state: CampaignState, _: float) -> None:
+def run(state: CampaignState, dt: float) -> None:
     """Plan for every faction every ``AI_INTERVAL_S``.
 
     Args:

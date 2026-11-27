@@ -21,6 +21,7 @@ from ..events import EventKind
 from ..forces import Authority, EntityKind, OrderKind
 from ..persistence import SaveTrigger
 from ..state import BattleKind
+from ..structures import StructureKind
 from ..systems.briefing import Severity, ThreatKind
 from ..systems.intel import SensorKind
 from ..units import UnitDomain
@@ -576,6 +577,25 @@ class AirDefenseView(Model):
     links: list[IadsLinkView]
 
 
+class StructureView(Located):
+    """A fixed installation: depot, airbase facilities, command post."""
+    id: str
+    name: str
+    kind: StructureKind
+    faction: str = Field(description="owner: the province's controller, or the airbase's owner")
+    province: str
+    airbase: str = Field(description="airbase served (airbase facilities), else empty")
+    health: float = Field(description="share of its buildings standing, 0-1")
+    buildings: int = Field(description="buildings it is made of")
+    standing: int = Field(description="buildings standing")
+    repaired_at: Time | None = Field(description="when the next destroyed building is rebuilt (null: none destroyed)")
+
+
+class StructuresView(Model):
+    """The structures that can be struck (fixed, so every faction knows them)."""
+    structures: list[StructureView]
+
+
 # ---------------------------------------------------------------- events
 
 
@@ -655,7 +675,7 @@ class RouteRequest(Model):
 class TargetIn(Model):
     """What a new package flies against."""
     kind: TargetKind
-    id: str = Field("", description="battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)")
+    id: str = Field("", description="battle, brigade, convoy, structure, SAM site, airbase (airlift) or own brigade (resupply)")
     point: PointIn | None = Field(None, description="for `point` targets (CAP station, AWACS orbit, tanker track)")
 
 

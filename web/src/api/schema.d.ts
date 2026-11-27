@@ -289,6 +289,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/structures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Structures
+         * @description Structures that can be struck (depots, airbase facilities, command
+         *     posts) and their health. They are fixed, so every faction knows them.
+         */
+        get: operations["get_structures_api_structures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/airdefense": {
         parameters: {
             query?: never;
@@ -1228,7 +1249,7 @@ export interface components {
          *     to it, so the JSON log, the API and old saves see plain strings.
          * @enum {string}
          */
-        EventKind: "ai_order" | "artillery_fire" | "attack_halted" | "battle_started" | "battle_ended" | "contact_broken" | "division_destroyed" | "division_reformed" | "division_reforming" | "division_removed" | "division_retreated" | "objective_changed" | "order_cancelled" | "order_completed" | "province_captured" | "withdrawal_completed" | "convoy_delivered" | "convoy_destroyed" | "convoy_dispatched" | "convoy_returned" | "air_engagement" | "air_strike" | "aircraft_delivered" | "aircraft_lost" | "airlift_delivered" | "flight_aborted" | "flight_cancelled" | "flight_complete" | "flight_landed" | "flight_replanned" | "flight_rerouted" | "flight_rtb" | "flight_takeoff" | "package_complete" | "package_ordered" | "package_planned" | "package_retimed" | "scramble" | "harm_strike" | "sam_destroyed" | "sam_engagement" | "sam_relocating" | "sam_replaced" | "sam_struck" | "game_disconnected" | "game_losses" | "handoff" | "handoff_failed" | "handoff_timeout" | "player_joined" | "player_landed" | "player_left" | "player_takeoff" | "seat_released" | "seat_taken" | "campaign_resumed" | "campaign_saved" | "time_control";
+        EventKind: "ai_order" | "artillery_fire" | "attack_halted" | "battle_started" | "battle_ended" | "contact_broken" | "division_destroyed" | "division_reformed" | "division_reforming" | "division_removed" | "division_retreated" | "objective_changed" | "order_cancelled" | "order_completed" | "province_captured" | "withdrawal_completed" | "convoy_delivered" | "convoy_destroyed" | "convoy_dispatched" | "convoy_returned" | "air_engagement" | "air_strike" | "aircraft_delivered" | "aircraft_lost" | "airlift_delivered" | "flight_aborted" | "flight_cancelled" | "flight_complete" | "flight_landed" | "flight_replanned" | "flight_rerouted" | "flight_rtb" | "flight_takeoff" | "package_complete" | "package_ordered" | "package_planned" | "package_retimed" | "scramble" | "harm_strike" | "sam_destroyed" | "sam_engagement" | "sam_relocating" | "sam_replaced" | "sam_struck" | "structure_hit" | "structure_repaired" | "game_disconnected" | "game_losses" | "handoff" | "handoff_failed" | "handoff_timeout" | "player_joined" | "player_landed" | "player_left" | "player_takeoff" | "seat_released" | "seat_taken" | "campaign_resumed" | "campaign_saved" | "time_control";
         /**
          * EventView
          * @description A campaign event.
@@ -2080,6 +2101,70 @@ export interface components {
             insignia: string;
         };
         /**
+         * StructureKind
+         * @description Kind of structure (an entry of ``structures.toml``).
+         * @enum {string}
+         */
+        StructureKind: "depot" | "airbase" | "command";
+        /**
+         * StructureView
+         * @description A fixed installation: depot, airbase facilities, command post.
+         */
+        StructureView: {
+            /**
+             * Pos
+             * @description [east, north] metres on the theater plane
+             */
+            pos: number[];
+            /**
+             * Ll
+             * @description [lat, lon] WGS84, null without projection
+             */
+            ll: number[] | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["StructureKind"];
+            /**
+             * Faction
+             * @description owner: the province's controller, or the airbase's owner
+             */
+            faction: string;
+            /** Province */
+            province: string;
+            /**
+             * Airbase
+             * @description airbase served (airbase facilities), else empty
+             */
+            airbase: string;
+            /**
+             * Health
+             * @description share of its buildings standing, 0-1
+             */
+            health: number;
+            /**
+             * Buildings
+             * @description buildings it is made of
+             */
+            buildings: number;
+            /**
+             * Standing
+             * @description buildings standing
+             */
+            standing: number;
+            /** @description when the next destroyed building is rebuilt (null: none destroyed) */
+            repaired_at: components["schemas"]["Time"] | null;
+        };
+        /**
+         * StructuresView
+         * @description The structures that can be struck (fixed, so every faction knows them).
+         */
+        StructuresView: {
+            /** Structures */
+            structures: components["schemas"]["StructureView"][];
+        };
+        /**
          * TargetIn
          * @description What a new package flies against.
          */
@@ -2087,7 +2172,7 @@ export interface components {
             kind: components["schemas"]["TargetKind"];
             /**
              * Id
-             * @description battle, brigade, convoy, province (depot), SAM site, airbase (airlift) or own brigade (resupply)
+             * @description battle, brigade, convoy, structure, SAM site, airbase (airlift) or own brigade (resupply)
              * @default
              */
             id: string;
@@ -2099,7 +2184,7 @@ export interface components {
          * @description What a flight flies against (with ``target_id``, the target itself).
          * @enum {string}
          */
-        TargetKind: "battle" | "division" | "convoy" | "depot" | "sam" | "point" | "airlift" | "resupply" | "flight";
+        TargetKind: "battle" | "division" | "convoy" | "depot" | "structure" | "sam" | "point" | "airlift" | "resupply" | "flight";
         /**
          * TargetRef
          * @description Reference to a flight's target.
@@ -2709,6 +2794,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_structures_api_structures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructuresView"];
                 };
             };
         };

@@ -400,6 +400,20 @@ stazione fuori dall'ombrello (o rientra se non può), un volo in transito
 devia attorno al sito sulla tratta corrente (`flight_rerouted`). I voli con
 giocatori seduti tengono la rotta del briefing; i voli SEAD restano.
 
+**Strutture** (`structures.py`, `systems/structures.py`, catalogo
+`structures.toml`). Installazioni fisse fatte di pochi edifici: deposito (la
+produzione scala con la salute, ogni edificio distrutto brucia stock), strutture
+della base aerea (manutenzione degli aerei 1/salute più lenta, sotto il 20%
+nessun decollo) e posto comando (package pianificati per ciclo × salute). Gli
+edifici distrutti si ricostruiscono dopo `repair_h`. Depositi e basi le genera lo
+scenario, i posti comando si dichiarano in `[[structures]]`. L'ATO le colpisce
+con lo STRIKE (`TargetKind.STRUCTURE`). In DCS ogni edificio è uno statico
+(`DC_ST.<struttura>.<n>`): il motore manda `ShowStructure` quando cambiano gli
+edifici in piedi o il proprietario (e tutto alla connessione, `hello` →
+`GameConnected`), il bridge li piazza o li toglie (`statics`) e riporta quelli
+distrutti in gioco (`S_EVENT_DEAD` → `static_dead` → `BuildingDestroyed`).
+Gli oggetti di scenario della mappa (ponti, edifici di DCS) non sono gestiti.
+
 **SEAD, ECM e DEAD.** I voli SEAD colpiscono i radar accesi con i missili
 antiradar del loro carico: un missile per aereo a salva, finché ne hanno, dalla
 gittata dell'arma (`[arm_range_m]` in `weapons.toml`: AGM-88 60 km, Shrike

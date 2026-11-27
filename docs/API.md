@@ -299,6 +299,14 @@ curl -X POST -H "Authorization: Bearer $DYNACAMP_API_TOKEN" -H 'Content-Type: ap
   http://localhost:8080/api/ato/packages
 ```
 
+### `GET /api/structures`
+
+Le strutture che si possono colpire (depositi, strutture delle basi aeree,
+posti comando), uguali per tutte le fazioni perché sono fisse: `kind`,
+`faction` (il proprietario attuale), `health` (quota di edifici in piedi),
+`buildings`, `standing`, `repaired_at` (prossima ricostruzione), `pos`/`ll`.
+Negli ordini STRIKE il bersaglio è `{"kind": "structure", "id": "dep_homs"}`.
+
 ### `GET /api/airdefense`
 - `sites[]`: `id, name, faction, system, system_name, role` (`long | medium |
   short | ewr`), `status` (`active | setting_up | moving | suppressed`),

@@ -5,7 +5,7 @@ import { Marker, type GeoJSONSource, type Map as MLMap } from "maplibre-gl";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { AuthError, api, type Contact, type Flight, type Package, type PackageRequest } from "../api/client";
 import type { CampaignData } from "../lib/useCampaign";
-import { battleTitle, fmtDist, type Units } from "../lib/format";
+import { battleTitle, coalitionOf, fmtDist, type Units } from "../lib/format";
 import type { Selection } from "../lib/selection";
 
 type LngLat = [number, number];
@@ -323,7 +323,9 @@ function targetOptions(task: string, faction: string, data: CampaignData, contac
           ll: c.ll,
         }));
     case "STRIKE":
-      return (data.logistics?.depots ?? []).filter((d) => d.controller !== faction).map((d) => ({ kind: "depot", id: d.province, label: `Depot ${d.name}`, ll: d.ll }));
+      return (data.structures?.structures ?? [])
+        .filter((s) => s.health > 0 && coalitionOf(data.campaign, s.faction) !== coalitionOf(data.campaign, faction))
+        .map((s) => ({ kind: "structure", id: s.id, label: `${s.name} · ${Math.round(s.health * 100)}%`, ll: s.ll }));
     case "SEAD":
     case "DEAD":
       return contacts.filter((c) => c.kind === "sam").map((c) => ({ kind: "sam", id: c.id, label: `${c.detail.system_name ?? "SAM"} · ${ago(c)}`, ll: c.ll }));

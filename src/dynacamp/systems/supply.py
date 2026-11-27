@@ -103,16 +103,19 @@ def depot_distances(state: CampaignState, faction: str) -> dict[str, tuple[float
 
 
 def _produce(state: CampaignState, hours: float) -> None:
-    """Depots produce supply up to capacity.
+    """Depots produce supply up to capacity, as much as their buildings allow
+    (see :func:`dynacamp.systems.structures.depot_factor`).
 
     Args:
         state: The campaign.
         hours: Hours elapsed.
     """
-    for p in state.theater.provinces.values():
+    from .structures import depot_factor
+
+    for pid, p in state.theater.provinces.items():
         if p.depot is not None:
             d = p.depot
-            d.stock = min(d.capacity, d.stock + d.production_per_hour * hours)
+            d.stock = min(d.capacity, d.stock + d.production_per_hour * depot_factor(state, pid) * hours)
 
 
 def _consume_and_recover(

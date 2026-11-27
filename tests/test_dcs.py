@@ -7,6 +7,7 @@ import time
 import pytest
 
 from dynacamp.adapters.base import (
+    GameConnected,
     DematerializeAck,
     EntitySnapshot,
     EntityState,
@@ -98,10 +99,11 @@ def test_adapter_over_tcp():
         client.sendall(b'{"msg":"hello"}\n{"msg":"players","players":[{"id":"P","coalition":"RED","category":"AIRPLANE","x":0,"z":0}]}\n')
         reports = []
         deadline = time.monotonic() + 2
-        while not reports and time.monotonic() < deadline:
-            reports = adapter.poll()
+        while len(reports) < 2 and time.monotonic() < deadline:
+            reports += adapter.poll()
             time.sleep(0.01)
-        assert isinstance(reports[0], PlayerSeen) and reports[0].coalition == "RED"
+        assert isinstance(reports[0], GameConnected)  # the hello
+        assert isinstance(reports[1], PlayerSeen) and reports[1].coalition == "RED"
         assert adapter.connected
 
         adapter.send([Materialize(snapshot())])

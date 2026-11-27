@@ -518,6 +518,19 @@ def create_app(
                     engine.notify(pid, f"{callsign} has been cancelled. Pick another flight from the ATO menu.")
             return {"cancelled": cancelled}
 
+    @app.get("/api/structures", response_model=schemas.StructuresView, tags=[Tag.AIR])
+    def get_structures():
+        """Structures that can be struck (depots, airbase facilities, command
+        posts) and their health. They are fixed, so every faction knows them.
+
+        \f
+
+        Returns:
+            The structures view.
+        """
+        with engine.lock:
+            return views.structures(state())
+
     @app.get("/api/airdefense",response_model=schemas.AirDefenseView, tags=[Tag.AIR])
     def get_air_defense(faction: str | None = FACTION):
         """SAM sites and early-warning radars, their state, and the IADS network links.

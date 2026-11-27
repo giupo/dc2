@@ -223,6 +223,16 @@ python3 -c "import ast,pathlib;print([f'{p}:{n.lineno} {n.name}' for p in pathli
   `[arm_range_m]` di `weapons.toml`: AGM-88 60 km, Shrike 18 km). `Flight.arm`
   e `arm_range_m` (da `air.ready`); un missile per aereo a salva. Un colpo su
   un sito senza radar separato (SA-8, SA-15) toglie un lanciatore.
+- **Strutture** (`structures.py`, `systems/structures.py`): depositi, basi
+  aeree e posti comando fatti di edifici; la salute (edifici in piedi) scala
+  produzione, manutenzione degli aerei e package per ciclo. Gli statici DCS
+  stanno nel catalogo `structures.toml` (`[<kind>.dcs] statics`); i nomi DCS
+  solo da `protocol.static_name`. Il motore rimanda tutto a ogni `hello` del
+  bridge (`GameConnected`). I ponti (oggetti di scenario DCS) non sono gestiti.
+- **Data della campagna:** `date` in `[campaign]` (`state.start_date`); il
+  `.miz` parte da quella data più `start_hour`.
+- **Scenario da ambiente:** `DYNACAMP_SCENARIO` se la riga di comando non ne
+  dà uno (Docker: default `scenarios/syria_m5.toml` nell'immagine).
 - **Bullseye:** `Faction.bullseye` (Vec2, obbligatorio) è fisso per tutta la
   campagna. Per le chiamate si usa solo `dynacamp.bullseye.label` /
   `bearing_range` (magnetiche, grande cerchio); la UI ha `bullsLabel`, che
@@ -383,7 +393,13 @@ vero**. Funzionalità implementate:
 6. **DCS:**
    - i contatti scoperti in gioco non tornano al quadro informativo;
    - IADS coordinato (Skynet);
-   - strutture statiche bersagliabili.
+   - strutture fatte (statici nostri); mancano i **ponti**: oggetti di scenario,
+     l'evento di distruzione non è affidabile. Idea: il bridge controlla gli
+     oggetti di scenario nel punto del ponte (`world.searchObjects`) e il motore
+     rende il collegamento impraticabile finché non è riparato. Da provare in DCS
+     anche la posizione degli statici automatici (offset fissi da centro
+     provincia e aeroporto: possono finire su edifici o piste; `ll` in
+     `[[structures]]` per spostarli).
 7. **Web:** fatti gli ordini all'ATO dal browser. La top bar è una riga sola
    (orologio, tempo, *View as*, barra di chi vince con tooltip); *View as* è
    l'unico punto che sceglie la fazione (ATO e Squadrons la seguono); livelli,

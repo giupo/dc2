@@ -30,6 +30,7 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
   logistics: "Convoys",
   air: "Air",
   airDefense: "Air defence",
+  structures: "Structures",
   labels: "Names",
 };
 

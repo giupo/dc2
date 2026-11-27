@@ -62,6 +62,10 @@ DCS_MAIN_TASK: dict[Task, str] = {
     Task.TANKER: "Refueling",
     Task.TRANSPORT: "Transport",
 }
+#: DCS static objects of each kind of structure (``{type, category}``), cycled over its buildings.
+STRUCTURE_STATICS: dict[str, list[dict[str, str]]] = {
+    kind: [dict(s) for s in d.get("statics", [])] for kind, d in catalog.dcs("structures").items()
+}
 #: DCS unit type of each element of each air defence system, by system id (one unit per element).
 SAM_TYPES: dict[str, dict[str, str]] = catalog.dcs("air_defense")
 

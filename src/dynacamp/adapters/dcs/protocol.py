@@ -25,7 +25,10 @@ from ..base import (
     Dematerialize,
     EntitySnapshot,
     EntityState,
+    GameConnected,
     GameDisconnected,
+    BuildingDestroyed,
+    ShowStructure,
     JoinRequest,
     LeaveRequest,
     Materialize,
@@ -57,6 +60,8 @@ class Cmd(StrEnum):
     ATO = "ato"
     #: Text and map marks for one player.
     NOTIFY = "notify"
+    #: Place and remove the static objects of the structures.
+    STATICS = "statics"
 
 
 class Msg(StrEnum):
@@ -81,6 +86,8 @@ class Msg(StrEnum):
     BRIEFING = "briefing"
     #: Takeoff, landing or loss of a player's aircraft.
     PLAYER_EVENT = "player_event"
+    #: A static object of a structure was destroyed.
+    STATIC_DEAD = "static_dead"
     #: Queued by the adapter itself when the connection drops.
     DISCONNECTED = "_disconnected"
 
@@ -150,6 +157,8 @@ TARGETS_GROUND = "Ground Units"
 UNIT_PREFIX = "DC"
 #: Prefix of the template groups in the missions (``DC_TPL_<aircraft>[_<task>]``).
 TEMPLATE_PREFIX = "DC_TPL"
+#: Prefix of the static objects of the structures (``DC_ST.<structure>.<n>``).
+STATIC_PREFIX = "DC_ST"
 
 
 def dcs_enum(path: str) -> dict[str, Any]:
@@ -206,6 +215,35 @@ def unit_name(entity_id: str, element: str, index: int) -> str:
     return f"{UNIT_PREFIX}.{entity_id}.{element}.{index}"
 
 
+def static_name(structure_id: str, index: int) -> str:
+    """DCS name of a building of a structure: ``DC_ST.<structure>.<n>``.
+
+    Args:
+        structure_id: The structure.
+        index: The building.
+
+    Returns:
+        The DCS static object name.
+    """
+    return f"{STATIC_PREFIX}.{structure_id}.{index}"
+
+
+def parse_static_name(name: str) -> tuple[str, int] | None:
+    """Structure and building of a static object name (see :func:`static_name`).
+
+    Args:
+        name: DCS name.
+
+    Returns:
+        ``(structure id, index)``, or None for other objects.
+    """
+    head, _, rest = name.partition(".")
+    sid, _, index = rest.rpartition(".")
+    if head != STATIC_PREFIX or not sid or not index.isdigit():
+        return None
+    return sid, int(index)
+
+
 def template_name(aircraft: str, task: Task | None = None) -> str:
     """Name of a template group of the mission: the generator creates it, spawns ask for it.
 
@@ -259,6 +297,8 @@ class DcsTranslator:
     known_players: set[str] = field(default_factory=set)
     player_types: dict[str, tuple[str, str]] = field(default_factory=dict)  # player -> (DCS type, Unit.Category key)
     ato_version: int = 0
+    # Structures as the game holds them: structure -> (DCS country, standing building indices).
+    statics: dict[str, tuple[str, frozenset[int]]] = field(default_factory=dict)
 
     # ------------------------------------------------------------ outgoing
 
@@ -284,6 +324,8 @@ class DcsTranslator:
                     "version": self.ato_version,
                     "packages": list(packages),
                 }
+            case ShowStructure():
+                return self._statics(cmd)
             case NotifyPlayer(player_id=pid, text=text, marks=marks, duration_s=duration):
                 return {
                     "cmd": Cmd.NOTIFY,
@@ -622,6 +664,37 @@ class DcsTranslator:
 
     # ------------------------------------------------------------ incoming
 
+    def _statics(self, cmd: ShowStructure) -> dict[str, Any]:
+        """Static objects to place and remove so the game shows what stands of a structure.
+
+        Args:
+            cmd: The structure's standing buildings and owner.
+
+        Returns:
+            The ``statics`` message: ``add`` (country and static data) and ``remove`` (names).
+        """
+        country = catalog.COUNTRY[cmd.army]
+        types = catalog.STRUCTURE_STATICS.get(cmd.kind) or []
+        want = {i: p for i, p in cmd.buildings}
+        held_country, held = self.statics.get(cmd.structure_id, (country, frozenset()))
+        if held_country != country:  # captured: the buildings change hands
+            remove, add = sorted(held), sorted(want)
+        else:
+            remove, add = sorted(held - want.keys()), sorted(want.keys() - held)
+        self.statics[cmd.structure_id] = (country, frozenset(want))
+        statics = []
+        for i in add:
+            if not types:
+                break
+            x, y = to_dcs(want[i])
+            kind = types[i % len(types)]
+            statics.append({
+                "country": dcs_enum(f"country.id.{country}"),
+                "data": {"name": static_name(cmd.structure_id, i), "type": kind["type"], "category": kind["category"],
+                         "x": x, "y": y, "heading": 0, "dead": False},
+            })
+        return {"cmd": Cmd.STATICS, "add": statics, "remove": [static_name(cmd.structure_id, i) for i in remove]}
+
     def decode(self, msg: dict[str, Any]) -> list[Report]:
         """Reports for one bridge message.
 
@@ -665,11 +738,24 @@ class DcsTranslator:
                 return [PlayerEvent(str(msg["player"]), PlayerEventKind(msg["event"]))]
             except ValueError:
                 return []
+        if kind == Msg.STATIC_DEAD:
+            found = parse_static_name(str(msg.get("name", "")))
+            if found is None:
+                return []
+            sid, index = found
+            if sid in self.statics:
+                country, standing = self.statics[sid]
+                self.statics[sid] = (country, standing - {index})
+            return [BuildingDestroyed(sid, index)]
+        if kind == Msg.HELLO:
+            self.statics.clear()  # a mission starts empty
+            return [GameConnected(str(msg.get("theatre", "")))]
         if kind == Msg.DISCONNECTED:
             self.spawned.clear()
             self.known_players.clear()
+            self.statics.clear()
             return [GameDisconnected(msg.get("reason", "connection closed"))]
-        return []  # Msg.HELLO, Msg.PONG and unknown messages are informational
+        return []  # Msg.PONG and unknown messages are informational
 
     def _players(self, players: list[dict[str, Any]]) -> list[Report]:
         """Player reports, including players that disappeared.

@@ -20,6 +20,8 @@ export type Squadron = S["SquadronView"];
 export type AirDefense = S["AirDefenseView"];
 export type Briefing = S["BriefingView"];
 export type SamSite = S["SamSiteView"];
+export type Structures = S["StructuresView"];
+export type Structure = S["StructureView"];
 export type CampaignEvent = S["EventView"];
 export type EventKind = S["EventKind"];
 export type EventsPage = S["EventsPage"];
@@ -119,6 +121,7 @@ export const api = {
   logistics: (faction?: string | null) => get<Logistics>("/api/logistics" + fq(faction)),
   ato: (faction?: string | null) => get<Ato>("/api/ato" + fq(faction)),
   airDefense: (faction?: string | null) => get<AirDefense>("/api/airdefense" + fq(faction)),
+  structures: () => get<Structures>("/api/structures"),
   intel: (faction: string) => get<Intel>("/api/intel" + fq(faction)),
   /** A package, also once it is over (archived). */
   package: (packageId: string, faction?: string | null) =>

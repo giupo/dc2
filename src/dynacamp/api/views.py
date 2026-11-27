@@ -811,6 +811,35 @@ def ato(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
 # ---------------------------------------------------------------- air defence
 
 
+def structures(state: CampaignState) -> dict[str, Any]:
+    """Every structure with its health (fixed installations: no fog of war).
+
+    Args:
+        state: The campaign.
+
+    Returns:
+        The structures view.
+    """
+    out = []
+    for s in state.structures.values():
+        out.append(
+            {
+                "id": s.id,
+                "name": s.name,
+                "kind": s.kind,
+                "faction": s.owner(state),
+                "province": s.province,
+                "airbase": s.airbase,
+                "health": round(s.health, 3),
+                "buildings": s.type.elements,
+                "standing": len(s.standing()),
+                "repaired_at": _time(min(s.destroyed.values())) if s.destroyed else None,
+                **_pt(state, s.position),
+            }
+        )
+    return {"structures": out}
+
+
 def air_defense(state: CampaignState, viewer: str | None = None) -> dict[str, Any]:
     """SAM sites and EWRs with their state, and IADS links (known enemy sites
     only, without their internals, in a faction's view).

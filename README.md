@@ -143,6 +143,9 @@ docker build -t dynacamp .
 # Siria, in attesa di DCS sulla porta 50555; UI su http://localhost:8080/
 docker run --rm -p 8080:8080 -p 50555:50555 dynacamp
 
+# un altro scenario dalla variabile d'ambiente (gli argomenti restano quelli dell'immagine)
+docker run -d -p 8080:8080 -p 50555:50555 -v dynacamp-data:/data -e DYNACAMP_SCENARIO=scenarios/golan_1973.toml dynacamp
+
 # un altro scenario, senza DCS, a 600x
 docker run --rm -p 8080:8080 dynacamp scenarios/western_georgia.toml --no-dcs --compression 600
 
@@ -161,6 +164,13 @@ non root, ha un healthcheck su `/api/campaign` e si ferma pulito con
 `docker stop`, salvando la campagna in `/data/campaign.dcsave`. Senza un
 volume su `/data`, il salvataggio sparisce con il container. Le missioni
 `.miz` restano fuori dall'immagine: servono a DCS, non al server.
+
+Lo **scenario** si sceglie con `-e DYNACAMP_SCENARIO=scenarios/<nome>.toml`
+(default dell'immagine: `scenarios/syria_m5.toml`), oppure come argomento, che
+vince sulla variabile; vale anche fuori da Docker, per `serve` e `simulate`.
+Attenzione: se il volume contiene già `/data/campaign.dcsave`, `serve`
+riprende quella campagna, qualunque sia lo scenario. Per cambiare scenario si
+usa un volume nuovo o si aggiunge `--new`.
 
 Per un token stabile si passa `-e DYNACAMP_API_TOKEN=...`; senza, il token
 cambia a ogni avvio e si legge con `docker logs`.
@@ -506,7 +516,8 @@ Gli scenari sono file TOML in `scenarios/`:
 
 | Sezione | Contenuto |
 |---|---|
-| `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `start_hour` (il seed non sta qui: `--seed`, `DYNACAMP_SEED` o l'orologio) |
+| `[campaign]` | `name`, `theater` (`caucasus`, `syria`), `date` (giorno 1, `1973-10-06`: le missioni `.miz` partono quel giorno; default 2024-06-01), `start_hour` (il seed non sta qui: `--seed`, `DYNACAMP_SEED` o l'orologio) |
+| `[[structures]]` | strutture da colpire (STRIKE): `id`, `kind` (`depot`, `airbase`, `command`), `province`, facoltativi `name`, `ll`, `airbase`. Depositi e basi aeree hanno già la loro (`dep_<provincia>`, `ab_<base>`): con lo stesso `id` si sposta o si rinomina |
 | `[[factions]]` | `id`, `name`, `coalition` (chiave DCS di `coalition.side`: `BLUE`, `RED`; le fazioni della stessa coalizione condividono intelligence, bullseye e menu ATO), `army` (voce di `data/catalog/factions.toml`: `us`, `russia`), `color` (`"#rrggbb"`, colore sulla mappa), `quality` (facoltativo: moltiplicatore dell'efficacia in combattimento, di default quello dell'esercito), `enemies`, `objectives`, `bullseye` (id di provincia o `{ ll = [lat, lon] }`; senza: il centro delle province della coalizione; uno per coalizione). `coalition`, `army` e `color` sono obbligatori |
 | `[[provinces]]` | `id`, `name`, `ll = [lat, lon]`, `terrain`, `controller`, `infrastructure`, `victory_points`, `depot = {...}` |
 | `[[links]]` | `a`, `b`, `kind` (`road`/`track`/`rail`), `river` |

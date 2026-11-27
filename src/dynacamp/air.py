@@ -94,8 +94,10 @@ class TargetKind(StrEnum):
     DIVISION = "division"
     #: A supply convoy (BAI).
     CONVOY = "convoy"
-    #: A province's supply depot (STRIKE).
+    #: A province's supply depot, struck before structures existed (older saves).
     DEPOT = "depot"
+    #: A structure, struck by strike packages: depot, airbase facilities, command post.
+    STRUCTURE = "structure"
     #: An air defence site (SEAD, DEAD).
     SAM = "sam"
     #: A station: CAP, AWACS orbit, tanker track.

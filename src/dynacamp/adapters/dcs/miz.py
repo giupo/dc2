@@ -327,7 +327,7 @@ def _unit_type(dcs_id: str):
 def build_mission(
     state: CampaignState,
     port: int = 50555,
-    date: dt.date = dt.date(2024, 6, 1),
+    date: dt.date | None = None,
     clients_per_squadron: int = 4,
 ) -> tuple[Mission, list[str]]:
     """Return the mission and a list of warnings (things that could not be placed).
@@ -335,7 +335,8 @@ def build_mission(
     Args:
         state: The campaign to export (theatre, sides, airbases, squadrons).
         port: TCP port the embedded bridge connects to.
-        date: Calendar date of the mission start (the campaign clock adds the time of day).
+        date: Calendar date of day 1 (None: the scenario's, ``state.start_date``);
+            the campaign clock adds the days and the time of day.
         clients_per_squadron: Player slots created for each squadron.
 
     Returns:
@@ -348,7 +349,7 @@ def build_mission(
     m = Mission(terrain)
     notes: list[str] = []
 
-    start = dt.datetime.combine(date, dt.time()) + dt.timedelta(seconds=state.time)
+    start = dt.datetime.combine(date or state.start_date, dt.time()) + dt.timedelta(seconds=state.time)
     m.start_time = start
 
     nations = {f.id: _country(m, f.army, f.coalition) for f in state.factions.values()}

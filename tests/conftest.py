@@ -28,6 +28,11 @@ LUA51 = _lua51()
 
 def line_scenario() -> CampaignState:
     """Five provinces in a row, 20 km apart: blue a-b-c | red d-e."""
+    return scenario.from_dict(line_data())
+
+
+def line_data() -> dict:
+    """The scenario data of :func:`line_scenario` (to change before building it)."""
     provinces = []
     for i, pid in enumerate("abcde"):
         provinces.append(
@@ -41,7 +46,7 @@ def line_scenario() -> CampaignState:
         )
     provinces[0]["depot"] = {"stock": 5000, "capacity": 5000, "production_per_hour": 50, "trucks": 100}
     provinces[4]["depot"] = {"stock": 5000, "capacity": 5000, "production_per_hour": 50, "trucks": 100}
-    return scenario.from_dict(
+    return (
         {
             "campaign": {"name": "line", "seed": 1},
             "factions": [

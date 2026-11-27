@@ -11,6 +11,7 @@ from . import (
     intel,
     movement,
     scramble,
+    structures,
     supply
 )
 
@@ -20,6 +21,7 @@ PIPELINE = (
     scramble,
     ai,
     ato,
+    structures,
     supply,
     movement,
     combat,
@@ -40,5 +42,6 @@ __all__ = [
     "intel",
     "movement",
     "scramble",
+    "structures",
     "supply"
 ]

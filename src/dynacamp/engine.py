@@ -14,7 +14,10 @@ from .adapters.base import (
     EntitySnapshot,
     EntityState,
     GameAdapter,
+    GameConnected,
     GameDisconnected,
+    BuildingDestroyed,
+    ShowStructure,
     BriefingRequest,
     JoinRequest,
     LeaveRequest,
@@ -37,7 +40,7 @@ from .bubble import BubbleConfig, BubbleManager, Player
 from .events import EventKind, LossReason, PlayerExit, Simulator
 from .forces import TRUCK, Authority, Convoy, Division, MobileEntity
 from .state import CampaignState
-from .systems import PIPELINE, air, ato, combat, movement, sitrep
+from .systems import PIPELINE, air, ato, combat, movement, sitrep, structures
 
 
 
@@ -139,6 +142,7 @@ class Engine:
         self._outbox: list[Command] = []
         self._in_game: set[str] = set()  # ids the game currently holds
         self._published_ato: dict[str, tuple] = {}  # coalition -> last board sent
+        self._structures_shown: dict[str, tuple] = {}  # structure -> (owner, standing) the game holds
 
         # Held for the whole of a step; readers (the HTTP API) take it to see a
         # consistent state between steps.
@@ -274,6 +278,7 @@ class Engine:
 
         self._in_game.clear()
         self._published_ato.clear()
+        self._structures_shown.clear()
         for pid in list(self.state.player_flights):
             ato.player_disconnected(self.state, pid)
 
@@ -370,6 +375,15 @@ class Engine:
 
             case GameDisconnected():
                 self._reclaim_all(r.reason)
+
+            case GameConnected():
+                self._structures_shown.clear()  # a fresh mission: show them all
+
+            case BuildingDestroyed():
+                s = state.structures.get(r.structure_id)
+                if s is not None:
+                    structures.building_lost(state, s, r.index)
+                    self._structures_shown.pop(s.id, None)  # resend what stands
 
     def _notify(self, player_id: str, text: str, with_marks: bool = False) -> None:
         """Queue a message (and optionally the player's flight waypoints) for a player.
@@ -689,6 +703,22 @@ class Engine:
                 self._published_ato[coalition] = board
                 self._outbox.append(PublishAto(coalition, board))
 
+    def _show_structures(self) -> None:
+        """Tell the game what stands of every structure whose buildings or owner changed."""
+        if self.adapter is None or not self.adapter.connected:
+            return  # sent in full once it connects
+        for s in self.state.structures.values():
+            owner = s.owner(self.state)
+            key = (owner, tuple(s.standing()))
+            if self._structures_shown.get(s.id) == key:
+                continue
+            self._structures_shown[s.id] = key
+            faction = self.state.factions[owner]
+            self._outbox.append(ShowStructure(
+                s.id, s.kind.value, faction.coalition, faction.army,
+                tuple((i, s.element_position(i)) for i in s.standing()),
+            ))
+
     def _sync_game(self) -> None:
         """Despawn vanished entities, send route updates and boards, flush commands."""
         state = self.state
@@ -724,6 +754,7 @@ class Engine:
         state.dirty.clear()
         state.dirty |= pending
         self._publish_ato()
+        self._show_structures()
 
         if self._outbox and self.adapter.connected:
             self.adapter.send(self._outbox)

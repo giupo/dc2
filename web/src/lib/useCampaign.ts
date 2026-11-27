@@ -11,6 +11,7 @@ import {
   type Fronts,
   type Intel,
   type Logistics,
+  type Structures,
   type MapData,
   type Control,
   type Tick,
@@ -25,6 +26,8 @@ export interface CampaignData {
   logistics?: Logistics;
   ato?: Ato;
   airDefense?: AirDefense;
+  /** Depots, airbase facilities and command posts (fixed: no fog of war). */
+  structures?: Structures;
   intel?: Intel;
   /** Faction whose fog-of-war view this is (null = umpire, ground truth). */
   faction: string | null;
@@ -68,7 +71,7 @@ export function useCampaign(faction: string | null = null): CampaignData {
       if (inFlight.current) return;
       inFlight.current = true;
       try {
-        const [campaign, fronts, forces, logistics, ato, airDefense, intel] = await Promise.all([
+        const [campaign, fronts, forces, logistics, ato, airDefense, intel, structures] = await Promise.all([
           api.campaign(),
           api.fronts(faction),
           api.forces(faction),
@@ -76,8 +79,9 @@ export function useCampaign(faction: string | null = null): CampaignData {
           api.ato(faction),
           api.airDefense(faction),
           faction ? api.intel(faction) : Promise.resolve(undefined),
+          api.structures(),
         ]);
-        set({ campaign, fronts, forces, logistics, ato, airDefense, intel, clock: campaign.time, live: campaign.live, control: campaign.control ?? undefined, connected: true, error: undefined });
+        set({ campaign, fronts, forces, logistics, ato, airDefense, intel, structures, clock: campaign.time, live: campaign.live, control: campaign.control ?? undefined, connected: true, error: undefined });
       } catch (e) {
         set({ connected: false, error: e instanceof Error ? e.message : String(e) });
       } finally {

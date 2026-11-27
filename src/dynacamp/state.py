@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import random
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
@@ -11,6 +12,7 @@ from . import catalog
 from .geo import Vec2
 from .air import Airbase, Flight, Package, Squadron
 from .air_defense import AirDefenseUnit
+from .structures import Structure
 from .events import EventKind, EventLog
 from .forces import Convoy, Division, MobileEntity, Movement, Order, OrderKind
 from .world import Theater
@@ -26,6 +28,10 @@ class Objective:
     """
     province: str
     priority: int = 1
+
+
+#: Calendar date of day 1 when the scenario gives none (``date`` in ``[campaign]``).
+DEFAULT_START_DATE = dt.date(2024, 6, 1)
 
 
 @dataclass(frozen=True)
@@ -207,6 +213,7 @@ class CampaignState:
         factions: Factions by id.
         seed: Random seed.
         time: Campaign time in seconds since day 1 00:00.
+        start_date: Calendar date of day 1 (the DCS missions start on it).
         units: Units of the texts for players: ``imperial`` (kts, ft, NM) or ``metric``.
         divisions: Brigades by id.
         convoys: Supply convoys by id.
@@ -219,6 +226,8 @@ class CampaignState:
             what the event log talks about after they leave the ATO.
         archived_flights: The flights of the archived packages, by id.
         air_defense: SAM sites and early-warning radars by id.
+        structures: Fixed installations (depots, airbase facilities, command
+            posts) by id (see :mod:`dynacamp.structures`).
         player_flights: Player id -> flight id of the seat they hold.
         events: The event log.
         rng: The campaign's random generator.
@@ -230,6 +239,7 @@ class CampaignState:
     factions: dict[str, Faction]
     seed: int = 0
     time: float = 0.0  # campaign seconds since start
+    start_date: dt.date = DEFAULT_START_DATE
     units: UnitDomain = UnitDomain.IMPERIAL  # of texts for players: "imperial" (kts/ft/NM) or "metric"
     divisions: dict[str, Division] = field(default_factory=dict)
     convoys: dict[str, Convoy] = field(default_factory=dict)
@@ -241,6 +251,7 @@ class CampaignState:
     archive: dict[str, Package] = field(default_factory=dict)
     archived_flights: dict[str, Flight] = field(default_factory=dict)
     air_defense: dict[str, AirDefenseUnit] = field(default_factory=dict)
+    structures: dict[str, Structure] = field(default_factory=dict)
     player_flights: dict[str, str] = field(default_factory=dict)  # player id -> flight id
     sortie_log: dict[str, list[tuple[float, int]]] = field(default_factory=dict)  # faction -> (time, aircraft)
     sortie_tokens: dict[str, float] = field(default_factory=dict)  # faction -> ATO pacing bucket

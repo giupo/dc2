@@ -101,7 +101,26 @@ class NotifyPlayer:
     duration_s: float | None = None
 
 
-Command = Materialize | Dematerialize | UpdateRoute | PublishAto | NotifyPlayer
+@dataclass(frozen=True, slots=True)
+class ShowStructure:
+    """Make the game show a structure's standing buildings, and only those
+    (see :mod:`dynacamp.structures`): sent when they or the owner change.
+
+    Attributes:
+        structure_id: Structure id.
+        kind: Its kind (picks the game objects).
+        coalition: Game coalition of the owner.
+        army: Catalogue army of the owner (picks the game's country).
+        buildings: The standing buildings: (index, position).
+    """
+    structure_id: str
+    kind: str
+    coalition: str
+    army: str
+    buildings: tuple[tuple[int, Vec2], ...]
+
+
+Command = Materialize | Dematerialize | UpdateRoute | PublishAto | NotifyPlayer | ShowStructure
 
 # ------------------------------------------------------------------ game -> core
 
@@ -182,6 +201,19 @@ class DematerializeAck:
 
 
 @dataclass(frozen=True, slots=True)
+class GameConnected:
+    """The game (a mission) connected: it holds nothing of the campaign yet."""
+    theatre: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class BuildingDestroyed:
+    """A building of a structure was destroyed in the game."""
+    structure_id: str
+    index: int
+
+
+@dataclass(frozen=True, slots=True)
 class GameDisconnected:
     """The game connection was lost: the engine takes everything back."""
     reason: str = ""
@@ -232,6 +264,8 @@ Report = (
     | EntityState
     | DematerializeAck
     | GameDisconnected
+    | GameConnected
+    | BuildingDestroyed
     | PlayerEvent
     | JoinRequest
     | LeaveRequest

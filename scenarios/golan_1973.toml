@@ -18,6 +18,7 @@
 [campaign]
 name = "Golan 1973"
 theater = "syria"
+date = 1973-10-06  # day 1 of the campaign: the DCS missions start on it
 start_hour = 14  # the attack began at 14:00
 units = "metric"  # briefings and map marks: "imperial" (kts, ft, NM) or "metric"
 
@@ -971,3 +972,20 @@ name = "P-19 Radar Izra"
 faction = "saa"
 system = "ewr_p19"
 province = "izra"
+
+# ------------------------------------------------------------------ structures
+# Depots and airbases get theirs automatically (dep_<province>, ab_<airbase>).
+
+[[structures]]
+id = "cp_idf"
+kind = "command"
+name = "Northern Command HQ"
+province = "rosh_pina"
+ll = [32.962000, 35.502000]
+
+[[structures]]
+id = "cp_saa"
+kind = "command"
+name = "Golan Front HQ"
+province = "qatana"
+ll = [33.448000, 36.060000]
